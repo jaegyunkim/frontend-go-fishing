@@ -7,7 +7,7 @@ const GATE = { PASS: '안전 양호', PASS_WITH_CAUTION: '조건부 주의', REV
 const badge = g => g ? `<span class="badge b-${esc(g)}">${esc(GATE[g] ?? g)}</span>` : '';
 
 // ---- 설정·인증(auth.js) ----
-import { state, setApi, api, health, login, logout, startTimer, syncExpiry, saveAuth, setOnAuthLost, setOnMustChange, loadAuthImage, remaining, sessionMinutes } from './auth.js?v=1.2.1';
+import { state, setApi, api, health, login, logout, startTimer, syncExpiry, saveAuth, setOnAuthLost, setOnMustChange, loadAuthImage, remaining, sessionMinutes } from './auth.js?v=1.2.2';
 let SID = localStorage.getItem('gofishing.session') || (crypto.randomUUID?.() ?? String(Date.now()) + Math.random().toString(16).slice(2));
 localStorage.setItem('gofishing.session', SID);
 let slots = {}, lastBriefing = null, timer = null, usageText = '';
@@ -184,8 +184,11 @@ async function loadPoints() {
 }
 
 // ---- 설정 ----
-function openSettings() {
-  $('#apiBase').value = state.api;
+async function openSettings() {
+  $('#serverSettingsLink').hidden = true;
+  if (state.auth?.token) {
+    try { const me = await api('/v1/auth/me'); $('#serverSettingsLink').hidden = !(me.role === 'admin' && me.user.loginId === 'lonbehold' && !me.mustChangePassword); } catch { return; }
+  }
   const a = state.auth;
   $('#accountBox').hidden = !(authed() && a);
   $('#resetSession').hidden = authed();
@@ -193,8 +196,6 @@ function openSettings() {
   $('#settings').showModal();
 }
 $('#btnSettings').onclick = openSettings;
-$('#loginSettings').onclick = openSettings;
-$('#saveApi').onclick = async e => { e.preventDefault(); setApi($('#apiBase').value); $('#settings').close(); boot(); };
 $('#btnLogout').onclick = () => { $('#settings').close(); endSession('로그아웃했습니다.', true); };
 $('#btnPw').onclick = () => { $('#settings').close(); openPw(false); };
 $('#resetSession').onclick = () => { SID = crypto.randomUUID?.() ?? String(Date.now()); localStorage.setItem('gofishing.session', SID); chat.innerHTML = ''; slots = {}; renderChips(); $('#settings').close(); welcome(); };
@@ -229,6 +230,7 @@ function renderUsage(u) {
 }
 function showLogin(msg = '', ok = false) {
   timer?.stop(); timer = null;
+  $('#settings').close(); $('#serverSettingsLink').hidden = true;
   $('#appView').hidden = true; $('#loginView').hidden = false;
   $('#sessionMinutesNote').textContent = state.sessionMinutes;
   const m = $('#loginMsg'); m.textContent = msg; m.className = 'login-msg' + (ok ? ' ok' : '');
@@ -318,7 +320,7 @@ async function boot() {
     return;
   }
   // 서버에 연결되지 않으면 로그인 화면에서 안내(로그인 필요 서비스이므로 대화 화면을 먼저 열지 않음)
-  if (!h) return showLogin(state.api ? '서버에 연결할 수 없습니다. 운영 서버가 켜져 있는지 확인하거나, 아래 "서버 연결 설정"에서 주소를 확인해 주세요.' : '서버 주소가 설정되지 않았습니다. 아래 "서버 연결 설정"에서 백엔드 주소를 입력해 주세요.');
+  if (!h) return showLogin(state.api ? '서버에 연결할 수 없습니다. 관리자에게 운영 서버 상태 확인을 요청해 주세요.' : '서버 주소가 설정되지 않았습니다. 관리자에게 연결된 접속 주소를 요청해 주세요.');
   // AUTH_MODE=off(로컬 개발 서버)일 때만 로그인 없이 바로 대화
   timer?.stop(); $('#loginView').hidden = true; $('#appView').hidden = false;
   chat.innerHTML = ''; welcome(); restore();
