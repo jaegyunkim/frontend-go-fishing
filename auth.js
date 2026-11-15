@@ -51,12 +51,20 @@ export async function loadAuthImage(img, path) {
     img.src = URL.createObjectURL(await r.blob());
   } catch { img.alt = '지도를 불러오지 못했습니다'; }
 }
+async function probe() {
+  const h = await api('/healthz', { timeoutMs: 8000, noAuth: true });
+  state.authMode = h.auth?.mode ?? 'off'; state.sessionMinutes = h.auth?.sessionMinutes ?? 10;
+  return h;
+}
+/** 서버 상태 확인. 기본 주소(config.js)가 안 되면 예비 주소를 차례로 시도한다(기기에 직접 저장한 주소는 그대로 존중). */
 export async function health() {
-  try {
-    const h = await api('/healthz', { timeoutMs: 8000, noAuth: true });
-    state.authMode = h.auth?.mode ?? 'off'; state.sessionMinutes = h.auth?.sessionMinutes ?? 10;
-    return h;
-  } catch (e) { state.authMode = null; return { error: e.message }; }
+  try { return await probe(); } catch (e) {
+    const fromConfig = !localStorage.getItem('gofishing.api');
+    const backups = fromConfig ? (window.GOFISHING_API_FALLBACKS || []).filter(u => u && u !== state.api) : [];
+    const primary = state.api;
+    for (const u of backups) { state.api = u; try { return await probe(); } catch { /* 다음 예비 주소 */ } }
+    state.api = primary; state.authMode = null; return { error: e.message };
+  }
 }
 export async function login(loginId, password) {
   const r = await api('/v1/auth/login', { method: 'POST', body: JSON.stringify({ loginId, password, client: 'pages' }), noAuth: true });
