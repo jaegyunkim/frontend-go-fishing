@@ -17,7 +17,13 @@ let slots = {}, lastBriefing = null;
 
 async function api(path, opts = {}) {
   if (!API) throw new Error('백엔드 주소가 설정되지 않았습니다');
-  const r = await fetch(API + path, { ...opts, headers: { 'Content-Type': 'application/json', ...(opts.headers || {}) } });
+  const ms = opts.timeoutMs ?? 60000;
+  let r;
+  try { r = await fetch(API + path, { ...opts, signal: AbortSignal.timeout(ms), headers: { 'Content-Type': 'application/json', ...(opts.headers || {}) } }); }
+  catch (e) {
+    const local = /\/\/(localhost|127\.0\.0\.1)/.test(API) && location.protocol === 'https:';
+    throw new Error(e.name === 'TimeoutError' ? (local ? '로컬 서버 응답 없음 — 브라우저의 “로컬 네트워크 접근 허용” 팝업을 확인하거나 HTTPS 공개 주소를 쓰세요' : '응답 시간 초과') : '네트워크 오류');
+  }
   const j = await r.json().catch(() => ({}));
   if (!r.ok) throw new Error(j.error || `HTTP ${r.status}`);
   return j;
@@ -26,10 +32,10 @@ function setStatus(text, cls = '') { const el = $('#status'); el.textContent = t
 async function checkServer() {
   if (!API) { setStatus('백엔드 미연결 · ⚙︎ 설정에서 서버 주소를 입력하세요', 'bad'); return false; }
   try {
-    const h = await api('/healthz');
+    const h = await api('/healthz', { timeoutMs: 8000 });
     setStatus(`서버 연결됨 v${h.version} · Notion 기억 ${h.notion?.memory ? 'ON' : 'OFF'} · 로그 ${h.notion?.logs ? 'ON' : 'OFF'}`, 'ok');
     return true;
-  } catch (e) { setStatus(`서버 연결 실패 (${API}) · 서버가 켜져 있는지 확인하세요`, 'bad'); return false; }
+  } catch (e) { setStatus(`서버 연결 실패 (${API}) · ${e.message}`, 'bad'); return false; }
 }
 
 // ---- 탭 ----
@@ -201,7 +207,7 @@ function welcome() {
 }
 async function restore() {
   try {
-    const r = await api('/v1/sessions?id=' + encodeURIComponent(SID));
+    const r = await api('/v1/sessions?id=' + encodeURIComponent(SID), { timeoutMs: 10000 });
     if (r.messages?.length) {
       chat.innerHTML = '';
       bubble('bot', md('지난 대화를 Notion 기억에서 불러왔어요.'));
