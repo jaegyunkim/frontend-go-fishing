@@ -1,0 +1,27 @@
+.admin{max-width:980px;margin:0 auto;min-height:100dvh;background:var(--bg)}
+.atabs{display:flex;gap:6px;overflow-x:auto;padding:8px 12px;border-bottom:1px solid var(--line)}
+.atabs button{flex:0 0 auto;background:var(--panel2);border:1px solid var(--line);border-radius:999px;padding:6px 12px;font-size:12.5px;cursor:pointer;color:var(--dim)}
+.atabs button.active{color:var(--cyan);border-color:#155e75;background:#0e2a3a}
+.aview{padding:12px}
+.tbl{width:100%;border-collapse:collapse;font-size:12.5px}
+.tbl th,.tbl td{border-bottom:1px solid var(--line);padding:7px 6px;text-align:left;vertical-align:top}
+.tbl th{color:var(--dim);font-weight:600;position:sticky;top:0;background:var(--bg)}
+.tbl .num{text-align:right;font-variant-numeric:tabular-nums}
+.scroll{overflow-x:auto;border:1px solid var(--line);border-radius:12px}
+.pill{font-size:11px;padding:1px 7px;border-radius:999px;border:1px solid var(--line)}
+.pill.ok{color:var(--ok);border-color:#065f46}.pill.bad{color:var(--bad);border-color:#9f1239}.pill.warn{color:var(--warn);border-color:#78350f}
+.acts{display:flex;gap:4px;flex-wrap:wrap}
+.acts button,.tool button{background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:4px 8px;font-size:11.5px;cursor:pointer}
+.acts button.danger{color:var(--bad);border-color:#9f1239}
+.tool{display:flex;gap:8px;align-items:center;justify-content:space-between;margin-bottom:10px;flex-wrap:wrap}
+.tool h2{margin:0;font-size:15px}
+.chatlog{display:flex;flex-direction:column;gap:6px}
+.chatlog .m{padding:7px 10px;border-radius:10px;max-width:90%;white-space:pre-wrap;font-size:12.5px}
+.chatlog .user{align-self:flex-end;background:#0b3b55}.chatlog .assistant{align-self:flex-start;background:var(--panel)}
+.chatlog .meta{font-size:10.5px;color:var(--dim)}
+.secret{font:600 18px ui-monospace,Menlo,monospace;background:var(--bg);border:1px dashed #155e75;border-radius:10px;padding:10px;text-align:center;user-select:all}
+.settings .grid2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.scroll .tbl{min-width:860px}
+.tbl th,.tbl td{white-space:nowrap}
+.tbl td.sub,.tbl td .sub{white-space:normal}
+@media (min-width:900px){.aview{padding:16px 20px}}

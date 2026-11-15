@@ -12,16 +12,42 @@
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <div class="app">
+  <!-- 로그인 화면 -->
+  <section id="loginView" class="login-view" hidden>
+    <div class="login-card">
+      <img src="assets/icon.svg" alt="" width="56" height="56">
+      <h1>어디물어</h1>
+      <p class="sub">바다낚시 출조 AI 에이전트 · MVP 테스트</p>
+      <form id="loginForm" autocomplete="on">
+        <label>아이디<input id="loginId" name="username" autocomplete="username" autocapitalize="none" spellcheck="false" required maxlength="32"></label>
+        <label>비밀번호<input id="loginPw" name="password" type="password" autocomplete="current-password" required maxlength="128"></label>
+        <button type="submit" id="loginBtn">로그인</button>
+      </form>
+      <p id="loginMsg" class="login-msg" role="alert"></p>
+      <ul class="login-notes">
+        <li>로그인 1회당 이용 시간은 <b id="sessionMinutesNote">10</b>분이며, 시간이 지나면 자동 로그아웃됩니다.</li>
+        <li>질문 수와 AI 사용량에 하루 한도가 있습니다.</li>
+        <li>대화 내용은 서비스 개선과 운영을 위해 30일간 보관되며, 출발지는 시·군·구 단위로만 저장합니다.</li>
+        <li>계정은 관리자에게 발급받으세요.</li>
+      </ul>
+      <button type="button" class="link-btn" id="loginSettings">서버 연결 설정</button>
+    </div>
+  </section>
+
+  <div class="app" id="appView">
     <header class="top">
       <div class="brand">
         <img src="assets/icon.svg" alt="" width="34" height="34">
         <div><h1>어디물어</h1><p>바다낚시 안전·출조 매니저</p></div>
       </div>
-      <button id="btnSettings" class="icon-btn" aria-label="설정">⚙︎</button>
+      <div class="top-right">
+        <span id="timer" class="timer" hidden title="남은 이용 시간">10:00</span>
+        <button id="btnSettings" class="icon-btn" aria-label="설정">⚙︎</button>
+      </div>
     </header>
     <div id="status" class="status" role="status"></div>
     <div id="chips" class="chips" aria-label="현재 조건"></div>
+    <div id="toast" class="toast" role="alert" hidden></div>
 
     <main>
       <section id="tab-chat" class="tab active" aria-label="대화">
@@ -49,7 +75,25 @@
       <label>백엔드 주소<input id="apiBase" placeholder="https://go-fishing.example.com 또는 http://localhost:8787"></label>
       <p class="hint">맥미니 서버를 Cloudflare Tunnel 등으로 HTTPS 공개한 주소를 넣으세요. 같은 컴퓨터에서 서버를 켰다면 http://localhost:8787 도 됩니다. 주소창에 <code>?api=주소</code>로도 지정할 수 있어요.</p>
       <div class="row"><button value="save" id="saveApi">저장·연결 확인</button><button value="cancel" class="ghost">닫기</button></div>
+      <div id="accountBox" class="account" hidden>
+        <h2>내 계정</h2>
+        <p id="accountInfo"></p>
+        <p id="usageInfo" class="hint"></p>
+        <div class="row"><button type="button" id="btnPw" class="ghost">비밀번호 변경</button><a id="adminLink" class="btn ghost" href="admin.html" hidden>관리자 화면</a></div>
+        <button type="button" id="btnLogout" class="danger">로그아웃</button>
+      </div>
       <button type="button" id="resetSession" class="ghost small">새 대화 시작(세션 초기화)</button>
+    </form>
+  </dialog>
+  <dialog id="pwDialog">
+    <form id="pwForm" class="settings">
+      <h2>비밀번호 변경</h2>
+      <p id="pwReason" class="hint">처음 로그인했거나 관리자가 비밀번호를 초기화했습니다. 새 비밀번호를 정해 주세요.</p>
+      <label>현재(임시) 비밀번호<input id="pwCur" type="password" autocomplete="current-password" required></label>
+      <label>새 비밀번호(10자 이상, 영문+숫자)<input id="pwNew" type="password" autocomplete="new-password" required minlength="10"></label>
+      <label>새 비밀번호 확인<input id="pwNew2" type="password" autocomplete="new-password" required minlength="10"></label>
+      <p id="pwMsg" class="login-msg" role="alert"></p>
+      <div class="row"><button type="submit">변경</button><button type="button" id="pwCancel" class="ghost">취소</button></div>
     </form>
   </dialog>
   <script src="config.js"></script>

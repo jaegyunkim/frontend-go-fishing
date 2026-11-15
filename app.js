@@ -6,36 +6,20 @@ const won = n => n == null ? '-' : `${Math.round(n).toLocaleString('ko-KR')}원`
 const GATE = { PASS: '안전 양호', PASS_WITH_CAUTION: '조건부 주의', REVIEW_REQUIRED: '현장 확인', HARD_BLOCK: '출조 자제' };
 const badge = g => g ? `<span class="badge b-${esc(g)}">${esc(GATE[g] ?? g)}</span>` : '';
 
-// ---- 설정 ----
-const params = new URLSearchParams(location.search);
-if (params.get('api')) localStorage.setItem('gofishing.api', params.get('api').replace(/\/$/, ''));
-const isLocal = ['localhost', '127.0.0.1'].includes(location.hostname);
-let API = localStorage.getItem('gofishing.api') || window.GOFISHING_API || (isLocal ? 'http://localhost:8787' : '');
+// ---- 설정·인증(auth.js) ----
+import { state, setApi, api, health, login, logout, startTimer, syncExpiry, saveAuth, setOnAuthLost, setOnMustChange, loadAuthImage, remaining, sessionMinutes } from './auth.js';
 let SID = localStorage.getItem('gofishing.session') || (crypto.randomUUID?.() ?? String(Date.now()) + Math.random().toString(16).slice(2));
 localStorage.setItem('gofishing.session', SID);
-let slots = {}, lastBriefing = null;
+let slots = {}, lastBriefing = null, timer = null, usageText = '';
+const authed = () => state.authMode === 'required';
 
-async function api(path, opts = {}) {
-  if (!API) throw new Error('백엔드 주소가 설정되지 않았습니다');
-  const ms = opts.timeoutMs ?? 60000;
-  let r;
-  try { r = await fetch(API + path, { ...opts, signal: AbortSignal.timeout(ms), headers: { 'Content-Type': 'application/json', ...(opts.headers || {}) } }); }
-  catch (e) {
-    const local = /\/\/(localhost|127\.0\.0\.1)/.test(API) && location.protocol === 'https:';
-    throw new Error(e.name === 'TimeoutError' ? (local ? '로컬 서버 응답 없음 — 브라우저의 “로컬 네트워크 접근 허용” 팝업을 확인하거나 HTTPS 공개 주소를 쓰세요' : '응답 시간 초과') : '네트워크 오류');
-  }
-  const j = await r.json().catch(() => ({}));
-  if (!r.ok) throw new Error(j.error || `HTTP ${r.status}`);
-  return j;
-}
 function setStatus(text, cls = '') { const el = $('#status'); el.textContent = text; el.className = 'status ' + cls; }
 async function checkServer() {
-  if (!API) { setStatus('백엔드 미연결 · ⚙︎ 설정에서 서버 주소를 입력하세요', 'bad'); return false; }
-  try {
-    const h = await api('/healthz', { timeoutMs: 8000 });
-    setStatus(`서버 연결됨 v${h.version} · Notion 기억 ${h.notion?.memory ? 'ON' : 'OFF'} · 로그 ${h.notion?.logs ? 'ON' : 'OFF'}`, 'ok');
-    return true;
-  } catch (e) { setStatus(`서버 연결 실패 (${API}) · ${e.message}`, 'bad'); return false; }
+  if (!state.api) { setStatus('백엔드 미연결 · ⚙︎ 설정에서 서버 주소를 입력하세요', 'bad'); return null; }
+  const h = await health();
+  if (h.error) { setStatus(`서버 연결 실패 (${state.api}) · ${h.error}`, 'bad'); return null; }
+  setStatus(`서버 연결됨 v${h.version} · ${authed() ? `로그인 세션 ${state.sessionMinutes}분` : '로그인 없음(개발 모드)'} · 기억 ${h.memory?.store ?? '-'}`, 'ok');
+  return h;
 }
 
 // ---- 탭 ----
@@ -62,7 +46,7 @@ function renderChips() {
   if (slots.experience) c.push('🎓 ' + slots.experience);
   if (slots.companion === '가족동반') c.push('👨‍👩‍👧 가족');
   if (slots.fuel) c.push('⛽ ' + (L[slots.fuel] ?? slots.fuel) + (slots.efficiency ? ` ${slots.efficiency}` : ''));
-  $('#chips').innerHTML = c.map(x => `<span class="chip">${esc(x)}</span>`).join('') || '<span class="chip">출발지·날짜·지역을 말씀해 주세요</span>';
+  $('#chips').innerHTML = (authed() && state.auth ? `<span class="chip" id="usageChip">${esc(usageText || '💬 질문 한도 확인 중')}</span>` : '') + (c.map(x => `<span class="chip">${esc(x)}</span>`).join('') || '<span class="chip">출발지·날짜·지역을 말씀해 주세요</span>');
 }
 
 function renderMessage(m) {
@@ -122,13 +106,18 @@ async function send(text) {
   bubble('user', esc(text));
   const t = document.createElement('div'); t.className = 'typing'; t.textContent = '어디물어가 공공데이터를 조회하고 있어요…'; chat.appendChild(t); scroll();
   try {
-    const r = await api('/v1/chat', { method: 'POST', body: JSON.stringify({ sessionId: SID, message: text, client: 'pages' }) });
+    const r = await api('/v1/chat', { method: 'POST', body: JSON.stringify(authed() ? { message: text, client: 'pages' } : { sessionId: SID, message: text, client: 'pages' }) });
     t.remove();
-    if (r.sessionId && r.sessionId !== SID) { SID = r.sessionId; localStorage.setItem('gofishing.session', SID); }
+    if (!authed() && r.sessionId && r.sessionId !== SID) { SID = r.sessionId; localStorage.setItem('gofishing.session', SID); }
+    if (r.session) syncExpiry(r.session.remainingSec);
+    if (r.usage) renderUsage(r.usage);
     slots = r.slots || slots; renderChips();
     r.messages.forEach(renderMessage);
   } catch (e) {
     t.remove();
+    if (e.status === 401) return;                       // 자동 로그아웃 처리됨
+    if (e.status === 429) { bubble('bot', md(`⏳ ${e.message}`)); if (e.usage) renderUsage({ today: { messages: e.usage.messages, tokens: e.usage.tokens } }); return; }
+    if (e.status === 403) { bubble('bot', md(e.message)); return; }
     bubble('bot', md(`서버에 연결하지 못했어요. (${e.message})\n⚙︎ 설정에서 백엔드 주소를 확인해 주세요.`));
   }
 }
@@ -172,12 +161,13 @@ function renderBriefing(b) {
     <div class="card sec"><h4>■ 포인트 정보</h4><dl class="kv"><dt>어종·장르</dt><dd>${esc(b.point.headline_species)}${b.point.methods?.length ? ' / ' + esc(b.point.methods.join('·')) : ''}</dd><dt>유형·난이도</dt><dd>${esc(b.point.type)} · ${esc(b.point.difficulty)}${b.point.family_friendly ? ' · 가족 적합' : ''}</dd>
       <dt>특징·주의</dt><dd>${esc(b.point.cautions)}</dd><dt>허용 여부</dt><dd>${esc(b.point.restriction_status)} — ${esc(b.point.restriction_note)}</dd>${b.point.walk_note ? `<dt>도보</dt><dd>${esc(b.point.walk_note)}</dd>` : ''}
       <dt>차량 목적지</dt><dd>${esc(b.point.access?.label ?? '미정')}</dd></dl></div>
-    <div class="card sec map"><h4>■ 지도 (네이버)</h4><img alt="포인트 지도" loading="lazy" src="${esc(API + b.map.staticUrl)}"><div class="sub">P 낚시 자리 · C 차량 목적지 · S 출발지(약 100m 단위)</div></div>
+    <div class="card sec map"><h4>■ 지도 (네이버)</h4><img alt="포인트 지도" data-auth-src="${esc(b.map.staticUrl)}"><div class="sub">P 낚시 자리 · C 차량 목적지 · S 출발지(약 100m 단위)</div></div>
     <div class="card sec"><h4>■ 가는 길 ${b.origin ? '(' + esc(b.origin.coarse) + ' 출발)' : ''}</h4>${routes}${traffic ? `<div style="margin-top:8px" class="sub"><b style="color:#e6edf7">실시간 돌발(ITS)</b></div>${traffic}` : ''}</div>
     <div class="card sec"><h4>■ 주변 정보</h4>${nearby}</div>
     <div class="card sec"><h4>■ 가장 가까운 응급실</h4>${er}</div>
     <div class="card sec"><h4>■ 안전 체크</h4><ul class="list check">${b.checklist.map(c => `<li>${esc(c)}</li>`).join('')}</ul></div>
     <div class="card src"><b>출처·수집 상태</b><br>${srcs}<div class="disc">${esc(b.disclaimer)}</div></div>`;
+  $('#brief').querySelectorAll('img[data-auth-src]').forEach(img => loadAuthImage(img, img.dataset.authSrc));
 }
 
 // ---- 포인트 탭 ----
@@ -194,8 +184,19 @@ async function loadPoints() {
 }
 
 // ---- 설정 ----
-$('#btnSettings').onclick = () => { $('#apiBase').value = API; $('#settings').showModal(); };
-$('#saveApi').onclick = async e => { e.preventDefault(); API = $('#apiBase').value.trim().replace(/\/$/, ''); localStorage.setItem('gofishing.api', API); $('#settings').close(); if (await checkServer()) restore(); };
+function openSettings() {
+  $('#apiBase').value = state.api;
+  const a = state.auth;
+  $('#accountBox').hidden = !(authed() && a);
+  $('#resetSession').hidden = authed();
+  if (a) { $('#accountInfo').textContent = `${a.user.displayName}(${a.user.loginId}) · ${a.user.role === 'admin' ? '관리자' : '테스터'} · 남은 시간 ${Math.floor(remaining() / 60)}분 ${remaining() % 60}초`; $('#adminLink').hidden = a.user.role !== 'admin'; }
+  $('#settings').showModal();
+}
+$('#btnSettings').onclick = openSettings;
+$('#loginSettings').onclick = openSettings;
+$('#saveApi').onclick = async e => { e.preventDefault(); setApi($('#apiBase').value); $('#settings').close(); boot(); };
+$('#btnLogout').onclick = () => { $('#settings').close(); endSession('로그아웃했습니다.', true); };
+$('#btnPw').onclick = () => { $('#settings').close(); openPw(false); };
 $('#resetSession').onclick = () => { SID = crypto.randomUUID?.() ?? String(Date.now()); localStorage.setItem('gofishing.session', SID); chat.innerHTML = ''; slots = {}; renderChips(); $('#settings').close(); welcome(); };
 
 function welcome() {
@@ -207,16 +208,112 @@ function welcome() {
 }
 async function restore() {
   try {
-    const r = await api('/v1/sessions?id=' + encodeURIComponent(SID), { timeoutMs: 10000 });
+    const r = await api('/v1/sessions' + (authed() ? '' : '?id=' + encodeURIComponent(SID)), { timeoutMs: 10000 });
     if (r.messages?.length) {
       chat.innerHTML = '';
-      bubble('bot', md('지난 대화를 Notion 기억에서 불러왔어요.'));
+      bubble('bot', md('이번 세션의 대화를 이어서 보여 드려요.'));
       r.messages.slice(-10).forEach(m => bubble(m.role === 'user' ? 'user' : 'bot', md(m.text)));
       slots = r.slots || {}; renderChips();
     }
   } catch { /* 기억 없음 */ }
 }
 
-renderChips(); welcome();
-checkServer().then(ok => ok && restore());
+// ---- 로그인·세션 ----
+function renderUsage(u) {
+  const parts = [];
+  if (u.session?.limit) parts.push(`이번 세션 질문 ${u.session.messages}/${u.session.limit}`);
+  if (u.today?.limit) parts.push(`오늘 ${u.today.messages}/${u.today.limit}`);
+  const el = $('#usageInfo'); if (el) el.textContent = parts.join(' · ');
+  if (parts.length) usageText = '💬 질문 ' + parts[0].replace('이번 세션 질문 ', '');
+  const chip = document.getElementById('usageChip'); if (chip && usageText) chip.textContent = usageText;
+}
+function showLogin(msg = '', ok = false) {
+  timer?.stop(); timer = null;
+  $('#appView').hidden = true; $('#loginView').hidden = false;
+  $('#sessionMinutesNote').textContent = state.sessionMinutes;
+  const m = $('#loginMsg'); m.textContent = msg; m.className = 'login-msg' + (ok ? ' ok' : '');
+  setTimeout(() => $('#loginId').focus(), 50);
+}
+function enterApp() {
+  $('#loginView').hidden = true; $('#appView').hidden = false;
+  chat.innerHTML = ''; slots = {}; renderChips();
+  if (authed() && state.auth) {
+    timer?.stop();
+    timer = startTimer($('#timer'), {
+      onWarn: s => toast(`약 ${s}초 뒤 자동 로그아웃됩니다. 필요한 내용은 지금 확인해 주세요.`),
+      onExpire: () => endSession(`${sessionMinutes()}분 이용 시간이 끝나 자동 로그아웃했습니다. 다시 로그인해 주세요.`, false, 'expired')
+    });
+    const u = state.auth.user;
+    bubble('bot', md(`**${u.displayName}**님, 반가워요. 이번 로그인은 **${sessionMinutes()}분** 동안 이용할 수 있어요.`));
+    refreshUsage();
+  }
+  welcome(); restore();
+}
+async function refreshUsage() {
+  try {
+    const me = await api('/v1/auth/me', { timeoutMs: 10000 });
+    syncExpiry(me.remainingSec);
+    renderUsage({ session: { messages: me.session.messages, limit: me.limits.sessionMessages }, today: { messages: me.usage.today.messages, limit: me.limits.dailyMessages } });
+  } catch { /* 401 은 자동 로그아웃 처리 */ }
+}
+let ending = false;
+function endSession(msg, ok = false, reason = 'logout') {
+  if (ending) return; ending = true;
+  logout(reason); timer?.stop(); timer = null; toast(''); usageText = '';
+  chat.innerHTML = ''; $('#brief').innerHTML = '<p class="empty">포인트를 고르면 상세 브리핑이 여기에 표시됩니다.</p>'; slots = {}; renderChips();
+  showLogin(msg, ok); ending = false;
+}
+function toast(text) { const t = $('#toast'); t.textContent = text; t.hidden = !text; if (text) setTimeout(() => { if (t.textContent === text) t.hidden = true; }, 15000); }
+setOnAuthLost(msg => endSession(msg, false, 'lost'));
+setOnMustChange(() => openPw(true));
+
+$('#loginForm').addEventListener('submit', async e => {
+  e.preventDefault();
+  const btn = $('#loginBtn'); btn.disabled = true; $('#loginMsg').textContent = '';
+  try {
+    const r = await login($('#loginId').value.trim(), $('#loginPw').value);
+    $('#loginPw').value = '';
+    if (r.replacedSessions) toast('다른 기기(또는 창)의 이전 로그인은 종료됐습니다.');
+    if (r.user.mustChangePassword) openPw(true); else enterApp();
+  } catch (err) { $('#loginMsg').textContent = err.message; }
+  finally { btn.disabled = false; }
+});
+
+let pwForced = false;
+function openPw(forced) {
+  pwForced = forced; $('#pwReason').hidden = !forced; $('#pwCancel').textContent = forced ? '로그아웃' : '취소';
+  $('#pwMsg').textContent = ''; $('#pwForm').reset();
+  if (!$('#pwDialog').open) $('#pwDialog').showModal();
+}
+$('#pwDialog').addEventListener('cancel', e => { if (pwForced) e.preventDefault(); });
+$('#pwCancel').onclick = () => { $('#pwDialog').close(); if (pwForced) endSession('로그아웃했습니다.', true); };
+$('#pwForm').addEventListener('submit', async e => {
+  e.preventDefault();
+  if ($('#pwNew').value !== $('#pwNew2').value) { $('#pwMsg').textContent = '새 비밀번호 확인이 일치하지 않습니다'; return; }
+  try {
+    await api('/v1/auth/password', { method: 'POST', body: JSON.stringify({ current: $('#pwCur').value, next: $('#pwNew').value }) });
+    if (state.auth) saveAuth({ ...state.auth, user: { ...state.auth.user, mustChangePassword: false } });
+    $('#pwDialog').close();
+    if (pwForced) enterApp(); else toast('비밀번호를 바꿨습니다.');
+  } catch (err) { $('#pwMsg').textContent = err.message; }
+});
+
+async function boot() {
+  const h = await checkServer();
+  if (h && authed()) {
+    if (!state.auth?.token) return showLogin();
+    try {
+      const me = await api('/v1/auth/me', { timeoutMs: 10000 });
+      syncExpiry(me.remainingSec);
+      saveAuth({ ...state.auth, user: { ...state.auth.user, ...me.user, mustChangePassword: me.mustChangePassword } });
+      if (me.mustChangePassword) return openPw(true);
+      enterApp();
+    } catch (e) { if (e.status !== 401) showLogin(e.message); }
+    return;
+  }
+  timer?.stop(); $('#loginView').hidden = true; $('#appView').hidden = false;
+  chat.innerHTML = ''; welcome(); if (h) restore();
+}
+
+renderChips(); boot();
 if ('serviceWorker' in navigator && location.protocol === 'https:') navigator.serviceWorker.register('sw.js').catch(() => {});
