@@ -25,3 +25,5 @@
 .tbl th,.tbl td{white-space:nowrap}
 .tbl td.sub,.tbl td .sub{white-space:normal}
 @media (min-width:900px){.aview{padding:16px 20px}}
+
+.access-url{display:flex;flex-direction:column;gap:2px;margin:6px 0 12px}.access-url span{font-size:12px;color:var(--dim)}.access-url a{color:#93c5fd;font-weight:600;word-break:break-all;user-select:all}
