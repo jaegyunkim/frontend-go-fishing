@@ -7,7 +7,7 @@ const GATE = { PASS: '안전 양호', PASS_WITH_CAUTION: '조건부 주의', REV
 const badge = g => g ? `<span class="badge b-${esc(g)}">${esc(GATE[g] ?? g)}</span>` : '';
 
 // ---- 설정·인증(auth.js) ----
-import { state, setApi, api, health, login, logout, startTimer, syncExpiry, saveAuth, setOnAuthLost, setOnMustChange, loadAuthImage, remaining, sessionMinutes } from './auth.js?v=1.8.0';
+import { state, setApi, api, health, login, logout, startTimer, syncExpiry, saveAuth, setOnAuthLost, setOnMustChange, loadAuthImage, remaining, sessionMinutes } from './auth.js?v=1.9.0';
 let SID = localStorage.getItem('gofishing.session') || (crypto.randomUUID?.() ?? String(Date.now()) + Math.random().toString(16).slice(2));
 localStorage.setItem('gofishing.session', SID);
 let slots = {}, lastBriefing = null, timer = null, usageText = '';
@@ -289,6 +289,38 @@ $('#composer').addEventListener('submit', e => { e.preventDefault(); const v = $
 
 // ---- 브리핑 ----
 function list(items, fmt, cls = '') { return items?.length ? `<ul class="list ${cls}">${items.map(fmt).join('')}</ul>` : '<div class="sub">결과 없음</div>'; }
+// ---- 브리핑 추가 공공데이터(v1.9.0): 조위 곡선·해와 달·부이 실황·선박운항지수·기상청 통보문 ----
+const SHIP_CLS = { 매우좋음: 'PASS', 좋음: 'PASS', 보통: 'REVIEW_REQUIRED', 나쁨: 'PASS_WITH_CAUTION', 매우나쁨: 'HARD_BLOCK' };
+function tideChart(level, events = [], date) {
+  const h = (level?.hourly ?? []).filter(x => x.predictedCm != null);
+  if (h.length < 2) return '';
+  const W = 320, H = 132, P = 18, vals = h.flatMap(x => [x.predictedCm, x.observedCm].filter(v => v != null));
+  const lo = Math.min(...vals), hi = Math.max(...vals), sx = i => P + i * (W - 2 * P) / 23, sy = v => H - 36 - (v - lo) / ((hi - lo) || 1) * (H - 58);
+  const mins = t => { const [a, b] = t.split(':').map(Number); return a * 60 + b; };
+  const line = h.map(x => `${sx(mins(x.time) / 60).toFixed(1)},${sy(x.predictedCm).toFixed(1)}`).join(' ');
+  const obs = h.filter(x => x.observedCm != null).map(x => `<circle cx="${sx(mins(x.time) / 60).toFixed(1)}" cy="${sy(x.observedCm).toFixed(1)}" r="2.2" class="tc-obs"/>`).join('');
+  const ev = events.map(e => { const x = sx(mins(e.time) / 60), y = sy(e.levelCm ?? lo); return `<g><circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="3.5" class="${e.type === '만조' ? 'tc-high' : 'tc-low'}"/><text x="${x.toFixed(1)}" y="${(e.type === '만조' ? y - 7 : y + 13).toFixed(1)}" class="tc-lbl">${esc(e.type === '만조' ? '만' : '간')} ${esc(e.time)}</text></g>`; }).join('');
+  const now = new Date(Date.now() + 9 * 3600e3); const nowX = now.toISOString().slice(0, 10) === date ? sx((now.getUTCHours() * 60 + now.getUTCMinutes()) / 60) : null;
+  const ticks = [0, 6, 12, 18, 24].map(t => `<text x="${sx(t).toFixed(1)}" y="${H - 4}" class="tc-tick">${t}시</text>`).join('');
+  return `<svg class="tide-chart" viewBox="0 0 ${W} ${H}" role="img" aria-label="시간별 예측 조위"><polyline points="${line}" class="tc-line"/>${obs}${nowX != null ? `<line x1="${nowX.toFixed(1)}" x2="${nowX.toFixed(1)}" y1="6" y2="${H - 18}" class="tc-now"/>` : ''}${ev}${ticks}</svg>`;
+}
+function marineCard(b) {
+  const s = b.sea, parts = [];
+  const chart = tideChart(s.tideLevel, s.tide?.events, b.date);
+  if (chart) parts.push(`<div class="mc-block"><div class="mc-title">🌊 물때·조위 <span class="sub">${esc(s.tideLevel.stationName)} 조위관측소 · 선 예측${s.tideLevel.hourly.some(x => x.observedCm != null) ? ' · 점 실측' : ''}</span></div>${chart}</div>`);
+  const sun = s.sun ?? {};
+  if (sun.sunrise) parts.push(`<div class="mc-block"><div class="mc-title">☀️ 해와 달 <span class="sub">${esc(sun.method ?? '')}${sun.location ? ' · ' + esc(sun.location) + ' 기준' : ''}</span></div><div class="mc-grid">
+    <div><span>일출</span><b>${esc(sun.sunrise)}</b></div><div><span>일몰</span><b>${esc(sun.sunset ?? '-')}</b></div>
+    ${sun.civilDawn ? `<div><span>새벽 밝아짐</span><b>${esc(sun.civilDawn)}</b></div><div><span>저녁 어두워짐</span><b>${esc(sun.civilDusk ?? '-')}</b></div>` : ''}
+    ${'moonrise' in sun ? `<div><span>월출</span><b>${esc(sun.moonrise ?? '없음')}</b></div><div><span>월몰</span><b>${esc(sun.moonset ?? '없음')}</b></div>` : ''}</div></div>`);
+  if (s.buoy) { const o = s.buoy; parts.push(`<div class="mc-block"><div class="mc-title">📡 지금 바다(부이 실측) <span class="sub">${esc(o.name)} ${o.distanceKm}km · ${esc(String(o.observedAt).slice(11, 16))} 관측</span></div><div class="mc-grid">
+    <div><span>파고</span><b>${o.wave ?? '-'}m</b></div><div><span>파주기</span><b>${o.wavePeriod ?? '-'}초</b></div><div><span>풍속(순간)</span><b>${o.wind ?? '-'}(${o.gust ?? '-'})m/s</b></div>
+    <div><span>수온</span><b>${o.waterTemp != null ? o.waterTemp.toFixed(1) : '-'}°C</b></div><div><span>기온</span><b>${o.airTemp ?? '-'}°C</b></div><div><span>유속</span><b>${o.current ?? '-'}cm/s</b></div></div></div>`); }
+  if (s.ship) parts.push(`<div class="mc-block"><div class="mc-title">⛵ 선박운항지수 <span class="sub">${esc(s.ship.name)} ${esc(s.ship.kind)}${s.ship.distanceKm != null ? ` ${s.ship.distanceKm}km` : ''} · ${esc(s.ship.lastDate ?? '')}까지 제공</span></div><div class="mc-ship">${s.ship.slots.map(x => `<div><span>${esc(x.slot)}</span><span class="badge b-${SHIP_CLS[x.grade] ?? 'REVIEW_REQUIRED'}">${esc(x.grade)}</span><small>파고 ${x.wave ?? '-'}m · 바람 ${x.wind ?? '-'}m/s</small></div>`).join('')}</div></div>`);
+  if (s.forecastText) { const d = Number(String(b.date).slice(8)); const day = s.forecastText.days.find(x => x.label.includes(`${d}일`));
+    parts.push(`<div class="mc-block"><div class="mc-title">📝 기상청 예보 통보문 <span class="sub">${esc(String(s.forecastText.issuedAt).replace(/^(\d{4})(\d\d)(\d\d)(\d\d)(\d\d)$/, '$2.$3 $4:$5'))} 발표</span></div>${s.forecastText.summary ? `<p class="mc-text"><b>종합</b> ${esc(s.forecastText.summary)}</p>` : ''}${day ? `<p class="mc-text"><b>${esc(day.label)}</b> ${esc(day.text)}</p>` : ''}</div>`); }
+  return parts.length ? `<div class="card sec marine"><h4>■ 물때·해와 달·해상 상황</h4>${parts.join('')}</div>` : '';
+}
 function renderBriefing(b) {
   const s = b.sea; const fp = s.fishingPeriods || [];
   const rng = a => a && a[0] != null ? (a[0] === a[1] ? `${a[0]}` : `${a[0]}~${a[1]}`) : '-';
@@ -322,6 +354,7 @@ function renderBriefing(b) {
       ${tide ? `<div style="margin-top:6px" class="sub">조석(${esc(s.tide.station)})</div><ul class="list">${tide}</ul>` : ''}
       ${mid ? `<div style="margin-top:6px" class="sub">중기예보(발표 ${esc(String(s.mid.tmFc).replace(/^(\d{4})(\d\d)(\d\d)(\d\d)(\d\d)$/, '$1-$2-$3 $4:$5'))})</div><ul class="list">${mid}</ul>` : ''}
       <div class="sub" style="margin-top:6px">일출 ${esc(s.sun?.sunrise ?? '-')} · 일몰 ${esc(s.sun?.sunset ?? '-')} (${esc(s.sun?.method ?? '')})${b.point.mapping?.indexPlace ? ` · 지수 해역: ${esc(b.point.mapping.indexPlace.name)}(${b.point.mapping.indexPlace.distanceKm}km)` : ''}</div></div>
+    ${marineCard(b)}
     <div class="card sec"><h4>■ 포인트 정보</h4><dl class="kv"><dt>어종·장르</dt><dd>${esc(b.point.headline_species)}${b.point.methods?.length ? ' / ' + esc(b.point.methods.join('·')) : ''}</dd><dt>유형·난이도</dt><dd>${esc(b.point.type)} · ${esc(b.point.difficulty)}${b.point.family_friendly ? ' · 가족 적합' : ''}</dd>
       <dt>특징·주의</dt><dd>${esc(b.point.cautions)}</dd><dt>허용 여부</dt><dd>${esc(b.point.restriction_status)} — ${esc(b.point.restriction_note)}</dd>${b.point.walk_note ? `<dt>도보</dt><dd>${esc(b.point.walk_note)}</dd>` : ''}
       <dt>차량 목적지</dt><dd>${esc(b.point.access?.label ?? '미정')}</dd></dl></div>

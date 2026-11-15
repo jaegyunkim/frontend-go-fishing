@@ -293,3 +293,14 @@ button.op-star.on{color:#f59e0b}
 .op-meta{display:flex;justify-content:space-between;gap:8px;font-size:11.5px;color:var(--sub)}
 .op-send{margin-top:4px;min-height:50px;border:0;border-radius:14px;background:var(--grad);color:#fff;font-size:16px;font-weight:700;cursor:pointer}.op-send:disabled{opacity:.6}
 .op-foot{margin:4px 0 0;font-size:11.5px;color:var(--sub);text-align:center}
+/* 브리핑 물때·해와 달·해상 상황 v1.9.0 */
+.card.marine .mc-block{padding:10px 0;border-top:1px dashed var(--line)}.card.marine .mc-block:first-of-type{border-top:0;padding-top:2px}
+.mc-title{font-size:13.5px;font-weight:700;color:var(--ink);margin-bottom:6px}.mc-title .sub{font-weight:400;font-size:11.5px}
+.tide-chart{width:100%;height:auto;display:block;background:var(--panelSoft);border-radius:10px}
+.tc-line{fill:none;stroke:#0891b2;stroke-width:2}.tc-obs{fill:#f59e0b}.tc-high{fill:#2563eb}.tc-low{fill:#0ea5e9;opacity:.7}
+.tc-lbl{font-size:9px;fill:var(--ink);text-anchor:middle}.tc-tick{font-size:9px;fill:var(--sub);text-anchor:middle}.tc-now{stroke:#e11d48;stroke-width:1.2;stroke-dasharray:3 2}
+.mc-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}.mc-grid>div{background:var(--panelSoft);border-radius:10px;padding:7px 8px;display:flex;flex-direction:column}
+.mc-grid span{font-size:11px;color:var(--sub)}.mc-grid b{font-size:14px;color:var(--ink)}
+.mc-ship{display:grid;grid-template-columns:repeat(auto-fit,minmax(68px,1fr));gap:6px}.mc-ship>div{display:flex;flex-direction:column;align-items:center;gap:3px;background:var(--panelSoft);border-radius:10px;padding:7px 4px;font-size:12px}
+.mc-ship small{font-size:10px;color:var(--sub);text-align:center}
+.mc-text{margin:4px 0 0;font-size:12.5px;line-height:1.65;color:var(--ink)}.mc-text b{color:var(--accInk);margin-right:4px}
