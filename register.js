@@ -1,0 +1,3 @@
+import {api} from './auth.js?v=1.3.0';
+const form=document.querySelector('#requestForm'), result=document.querySelector('#result');
+form.addEventListener('submit',async e=>{e.preventDefault();const button=form.querySelector('button');button.disabled=true;try{const h=await api('/healthz',{noAuth:true});if(h.version==='1.2.1')throw new Error('가입 기능을 준비 중입니다. 관리자가 서버 업데이트를 마치면 신청할 수 있어요.');const fields=Object.fromEntries(new FormData(form));fields.consent=fields.consent==='on';const out=await api('/v1/auth/register',{method:'POST',noAuth:true,body:JSON.stringify(fields)});result.textContent=out.message;form.reset();}catch(e){result.textContent=e.message;}finally{button.disabled=false;}});
