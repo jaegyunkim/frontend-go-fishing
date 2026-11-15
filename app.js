@@ -7,7 +7,7 @@ const GATE = { PASS: '안전 양호', PASS_WITH_CAUTION: '조건부 주의', REV
 const badge = g => g ? `<span class="badge b-${esc(g)}">${esc(GATE[g] ?? g)}</span>` : '';
 
 // ---- 설정·인증(auth.js) ----
-import { state, setApi, api, health, login, logout, startTimer, syncExpiry, saveAuth, setOnAuthLost, setOnMustChange, loadAuthImage, remaining, sessionMinutes } from './auth.js?v=1.7.1';
+import { state, setApi, api, health, login, logout, startTimer, syncExpiry, saveAuth, setOnAuthLost, setOnMustChange, loadAuthImage, remaining, sessionMinutes } from './auth.js?v=1.8.0';
 let SID = localStorage.getItem('gofishing.session') || (crypto.randomUUID?.() ?? String(Date.now()) + Math.random().toString(16).slice(2));
 localStorage.setItem('gofishing.session', SID);
 let slots = {}, lastBriefing = null, timer = null, usageText = '';
@@ -27,8 +27,9 @@ function showTab(name) {
   document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.id === 'tab-' + name));
   document.querySelectorAll('.tabs button').forEach(b => b.classList.toggle('active', b.dataset.tab === name));
   if (name === 'points') loadPoints();
+  if (name === 'opinion') resetOpinionMsg();
 }
-document.querySelectorAll('.tabs button[data-tab]').forEach(b => b.addEventListener('click', () => showTab(b.dataset.tab)));
+document.querySelectorAll('.tabs button').forEach(b => b.addEventListener('click', () => showTab(b.dataset.tab)));
 
 // ---- 대화 ----
 const chat = $('#chat');
@@ -376,15 +377,9 @@ function setOpinionRating(v) {
   opinionRating = opinionRating === v ? null : v;
   document.querySelectorAll('.op-star').forEach(b => { const on = opinionRating && Number(b.dataset.v) <= opinionRating; b.classList.toggle('on', !!on); b.setAttribute('aria-checked', String(Number(b.dataset.v) === opinionRating)); });
 }
-function openOpinion() {
-  if (!state.auth) return;
-  $('#opinionMsg').textContent = ''; $('#opinionMsg').className = 'login-msg'; $('#opinionSend').disabled = false;
-  $('#opinionDialog').showModal(); setTimeout(() => $('#opinionText').focus(), 50);
-}
-$('#btnOpinion').onclick = openOpinion;
+function resetOpinionMsg() { $('#opinionMsg').textContent = ''; $('#opinionMsg').className = 'login-msg'; $('#opinionSend').disabled = false; }
 document.querySelectorAll('.op-star').forEach(b => b.onclick = () => setOpinionRating(Number(b.dataset.v)));
 $('#opinionText').addEventListener('input', () => { $('#opinionCount').textContent = `${$('#opinionText').value.length}/500`; });
-$('#opinionClose').onclick = $('#opinionCancel').onclick = () => $('#opinionDialog').close();
 $('#opinionForm').addEventListener('submit', async e => {
   e.preventDefault();
   const text = $('#opinionText').value.trim(), m = $('#opinionMsg'), btn = $('#opinionSend');
@@ -393,7 +388,7 @@ $('#opinionForm').addEventListener('submit', async e => {
   try {
     await api('/v1/opinions', { method: 'POST', body: JSON.stringify({ rating: opinionRating, text }) });
     $('#opinionText').value = ''; $('#opinionCount').textContent = '0/500'; opinionRating = 1; setOpinionRating(1);
-    $('#opinionDialog').close(); toast('소중한 의견 감사합니다! 꼼꼼히 읽고 더 나은 어디물어로 보답할게요. 🙏');
+    resetOpinionMsg(); showTab('chat'); toast('소중한 의견 감사합니다! 꼼꼼히 읽고 더 나은 어디물어로 보답할게요. 🙏');
   } catch (err) { m.textContent = err.message || '의견을 보내지 못했어요. 잠시 뒤 다시 시도해 주세요.'; }
   finally { btn.disabled = false; }
 });
