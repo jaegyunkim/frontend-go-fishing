@@ -7,7 +7,7 @@ const GATE = { PASS: '안전 양호', PASS_WITH_CAUTION: '조건부 주의', REV
 const badge = g => g ? `<span class="badge b-${esc(g)}">${esc(GATE[g] ?? g)}</span>` : '';
 
 // ---- 설정·인증(auth.js) ----
-import { state, setApi, api, health, login, logout, startTimer, syncExpiry, saveAuth, setOnAuthLost, setOnMustChange, loadAuthImage, remaining, sessionMinutes } from './auth.js?v=1.9.0';
+import { state, setApi, api, health, login, logout, startTimer, syncExpiry, saveAuth, setOnAuthLost, setOnMustChange, loadAuthImage, remaining, sessionMinutes } from './auth.js?v=1.10.0';
 let SID = localStorage.getItem('gofishing.session') || (crypto.randomUUID?.() ?? String(Date.now()) + Math.random().toString(16).slice(2));
 localStorage.setItem('gofishing.session', SID);
 let slots = {}, lastBriefing = null, timer = null, usageText = '';
@@ -28,6 +28,7 @@ function showTab(name) {
   document.querySelectorAll('.tabs button').forEach(b => b.classList.toggle('active', b.dataset.tab === name));
   if (name === 'points') loadPoints();
   if (name === 'opinion') resetOpinionMsg();
+  if (name === 'history') loadHistory();
 }
 document.querySelectorAll('.tabs button').forEach(b => b.addEventListener('click', () => showTab(b.dataset.tab)));
 
@@ -426,13 +427,54 @@ $('#opinionForm').addEventListener('submit', async e => {
   finally { btn.disabled = false; }
 });
 
-// ---- 출발지 주변 포인트 추천(하루 한 번 대화 말풍선) ----
+// ---- 내 대화 기록(최근 30일) ----
+const WD = ['일', '월', '화', '수', '목', '금', '토'];
+const kst = iso => { const d = new Date(new Date(iso).getTime() + 9 * 3600e3); return { date: `${d.getUTCFullYear()}.${String(d.getUTCMonth() + 1).padStart(2, '0')}.${String(d.getUTCDate()).padStart(2, '0')}(${WD[d.getUTCDay()]})`, time: d.toISOString().slice(11, 16) }; };
+async function loadHistory() {
+  const box = $('#history'); if (!state.auth) return;
+  box.innerHTML = '<p class="empty">대화 기록을 불러오는 중이에요…</p>';
+  try {
+    const { sessions } = await api('/v1/me/history', { timeoutMs: 15000 });
+    if (!sessions.length) { box.innerHTML = '<p class="empty">아직 저장된 대화가 없어요. 대화 탭에서 궁금한 바다를 물어보세요!</p>'; return; }
+    box.innerHTML = sessions.map((s, i) => { const t = kst(s.startedAt), q = s.messages.filter(m => m.role === 'user').length;
+      return `<details class="hist-sess"${i === 0 ? ' open' : ''}><summary><span><b>${esc(t.date)}</b> ${esc(t.time)} 로그인</span><span class="hist-n">질문 ${q}개</span></summary><div class="hist-msgs">${s.messages.map(m => m.role === 'user'
+        ? `<div class="msg user">${esc(m.content)}</div><div class="hist-re"><span>${esc(kst(m.at).time)}</span><button type="button" data-ask="${esc(m.content)}">다시 묻기</button></div>`
+        : `<div class="msg bot">${md(m.content)}</div>`).join('')}</div></details>`; }).join('') + '<p class="hist-hint">대화는 서비스 개선과 운영을 위해 30일간 보관된 뒤 자동으로 지워져요.</p>';
+    box.querySelectorAll('[data-ask]').forEach(b => b.onclick = () => { showTab('chat'); send(b.dataset.ask); });
+  } catch (e) { box.innerHTML = `<p class="empty">대화 기록을 불러오지 못했어요. ${esc(e.message || '')}</p>`; }
+}
+$('#btnHistory').onclick = () => showTab('history');
+$('#btnHistory2').onclick = () => { $('#settings').close(); showTab('history'); };
+$('#historyBack').onclick = () => showTab('chat');
+
+// ---- 하루 한 번 추천 말풍선: 대화 기록 → 없으면 출발지 주변 ----
+const dailyKey = () => 'gofishing.dailyAt.' + (state.auth?.user?.id ?? '');
+async function showDailyTip() {
+  if (!state.auth || aiLocked || localStorage.getItem(dailyKey()) === kstToday()) return false;
+  try {
+    const t = await api('/v1/suggest/daily', { timeoutMs: 30000 });
+    if (!t?.available || aiLocked || !state.auth) return false;
+    localStorage.setItem(dailyKey(), kstToday());
+    todayTipData = t;
+    $('#todayTipBadge').textContent = `🎣 오늘의 추천 · ${t.basisLabel}`;
+    $('#todayTipText').textContent = t.text;
+    $('#todayTipSrc').textContent = t.source ? '출처: ' + t.source : '';
+    $('#todayTipVoice').hidden = !(t.voice && t.speechId); $('#todayTipVoice').textContent = '🔊 듣기'; $('#todayTipVoice').disabled = false;
+    $('#todayTipMore').hidden = !t.actions?.length;
+    $('#todayTipNearby').hidden = !(t.basis === 'origin' && t.more);
+    if (todayAudioUrl) { URL.revokeObjectURL(todayAudioUrl); todayAudioUrl = null; todayAudio = null; }
+    $('#todayTip').hidden = false;
+    return true;
+  } catch { return false; }
+}
+
+// ---- 출발지 주변 포인트 추천(첫 출발지 등록 때·말풍선의 '주변 더 보기') ----
 const GATE_TEXT = { PASS: '출조 무난', PASS_WITH_CAUTION: '주의', REVIEW_REQUIRED: '판단 보류', HARD_BLOCK: '쉬어 가세요' };
 const nearbyKey = () => 'gofishing.nearbyAt.' + (state.auth?.user?.id ?? '');
 const kstToday = () => new Date(Date.now() + 9 * 3600000).toISOString().slice(0, 10);
 /** 오늘 아직 안 보여 줬으면 주변 추천을 대화에 띄운다. 띄웠으면 true */
-async function showNearby() {
-  if (!state.auth || aiLocked || localStorage.getItem(nearbyKey()) === kstToday()) return false;
+async function showNearby(force = false) {
+  if (!state.auth || aiLocked || (!force && localStorage.getItem(nearbyKey()) === kstToday())) return false;
   const wait = bubble('bot typing-note', '📍 출발지 주변 포인트와 오늘 날씨를 살펴보는 중이에요…');
   try {
     const r = await api('/v1/suggest/nearby', { timeoutMs: 30000 });
@@ -467,6 +509,7 @@ async function showTodayTip() {
   } catch { /* 부가 기능: 실패하면 보이지 않음 */ }
 }
 $('#todayTipClose').onclick = hideTodayTip;
+$('#todayTipNearby').onclick = () => { hideTodayTip(); showTab('chat'); showNearby(true); };
 $('#todayTipMore').onclick = () => { const a = todayTipData?.actions?.[0]; hideTodayTip(); if (a) send(a.message, { pointId: a.pointId, date: a.date }); };
 $('#todayTipVoice').onclick = async () => {
   const b = $('#todayTipVoice');
@@ -546,8 +589,8 @@ function enterApp() {
     bubble('bot', md(`**${u.displayName}**님, 반가워요. 이번 로그인은 **${sessionMinutes()}분** 동안 이용할 수 있어요.`));
     refreshUsage();
     suggestWeekend();
-    // 출발지가 있으면 하루 한 번 주변 포인트 추천, 아니면(또는 오늘 이미 봤으면) 장기기억 기반 오늘의 추천
-    loadOrigins().then(async () => { if (!(origins.length && await showNearby())) showTodayTip(); });
+    // 하루 한 번 추천 말풍선(대화 기록 → 없으면 출발지 주변). 출발지가 없으면 등록 독려 말풍선이 함께 뜬다
+    loadOrigins().then(() => showDailyTip());
     clearInterval(window.__usageSync); window.__usageSync = setInterval(() => { if (state.auth) refreshUsage(); }, 60000);
   }
   welcome(); restore();
