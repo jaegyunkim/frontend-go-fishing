@@ -7,7 +7,7 @@ const GATE = { PASS: '안전 양호', PASS_WITH_CAUTION: '조건부 주의', REV
 const badge = g => g ? `<span class="badge b-${esc(g)}">${esc(GATE[g] ?? g)}</span>` : '';
 
 // ---- 설정·인증(auth.js) ----
-import { state, setApi, api, health, login, logout, startTimer, syncExpiry, saveAuth, setOnAuthLost, setOnMustChange, loadAuthImage, remaining, sessionMinutes } from './auth.js?v=1.10.1';
+import { state, setApi, api, health, login, logout, startTimer, syncExpiry, saveAuth, setOnAuthLost, setOnMustChange, loadAuthImage, remaining, sessionMinutes } from './auth.js?v=1.11.0';
 let SID = localStorage.getItem('gofishing.session') || (crypto.randomUUID?.() ?? String(Date.now()) + Math.random().toString(16).slice(2));
 localStorage.setItem('gofishing.session', SID);
 let slots = {}, lastBriefing = null, timer = null, usageText = '';
@@ -427,6 +427,18 @@ $('#opinionForm').addEventListener('submit', async e => {
   finally { btn.disabled = false; }
 });
 
+// ---- 로그인 위치: 브라우저가 위치 허용을 묻고, 허용한 경우만 세션당 1회 저장(서버에서 약 100m 단위로 반올림) ----
+function recordLoginLocation() {
+  const sid = state.auth?.token?.slice(-12); if (!sid || sessionStorage.getItem('gofishing.locAsked') === sid) return;
+  sessionStorage.setItem('gofishing.locAsked', sid);
+  const post = body => api('/v1/auth/location', { method: 'POST', body: JSON.stringify(body), timeoutMs: 10000 }).catch(() => {});
+  if (!navigator.geolocation) return post({ status: 'unavailable' });
+  navigator.geolocation.getCurrentPosition(
+    p => post({ status: 'granted', lat: p.coords.latitude, lon: p.coords.longitude, accuracy: p.coords.accuracy }),
+    e => post({ status: e.code === 1 ? 'denied' : 'unavailable' }),
+    { enableHighAccuracy: false, timeout: 10000, maximumAge: 300000 });
+}
+
 // ---- 내 대화 기록(최근 30일) ----
 const WD = ['일', '월', '화', '수', '목', '금', '토'];
 const kst = iso => { const d = new Date(new Date(iso).getTime() + 9 * 3600e3); return { date: `${d.getUTCFullYear()}.${String(d.getUTCMonth() + 1).padStart(2, '0')}.${String(d.getUTCDate()).padStart(2, '0')}(${WD[d.getUTCDay()]})`, time: d.toISOString().slice(11, 16) }; };
@@ -591,6 +603,7 @@ function enterApp() {
     suggestWeekend();
     // 하루 한 번 추천 말풍선(대화 기록 → 없으면 출발지 주변). 출발지가 없으면 등록 독려 말풍선이 함께 뜬다
     loadOrigins().then(() => showDailyTip());
+    recordLoginLocation();
     clearInterval(window.__usageSync); window.__usageSync = setInterval(() => { if (state.auth) refreshUsage(); }, 60000);
   }
   welcome(); restore();
