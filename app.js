@@ -7,7 +7,7 @@ const GATE = { PASS: '안전 양호', PASS_WITH_CAUTION: '조건부 주의', REV
 const badge = g => g ? `<span class="badge b-${esc(g)}">${esc(GATE[g] ?? g)}</span>` : '';
 
 // ---- 설정·인증(auth.js) ----
-import { state, setApi, api, health, login, logout, startTimer, syncExpiry, saveAuth, setOnAuthLost, setOnMustChange, loadAuthImage, remaining, sessionMinutes } from './auth.js?v=1.6.0';
+import { state, setApi, api, health, login, logout, startTimer, syncExpiry, saveAuth, setOnAuthLost, setOnMustChange, loadAuthImage, remaining, sessionMinutes } from './auth.js?v=1.6.1';
 let SID = localStorage.getItem('gofishing.session') || (crypto.randomUUID?.() ?? String(Date.now()) + Math.random().toString(16).slice(2));
 localStorage.setItem('gofishing.session', SID);
 let slots = {}, lastBriefing = null, timer = null, usageText = '';
@@ -18,7 +18,7 @@ async function checkServer() {
   if (!state.api) { setStatus('백엔드 미연결 · ⚙︎ 설정에서 서버 주소를 입력하세요', 'bad'); return null; }
   const h = await health();
   if (h.error) { setStatus(`서버 연결 실패 (${state.api}) · ${h.error}`, 'bad'); return null; }
-  setStatus(`서버 연결됨 v${h.version} · ${authed() ? `로그인 세션 ${state.sessionMinutes}분` : '로그인 없음(개발 모드)'}`, 'ok');
+  setStatus(authed() ? `원활한 운영을 위해 로그인 세션 ${state.sessionMinutes}분 후 자동 로그아웃됩니다. 양해 부탁드립니다.` : `서버 연결됨 v${h.version} · 로그인 없음(개발 모드)`, 'ok');
   return h;
 }
 
@@ -450,7 +450,7 @@ function enterApp() {
     timer?.stop();
     timer = startTimer($('#timer'), {
       onWarn: s => toast(`약 ${s}초 뒤 자동 로그아웃됩니다. 필요한 내용은 지금 확인해 주세요.`),
-      onExpire: () => endSession(`${sessionMinutes()}분 이용 시간이 끝나 자동 로그아웃했습니다. 다시 로그인해 주세요.`, false, 'expired')
+      onExpire: () => { const min = sessionMinutes(); endSession(`${min}분 이용 시간이 끝나 로그아웃했어요.`, false, 'expired'); showSessionEnd(min); }
     });
     const u = state.auth.user;
     bubble('bot', md(`**${u.displayName}**님, 반가워요. 이번 로그인은 **${sessionMinutes()}분** 동안 이용할 수 있어요.`));
@@ -476,6 +476,12 @@ function endSession(msg, ok = false, reason = 'logout') {
   logout(reason); timer?.stop(); timer = null; toast(''); usageText = '';
   chat.innerHTML = ''; $('#brief').innerHTML = '<p class="empty">포인트를 고르면 상세 브리핑이 여기에 표시됩니다.</p>'; slots = {}; renderChips();
   showLogin(msg, ok); ending = false;
+}
+function showSessionEnd(min) {
+  // 이용 시간 만료 안내창: 로그아웃은 이미 끝났고, 확인을 누르면 로그인 화면에 그대로 머문다
+  const d = $('#sessionEndDialog'); if (!d || d.open) return;
+  $('#sessionEndMsg').textContent = `오늘 하루 이용 시간은 로그인 1회당 ${min}분입니다.\n이용해 주셔서 감사합니다. 내일 다시 찾아 주세요.`;
+  try { d.showModal(); } catch { /* 안내창을 못 띄워도 로그인 화면 문구로 안내됨 */ }
 }
 function toast(text) { const t = $('#toast'); t.textContent = text; t.hidden = !text; if (text) setTimeout(() => { if (t.textContent === text) t.hidden = true; }, 15000); }
 setOnAuthLost(msg => endSession(msg, false, 'lost'));
