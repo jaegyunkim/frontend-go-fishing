@@ -271,27 +271,33 @@ $('#loginForm').addEventListener('submit', async e => {
   e.preventDefault();
   const btn = $('#loginBtn'); btn.disabled = true; $('#loginMsg').textContent = '';
   try {
-    const r = await login($('#loginId').value.trim(), $('#loginPw').value);
+    const pwTyped = $('#loginPw').value;
+    const r = await login($('#loginId').value.trim(), pwTyped);
     $('#loginPw').value = '';
+    loginPwMemo = r.user.mustChangePassword ? pwTyped : '';
     if (r.replacedSessions) toast('다른 기기(또는 창)의 이전 로그인은 종료됐습니다.');
     if (r.user.mustChangePassword) openPw(true); else enterApp();
   } catch (err) { $('#loginMsg').textContent = err.message; }
   finally { btn.disabled = false; }
 });
 
-let pwForced = false;
+let pwForced = false, loginPwMemo = ''; // 첫 로그인 직후 비밀번호 변경 창에서만 쓰고 바로 지운다
 function openPw(forced) {
   pwForced = forced; $('#pwReason').hidden = !forced; $('#pwCancel').textContent = forced ? '로그아웃' : '취소';
   $('#pwMsg').textContent = ''; $('#pwForm').reset();
+  // 방금 로그인에 쓴 임시 비밀번호를 현재 비밀번호 칸에 채우고 숨긴다(다시 입력할 필요 없음)
+  const curLabel = $('#pwCur').closest('label');
+  if (forced && loginPwMemo) { $('#pwCur').value = loginPwMemo; curLabel.hidden = true; } else curLabel.hidden = false;
   if (!$('#pwDialog').open) $('#pwDialog').showModal();
 }
 $('#pwDialog').addEventListener('cancel', e => { if (pwForced) e.preventDefault(); });
-$('#pwCancel').onclick = () => { $('#pwDialog').close(); if (pwForced) endSession('로그아웃했습니다.', true); };
+$('#pwCancel').onclick = () => { loginPwMemo = ''; $('#pwDialog').close(); if (pwForced) endSession('로그아웃했습니다.', true); };
 $('#pwForm').addEventListener('submit', async e => {
   e.preventDefault();
   if ($('#pwNew').value !== $('#pwNew2').value) { $('#pwMsg').textContent = '새 비밀번호 확인이 일치하지 않습니다'; return; }
   try {
     await api('/v1/auth/password', { method: 'POST', body: JSON.stringify({ current: $('#pwCur').value, next: $('#pwNew').value }) });
+    loginPwMemo = '';
     if (state.auth) saveAuth({ ...state.auth, user: { ...state.auth.user, mustChangePassword: false } });
     $('#pwDialog').close();
     if (pwForced) enterApp(); else toast('비밀번호를 바꿨습니다.');
