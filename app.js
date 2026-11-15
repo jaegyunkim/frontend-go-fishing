@@ -7,7 +7,7 @@ const GATE = { PASS: '안전 양호', PASS_WITH_CAUTION: '조건부 주의', REV
 const badge = g => g ? `<span class="badge b-${esc(g)}">${esc(GATE[g] ?? g)}</span>` : '';
 
 // ---- 설정·인증(auth.js) ----
-import { state, setApi, api, health, login, logout, startTimer, syncExpiry, saveAuth, setOnAuthLost, setOnMustChange, loadAuthImage, remaining, sessionMinutes } from './auth.js?v=1.3.21';
+import { state, setApi, api, health, login, logout, startTimer, syncExpiry, saveAuth, setOnAuthLost, setOnMustChange, loadAuthImage, remaining, sessionMinutes } from './auth.js?v=1.3.22';
 let SID = localStorage.getItem('gofishing.session') || (crypto.randomUUID?.() ?? String(Date.now()) + Math.random().toString(16).slice(2));
 localStorage.setItem('gofishing.session', SID);
 let slots = {}, lastBriefing = null, timer = null, usageText = '';
@@ -52,6 +52,19 @@ function renderChips() {
 function renderMessage(m) {
   switch (m.type) {
     case 'text': bubble('bot', md(m.text)); break;
+    case 'web_lookup': { // 공공데이터·API 에 자료가 없는 날짜: 공식 누리집 웹 검색으로 보완(검증 통과한 경우만 내용 표시)
+      const d = bubble('bot web-ref', md(`🔎 ${m.region} ${m.date.replaceAll('-', '.')}은 아직 공공데이터 예보 범위 밖이라, 기상청·국립해양조사원 누리집에서 최신 전망을 찾아보고 있어요…`));
+      api(`/v1/web-outlook?region=${encodeURIComponent(m.region)}&date=${m.date}`, { timeoutMs: 100000 }).then(r => {
+        if (r.status === 'ok') {
+          const a = document.createElement('a'); a.href = r.url; a.target = '_blank'; a.rel = 'noopener noreferrer'; a.textContent = `${r.host} · ${r.published.replaceAll('-', '.')} 발표`;
+          d.innerHTML = md(`**📰 공식 누리집 참고 자료** (웹 검색)\n${r.summary}`) + '<div class="web-ref-src">출처: </div><div class="web-ref-note">공식 예보 API 수치가 아니라 참고용이며, 안전 판단에는 쓰지 않아요. 출조 10일 전부터 중기예보, 2~3일 전에는 상세 예보로 다시 확인해 주세요.</div>';
+          d.querySelector('.web-ref-src').appendChild(a);
+        } else if (r.status === 'limit') d.innerHTML = md('오늘은 누리집 검색을 더 할 수 없어요. 날짜가 가까워지면 다시 물어봐 주세요.');
+        else d.innerHTML = md(`공식 누리집에서도 ${m.date.replaceAll('-', '.')} 무렵의 믿을 만한 최신 전망을 찾지 못했어요. 출조 10일 전부터는 기상청 중기예보로 안내해 드릴 수 있으니 그때 다시 물어봐 주세요.`);
+        scroll();
+      }).catch(() => { d.innerHTML = md('누리집 검색에 실패했어요. 잠시 후 다시 물어봐 주세요.'); });
+      break;
+    }
     case 'actions': {
       const d = node('', 'actions');
       for (const b of m.buttons) { const el = document.createElement('button'); el.textContent = b.label; el.onclick = () => (b.message === '출발지는 ' && authed() && state.auth) ? openOriginDialog() : b.message.endsWith(' ') ? ($('#msg').value = b.message, $('#msg').focus()) : send(b.message, b.pointId ? { pointId: b.pointId, date: b.date } : {}); d.appendChild(el); }

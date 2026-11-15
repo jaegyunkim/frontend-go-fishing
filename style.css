@@ -143,3 +143,5 @@ ul.list.stack li{flex-direction:column;gap:1px}ul.list.stack .m{white-space:norm
 .today-tip-actions button:disabled{opacity:.6}
 .today-tip-src{margin-top:6px!important;font-size:11px;color:#86efac;opacity:.85}
 @media (prefers-reduced-motion:reduce){.today-tip{animation:none}}
+
+.msg.web-ref{border-color:#475569;background:#141d2e}.web-ref-src{margin-top:6px;font-size:12px}.web-ref-src a{color:#93c5fd;font-weight:600;overflow-wrap:anywhere}.web-ref-note{margin-top:4px;font-size:11px;color:var(--dim);line-height:1.5}
