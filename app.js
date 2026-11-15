@@ -7,7 +7,7 @@ const GATE = { PASS: '안전 양호', PASS_WITH_CAUTION: '조건부 주의', REV
 const badge = g => g ? `<span class="badge b-${esc(g)}">${esc(GATE[g] ?? g)}</span>` : '';
 
 // ---- 설정·인증(auth.js) ----
-import { state, setApi, api, health, login, logout, startTimer, syncExpiry, saveAuth, setOnAuthLost, setOnMustChange, loadAuthImage, remaining, sessionMinutes } from './auth.js?v=1.3.10';
+import { state, setApi, api, health, login, logout, startTimer, syncExpiry, saveAuth, setOnAuthLost, setOnMustChange, loadAuthImage, remaining, sessionMinutes } from './auth.js?v=1.3.11';
 let SID = localStorage.getItem('gofishing.session') || (crypto.randomUUID?.() ?? String(Date.now()) + Math.random().toString(16).slice(2));
 localStorage.setItem('gofishing.session', SID);
 let slots = {}, lastBriefing = null, timer = null, usageText = '';
@@ -307,9 +307,17 @@ $('#loginForm').addEventListener('submit', async e => {
     const r = await login($('#loginId').value.trim(), pwTyped);
     $('#loginPw').value = '';
     loginPwMemo = r.user.mustChangePassword ? pwTyped : '';
-    if (r.replacedSessions) toast('다른 기기(또는 창)의 이전 로그인은 종료됐습니다.');
     if (r.user.mustChangePassword) openPw(true); else enterApp();
-  } catch (err) { $('#loginMsg').textContent = err.message; }
+  } catch (err) {
+    if (err.code === 'ACTIVE_SESSION') {
+      // 다른 기기 이용 중: 안내창 → 확인 시 로그인되지 않은 상태로 로그인 화면에 머문다
+      $('#loginPw').value = ''; saveAuth(null);
+      $('#activeSessionMsg').textContent = err.message;
+      const d = $('#activeSessionDialog');
+      d.onclose = () => { $('#loginMsg').textContent = ''; $('#loginId').focus(); };
+      d.showModal();
+    } else $('#loginMsg').textContent = err.message;
+  }
   finally { btn.disabled = false; }
 });
 
