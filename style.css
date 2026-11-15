@@ -130,3 +130,16 @@ ul.list.stack li{flex-direction:column;gap:1px}ul.list.stack .m{white-space:norm
 .postcode-head{display:flex;align-items:center;justify-content:space-between;padding:6px 10px;background:#0e2a3a;color:#e0f7fb;font-size:13px;font-weight:600}
 .postcode-head button{min-height:32px;padding:4px 12px;border-radius:8px;border:1px solid #64748b;background:#1e293b;color:#f8fafc;cursor:pointer}
 .postcode-box{height:min(440px,60dvh)}
+
+/* ---- 오늘의 추천 말풍선 ---- */
+.today-tip{position:relative;margin:4px 14px 8px;padding:10px 12px 10px 14px;border-radius:16px;background:#10291f;border:1px solid #34d399;color:#ecfdf5;font-size:14px;line-height:1.6;box-shadow:0 6px 18px rgba(0,0,0,.35);animation:tipIn .25s ease-out}
+.today-tip::before{content:"";position:absolute;top:-8px;left:28px;width:14px;height:14px;background:#10291f;border-left:1px solid #34d399;border-top:1px solid #34d399;transform:rotate(45deg)}
+.today-tip-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:2px}
+.today-tip-badge{font-size:12px;font-weight:700;color:#6ee7b7}
+.today-tip-x{min-width:36px;min-height:36px;margin:-6px -6px 0 0;border:0;background:transparent;color:#a7f3d0;font-size:16px;cursor:pointer}
+.today-tip p{margin:0}
+.today-tip-actions{display:flex;gap:8px;margin-top:8px}
+.today-tip-actions button{min-height:38px;padding:7px 14px;border-radius:10px;border:1px solid #34d399;background:#064e3b;color:#ecfdf5;font-size:13.5px;font-weight:600;cursor:pointer}
+.today-tip-actions button:disabled{opacity:.6}
+.today-tip-src{margin-top:6px!important;font-size:11px;color:#86efac;opacity:.85}
+@media (prefers-reduced-motion:reduce){.today-tip{animation:none}}

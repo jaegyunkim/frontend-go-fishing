@@ -7,7 +7,7 @@ const GATE = { PASS: '안전 양호', PASS_WITH_CAUTION: '조건부 주의', REV
 const badge = g => g ? `<span class="badge b-${esc(g)}">${esc(GATE[g] ?? g)}</span>` : '';
 
 // ---- 설정·인증(auth.js) ----
-import { state, setApi, api, health, login, logout, startTimer, syncExpiry, saveAuth, setOnAuthLost, setOnMustChange, loadAuthImage, remaining, sessionMinutes } from './auth.js?v=1.3.20';
+import { state, setApi, api, health, login, logout, startTimer, syncExpiry, saveAuth, setOnAuthLost, setOnMustChange, loadAuthImage, remaining, sessionMinutes } from './auth.js?v=1.3.21';
 let SID = localStorage.getItem('gofishing.session') || (crypto.randomUUID?.() ?? String(Date.now()) + Math.random().toString(16).slice(2));
 localStorage.setItem('gofishing.session', SID);
 let slots = {}, lastBriefing = null, timer = null, usageText = '';
@@ -347,6 +347,40 @@ $('#btnLogout').onclick = () => { $('#settings').close(); endSession('로그아�
 $('#btnPw').onclick = () => { $('#settings').close(); openPw(false); };
 $('#resetSession').onclick = () => { SID = crypto.randomUUID?.() ?? String(Date.now()); localStorage.setItem('gofishing.session', SID); chat.innerHTML = ''; slots = {}; renderChips(); $('#settings').close(); welcome(); };
 
+// ---- 오늘의 추천 말풍선: 내가 찾아본 포인트 중 한 곳을 오늘 예보로 짧게(무작위). 음성은 버튼을 눌렀을 때만 재생. ----
+let todayTipData = null, todayAudio = null, todayAudioUrl = null;
+function hideTodayTip() { $('#todayTip').hidden = true; if (todayAudio) { todayAudio.pause(); } }
+async function showTodayTip() {
+  try {
+    const t = await api('/v1/suggest/today', { timeoutMs: 20000 });
+    if (!t?.available || aiLocked || !state.auth) return;
+    todayTipData = t;
+    $('#todayTipText').textContent = t.text;
+    $('#todayTipSrc').textContent = (t.source ? '출처: ' + t.source + ' · ' : '') + '내가 찾아본 포인트 기준';
+    $('#todayTipVoice').hidden = !(t.voice && t.speechId); $('#todayTipVoice').textContent = '🔊 듣기'; $('#todayTipVoice').disabled = false;
+    $('#todayTipMore').hidden = !t.actions?.length;
+    if (todayAudioUrl) { URL.revokeObjectURL(todayAudioUrl); todayAudioUrl = null; todayAudio = null; }
+    $('#todayTip').hidden = false;
+  } catch { /* 부가 기능: 실패하면 보이지 않음 */ }
+}
+$('#todayTipClose').onclick = hideTodayTip;
+$('#todayTipMore').onclick = () => { const a = todayTipData?.actions?.[0]; hideTodayTip(); if (a) send(a.message, { pointId: a.pointId, date: a.date }); };
+$('#todayTipVoice').onclick = async () => {
+  const b = $('#todayTipVoice');
+  if (todayAudio && !todayAudio.paused) { todayAudio.pause(); todayAudio.currentTime = 0; b.textContent = '🔊 듣기'; return; }
+  if (!todayAudio) {
+    b.disabled = true; b.textContent = '불러오는 중…';
+    try {
+      const r = await fetch(state.api + '/v1/tts/' + todayTipData.speechId, { headers: { Authorization: 'Bearer ' + state.auth.token }, signal: AbortSignal.timeout(40000) });
+      if (!r.ok) { const j = await r.json().catch(() => ({})); throw new Error(j.error || '음성을 불러오지 못했어요'); }
+      todayAudioUrl = URL.createObjectURL(await r.blob()); todayAudio = new Audio(todayAudioUrl);
+      todayAudio.onended = () => { b.textContent = '🔊 다시 듣기'; };
+    } catch (e) { b.disabled = false; b.textContent = '🔊 듣기'; toast(e.message); return; }
+    b.disabled = false;
+  }
+  try { await todayAudio.play(); b.textContent = '⏹ 멈추기'; } catch { b.textContent = '🔊 듣기'; toast('소리를 재생하지 못했어요. 무음 모드인지 확인해 주세요.'); }
+};
+
 // 장기기억(내가 자주 찾은 포인트) 기반 이번 주말 출조 제안. 히스토리가 없으면 아무것도 보이지 않는다.
 async function suggestWeekend() {
   try {
@@ -386,6 +420,7 @@ function renderUsage(u) {
   const chip = document.getElementById('usageChip'); if (chip && usageText) chip.textContent = usageText;
 }
 function showLogin(msg = '', ok = false) {
+  hideTodayTip(); todayTipData = null;
   origins = []; clearTimeout(originNudgeTimer); hideOriginTip(); $('#originBar').hidden = true; if ($('#originDialog').open) $('#originDialog').close();
   clearAiLock();
   timer?.stop(); timer = null;
@@ -409,6 +444,7 @@ function enterApp() {
     refreshUsage();
     suggestWeekend();
     loadOrigins();
+    showTodayTip();
     clearInterval(window.__usageSync); window.__usageSync = setInterval(() => { if (state.auth) refreshUsage(); }, 60000);
   }
   welcome(); restore();

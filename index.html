@@ -9,7 +9,7 @@
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" href="assets/icon.svg" type="image/svg+xml">
   <link rel="apple-touch-icon" href="assets/icon-192.png">
-  <link rel="stylesheet" href="style.css?v=1.3.20">
+  <link rel="stylesheet" href="style.css?v=1.3.21">
 </head>
 <body>
   <!-- 로그인 화면 -->
@@ -50,6 +50,12 @@
     <nav id="originBar" class="origin-bar" aria-label="출발지 선택" hidden>
       <div id="originChips" class="origin-scroll" role="tablist"></div>
     </nav>
+    <div id="todayTip" class="today-tip" role="status" aria-live="polite" hidden>
+      <div class="today-tip-head"><span class="today-tip-badge">🎣 오늘의 추천</span><button type="button" id="todayTipClose" class="today-tip-x" aria-label="오늘의 추천 닫기">✕</button></div>
+      <p id="todayTipText"></p>
+      <div class="today-tip-actions"><button type="button" id="todayTipVoice" hidden>🔊 듣기</button><button type="button" id="todayTipMore">자세히</button></div>
+      <p id="todayTipSrc" class="today-tip-src"></p>
+    </div>
     <div id="originTip" class="origin-tip" role="status" hidden>
       <p id="originTipText"></p>
       <div class="origin-tip-actions"><button type="button" id="originTipAdd" class="primary">출발지 등록하기</button><button type="button" id="originTipClose">나중에</button></div>
@@ -120,7 +126,7 @@
       <div class="row"><button type="submit">변경</button><button type="button" id="pwCancel" class="ghost">취소</button></div>
     </form>
   </dialog>
-  <script src="config.js?v=1.3.20"></script>
-  <script src="app.js?v=1.3.20" type="module"></script>
+  <script src="config.js?v=1.3.21"></script>
+  <script src="app.js?v=1.3.21" type="module"></script>
 </body>
 </html>
