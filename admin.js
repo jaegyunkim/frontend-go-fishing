@@ -1,5 +1,5 @@
 // 어디물어 관리자 화면: 계정·세션·사용량·대화 로그·로그인/작업 기록. 관리자 계정으로 로그인한 탭에서만 동작.
-import { state, api, health, startTimer, syncExpiry, setOnAuthLost, logout } from './auth.js?v=1.3.13';
+import { state, api, health, startTimer, syncExpiry, setOnAuthLost, logout } from './auth.js?v=1.3.14';
 const $ = s => document.querySelector(s);
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const dt = v => v ? new Date(v).toLocaleString('ko-KR', { timeZone: 'Asia/Seoul', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }) : '-';
@@ -22,6 +22,56 @@ const showSecret = async (title, pw) => {
  await pending;$('#dlgForm').replaceChildren();
 };
 
+// ---- AI 연결(제공사·엔드포인트·API 키·모델) ----
+let llmState = null;
+async function renderLlm() {
+  const box = $('#llmCard'); if (!box) return;
+  const { config, status } = await api('/v1/admin/llm'); llmState = config;
+  const cur = config.active ? config.providers[config.active] : null;
+  box.innerHTML = '<h2>AI 연결</h2>'
+    + '<p>현재 사용 중: ' + (cur ? '<b>' + esc(cur.label) + '</b> · ' + esc(cur.model || '모델 미지정') : '<span class="pill bad">미설정</span>') + '</p>'
+    + '<p class="sub">' + esc(status.purpose) + '<br>최근 호출: ' + esc(status.last ? status.last.status + (status.last.model ? ' · ' + status.last.model : '') + (status.last.ms ? ' · ' + status.last.ms + 'ms' : '') : '재시작 이후 호출 없음') + '</p>'
+    + '<form id="llmForm" class="llm-form" autocomplete="off">'
+    + '<label>제공사<select name="provider">' + Object.entries(config.providers).map(([id, p]) => '<option value="' + id + '"' + (id === (config.active || 'openai') ? ' selected' : '') + '>' + esc(p.label) + (p.hasKey ? '' : ' (키 없음)') + '</option>').join('') + '</select></label>'
+    + '<label>엔드포인트<input name="endpoint" type="url" inputmode="url" required spellcheck="false" autocapitalize="none"></label>'
+    + '<div class="llm-row"><button type="button" id="llmDefault" class="ghost-btn">기본 주소로</button></div>'
+    + '<label>API 키<input name="apiKey" type="password" autocomplete="new-password" spellcheck="false" autocapitalize="none"></label>'
+    + '<div class="llm-row"><button type="button" id="llmKeyShow" class="ghost-btn">키 보기</button></div>'
+    + '<label>모델<select name="model" required></select></label>'
+    + '<p class="sub" id="llmModelNote"></p>'
+    + '<div class="llm-row"><button type="button" id="llmLoad" class="ghost-btn">모델 목록 불러오기</button></div>'
+    + '<button type="submit" id="llmSave">연결 테스트 후 저장</button>'
+    + '<p class="sub">저장 전에 실제 호출로 연결을 확인하고, 실패하면 저장하지 않아요. 키는 서버에만 보관되고 화면에는 끝 4자리만 보여요. 엔드포인트 주소를 다른 곳으로 바꿀 때는 키를 다시 입력해야 해요.</p>'
+    + '</form>';
+  const f = $('#llmForm'), sel = f.provider, ep = f.endpoint, key = f.apiKey, model = f.model, note = $('#llmModelNote');
+  const fillModels = (list, keep) => { model.innerHTML = list.map(m => '<option' + (m === keep ? ' selected' : '') + '>' + esc(m) + '</option>').join(''); if (keep && !list.includes(keep)) model.insertAdjacentHTML('afterbegin', '<option selected>' + esc(keep) + '</option>'); };
+  const load = async () => {
+    note.textContent = '모델 목록을 불러오는 중…'; $('#llmLoad').disabled = true;
+    try { const r = await api('/v1/admin/llm/models', { method: 'POST', body: JSON.stringify({ provider: sel.value, endpoint: ep.value, apiKey: key.value || undefined }) });
+      fillModels(r.models, model.value || config.providers[sel.value].model);
+      note.textContent = (r.source === 'live' ? '키로 조회한 실시간 목록' : 'MonoRouter 화면 기준 목록') + ' · 대화용 ' + r.models.length + '개' + (r.note ? ' · ' + r.note : '');
+    } catch (e) { note.textContent = e.message; } finally { $('#llmLoad').disabled = false; }
+  };
+  const pick = () => {
+    const p = config.providers[sel.value]; ep.value = p.endpoint; key.value = '';
+    key.placeholder = p.hasKey ? '저장된 키 ' + p.keyHint + ' · 바꿀 때만 입력' : sel.value === 'openai' ? 'mr_openai_… 키 입력' : sel.value === 'anthropic' ? 'mr_anthropic_… 키 입력' : 'mr_gemini_… 키 입력';
+    fillModels(p.model ? [p.model] : [], p.model);
+    load();
+  };
+  sel.onchange = pick; $('#llmLoad').onclick = load;
+  $('#llmDefault').onclick = () => { ep.value = config.providers[sel.value].defaultEndpoint; };
+  $('#llmKeyShow').onclick = () => { key.type = key.type === 'password' ? 'text' : 'password'; $('#llmKeyShow').textContent = key.type === 'password' ? '키 보기' : '키 숨기기'; };
+  f.onsubmit = async e => {
+    e.preventDefault(); const b = $('#llmSave'); b.disabled = true; b.textContent = '연결 테스트 중…';
+    try { const r = await api('/v1/admin/llm', { method: 'POST', body: JSON.stringify({ provider: sel.value, endpoint: ep.value, apiKey: key.value || undefined, model: model.value }) });
+      key.value = ''; note.textContent = '';
+      noteTop('저장했어요 · ' + r.config.providers[sel.value].label + ' · ' + r.test.model + ' (테스트 ' + r.test.ms + 'ms)');
+      renderLlm();
+    } catch (err) { noteTop(err.message, true); b.disabled = false; b.textContent = '연결 테스트 후 저장'; }
+  };
+  pick();
+}
+const noteTop = (t, bad) => note(t, bad);
 const views = {
  async requests(){
  const {requests}=await api('/v1/admin/registrations');
@@ -31,10 +81,11 @@ const views = {
  },
  async model(){const {llm,credits,ai}=await api('/v1/admin/model');
  view.innerHTML='<div class="card"><h2>서비스 상태</h2><p><span class="pill '+(ai.available?'ok':'bad')+'">'+(ai.available?'이용 가능':'이용 중지(크레딧 소진)')+'</span></p>'+(ai.available?'':'<p class="sub">사유: '+esc(ai.reason||'')+(ai.since?' · '+dt(ai.since)+'부터':'')+'</p><p class="sub">일반 사용자 화면은 모든 입력이 잠기고 안내 문구가 표시됩니다.</p>')+'<p class="sub">잔여 크레딧이 '+n(ai.threshold)+' 이하이거나 GPT가 크레딧 부족으로 응답을 거부하면 자동으로 이용을 멈춥니다.</p><div class="acts"><button id="aiRecheck">GPT 다시 확인·재개</button></div></div>'
- +'<div class="card"><h2>GPT 연결</h2><p>'+esc(llm.configured?'설정됨':'미설정')+' · '+esc(llm.model)+'</p><p class="sub">'+esc(llm.endpoint)+'</p><p>'+esc(llm.purpose)+'</p><p>최근 호출: '+esc(llm.last?.status||'재시작 이후 호출 없음')+' · '+esc(llm.last?.model||'')+'</p></div>'
+  +'<div class="card" id="llmCard"><h2>AI 연결</h2><p class="sub">불러오는 중…</p></div>'
  +'<div class="card"><h2>MonoGPT 잔여 크레딧</h2><p>'+n(credits.remaining)+' / '+n(credits.total)+'</p><p class="sub">'+dt(credits.checkedAt)+' 확인 · '+esc(credits.source||'')+' · 실시간 아님</p><a href="https://monogpt.kr/apps/mono-router" target="_blank" rel="noopener noreferrer">MonoGPT에서 최신 잔액 확인</a><form id="creditForm" class="grid2" style="margin-top:10px"><label>잔여 크레딧<input name="remaining" type="number" min="0" required value="'+(credits.remaining??'')+'"></label><label>전체 크레딧<input name="total" type="number" min="1" required value="'+(credits.total??'')+'"></label><button>확인한 잔액 저장</button></form></div>';
  $('#creditForm').onsubmit=async ev=>{ev.preventDefault();try{const fd=Object.fromEntries(new FormData(ev.target));await api('/v1/admin/model/credit',{method:'POST',body:JSON.stringify(fd)});note('잔액을 저장했습니다');views.model();}catch(err){note(err.message,true);}};
  $('#aiRecheck').onclick=async()=>{const b=$('#aiRecheck');b.disabled=true;b.textContent='확인 중…';try{const r=await api('/v1/admin/model/recheck',{method:'POST',body:'{}'});note(r.ai.available?'GPT 호출 정상 · 서비스 이용 가능':'아직 이용할 수 없습니다: '+(r.ai.reason||r.call.reason||r.call.status),!r.ai.available);views.model();}catch(err){note(err.message,true);b.disabled=false;b.textContent='GPT 다시 확인·재개';}};
+ renderLlm();
  },
   async users() {
     const { users } = await api('/v1/admin/users');
