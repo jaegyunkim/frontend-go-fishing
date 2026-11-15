@@ -1,5 +1,5 @@
 // 어디물어 관리자 화면: 계정·세션·사용량·대화 로그·로그인/작업 기록. 관리자 계정으로 로그인한 탭에서만 동작.
-import { state, api, health, startTimer, syncExpiry, setOnAuthLost, logout } from './auth.js?v=1.3.6';
+import { state, api, health, startTimer, syncExpiry, setOnAuthLost, logout } from './auth.js?v=1.3.7';
 const $ = s => document.querySelector(s);
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const dt = v => v ? new Date(v).toLocaleString('ko-KR', { timeZone: 'Asia/Seoul', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }) : '-';
@@ -29,7 +29,13 @@ const views = {
  if(!requests.length)view.innerHTML+='<p>접수된 신청이 없습니다.</p>';
  view.querySelectorAll('[data-review]').forEach(b=>b.onclick=async()=>{if(!confirm(b.dataset.review==='approve'?'이 사용자를 승인할까요?':'이 신청을 거절할까요?'))return;b.disabled=true;try{const out=await api('/v1/admin/registrations/'+b.dataset.id+'/review',{method:'POST',body:JSON.stringify({action:b.dataset.review})});if(out.tempPassword)await showSecret(out.user.loginId+' 승인 완료',out.tempPassword);await views.requests();}catch(e){note(e.message,true);b.disabled=false;}});
  },
- async model(){const {llm,credits}=await api('/v1/admin/model');view.innerHTML='<div class="card"><h2>GPT 연결</h2><p>'+esc(llm.configured?'설정됨':'미설정')+' · '+esc(llm.model)+'</p><p class="sub">'+esc(llm.endpoint)+'</p><p>'+esc(llm.purpose)+'</p><p>최근 호출: '+esc(llm.last?.status||'재시작 이후 호출 없음')+' · '+esc(llm.last?.model||'')+'</p></div><div class="card"><h2>MonoGPT 잔여 크레딧</h2><p>'+n(credits.remaining)+' / '+n(credits.total)+'</p><p class="sub">'+dt(credits.checkedAt)+'에 웹 로그인으로 확인한 값 · 실시간 아님</p><p>'+esc(credits.reason)+'</p><a href="https://monogpt.kr/apps/mono-router" target="_blank" rel="noopener noreferrer">MonoGPT 로그인 후 최신 잔액 확인</a></div>';},
+ async model(){const {llm,credits,ai}=await api('/v1/admin/model');
+ view.innerHTML='<div class="card"><h2>서비스 상태</h2><p><span class="pill '+(ai.available?'ok':'bad')+'">'+(ai.available?'이용 가능':'이용 중지(크레딧 소진)')+'</span></p>'+(ai.available?'':'<p class="sub">사유: '+esc(ai.reason||'')+(ai.since?' · '+dt(ai.since)+'부터':'')+'</p><p class="sub">일반 사용자 화면은 모든 입력이 잠기고 안내 문구가 표시됩니다.</p>')+'<p class="sub">잔여 크레딧이 '+n(ai.threshold)+' 이하이거나 GPT가 크레딧 부족으로 응답을 거부하면 자동으로 이용을 멈춥니다.</p><div class="acts"><button id="aiRecheck">GPT 다시 확인·재개</button></div></div>'
+ +'<div class="card"><h2>GPT 연결</h2><p>'+esc(llm.configured?'설정됨':'미설정')+' · '+esc(llm.model)+'</p><p class="sub">'+esc(llm.endpoint)+'</p><p>'+esc(llm.purpose)+'</p><p>최근 호출: '+esc(llm.last?.status||'재시작 이후 호출 없음')+' · '+esc(llm.last?.model||'')+'</p></div>'
+ +'<div class="card"><h2>MonoGPT 잔여 크레딧</h2><p>'+n(credits.remaining)+' / '+n(credits.total)+'</p><p class="sub">'+dt(credits.checkedAt)+' 확인 · '+esc(credits.source||'')+' · 실시간 아님</p><a href="https://monogpt.kr/apps/mono-router" target="_blank" rel="noopener noreferrer">MonoGPT에서 최신 잔액 확인</a><form id="creditForm" class="grid2" style="margin-top:10px"><label>잔여 크레딧<input name="remaining" type="number" min="0" required value="'+(credits.remaining??'')+'"></label><label>전체 크레딧<input name="total" type="number" min="1" required value="'+(credits.total??'')+'"></label><button>확인한 잔액 저장</button></form></div>';
+ $('#creditForm').onsubmit=async ev=>{ev.preventDefault();try{const fd=Object.fromEntries(new FormData(ev.target));await api('/v1/admin/model/credit',{method:'POST',body:JSON.stringify(fd)});note('잔액을 저장했습니다');views.model();}catch(err){note(err.message,true);}};
+ $('#aiRecheck').onclick=async()=>{const b=$('#aiRecheck');b.disabled=true;b.textContent='확인 중…';try{const r=await api('/v1/admin/model/recheck',{method:'POST',body:'{}'});note(r.ai.available?'GPT 호출 정상 · 서비스 이용 가능':'아직 이용할 수 없습니다: '+(r.ai.reason||r.call.reason||r.call.status),!r.ai.available);views.model();}catch(err){note(err.message,true);b.disabled=false;b.textContent='GPT 다시 확인·재개';}};
+ },
   async users() {
     const { users } = await api('/v1/admin/users');
     view.innerHTML = `<div class="tool"><h2>사용자 ${users.length}명</h2><div class="acts"><button id="add">+ 계정 발급</button></div></div>

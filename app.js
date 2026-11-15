@@ -7,7 +7,7 @@ const GATE = { PASS: '안전 양호', PASS_WITH_CAUTION: '조건부 주의', REV
 const badge = g => g ? `<span class="badge b-${esc(g)}">${esc(GATE[g] ?? g)}</span>` : '';
 
 // ---- 설정·인증(auth.js) ----
-import { state, setApi, api, health, login, logout, startTimer, syncExpiry, saveAuth, setOnAuthLost, setOnMustChange, loadAuthImage, remaining, sessionMinutes } from './auth.js?v=1.3.6';
+import { state, setApi, api, health, login, logout, startTimer, syncExpiry, saveAuth, setOnAuthLost, setOnMustChange, loadAuthImage, remaining, sessionMinutes } from './auth.js?v=1.3.7';
 let SID = localStorage.getItem('gofishing.session') || (crypto.randomUUID?.() ?? String(Date.now()) + Math.random().toString(16).slice(2));
 localStorage.setItem('gofishing.session', SID);
 let slots = {}, lastBriefing = null, timer = null, usageText = '';
@@ -100,7 +100,33 @@ function renderMessage(m) {
   }
 }
 
+// ---- AI 크레딧 소진 잠금: 메인 화면의 모든 입력·버튼을 막고 안내만 보여 준다(관리자는 관리자 페이지 이동 가능) ----
+let aiLocked = false;
+const AI_DEFAULT_MSG = '지금은 AI 이용량이 모두 소진되어 어디물어를 잠시 이용할 수 없어요. 관리자가 확인한 뒤 최대한 빨리 다시 열어 드릴게요. 기다려 주셔서 감사합니다.';
+function applyAiLock(ai) {
+  if (!ai || ai.available !== false) return;
+  aiLocked = true;
+  const view = $('#appView');
+  view.classList.add('ai-locked');
+  $('#aiLockMsg').textContent = ai.message || AI_DEFAULT_MSG;
+  $('#aiLockAdmin').hidden = state.auth?.user?.role !== 'admin';
+  $('#aiLock').hidden = false;
+  view.querySelectorAll('input, button, textarea, select').forEach(el => { if (!el.closest('#aiLock')) { el.disabled = true; el.setAttribute('aria-disabled', 'true'); } });
+  view.querySelectorAll('a').forEach(el => { if (!el.closest('#aiLock')) { el.setAttribute('aria-disabled', 'true'); el.tabIndex = -1; } });
+  $('#settings')?.open && $('#settings').close();
+  toast('');
+}
+function clearAiLock() {
+  if (!aiLocked) return; aiLocked = false;
+  const view = $('#appView'); view.classList.remove('ai-locked'); $('#aiLock').hidden = true;
+  view.querySelectorAll('[aria-disabled="true"]').forEach(el => { el.disabled = false; el.removeAttribute('aria-disabled'); if (el.tagName === 'A') el.removeAttribute('tabindex'); });
+}
+// 잠금 후 새로 그려지는 버튼(대화 응답의 선택 버튼 등)도 막는다
+new MutationObserver(() => { if (aiLocked) $('#appView').querySelectorAll('button:not([disabled]), input:not([disabled])').forEach(el => { if (!el.closest('#aiLock')) el.disabled = true; }); }).observe(document.getElementById('appView'), { childList: true, subtree: true });
+$('#aiLockLogout').onclick = () => { clearAiLock(); endSession('로그아웃했습니다.', true); };
+
 async function send(text) {
+  if (aiLocked) return;
   text = String(text || '').trim(); if (!text) return;
   showTab('chat');
   bubble('user', esc(text));
@@ -111,11 +137,13 @@ async function send(text) {
     if (!authed() && r.sessionId && r.sessionId !== SID) { SID = r.sessionId; localStorage.setItem('gofishing.session', SID); }
     if (r.session) syncExpiry(r.session.remainingSec);
     if (r.usage) renderUsage(r.usage);
+    if (r.ai) applyAiLock(r.ai);
     slots = r.slots || slots; renderChips();
     r.messages.forEach(renderMessage);
   } catch (e) {
     t.remove();
     if (e.status === 401) return;                       // 자동 로그아웃 처리됨
+    if (e.code === 'AI_CREDIT_EXHAUSTED') { applyAiLock({ available: false, message: e.message }); return; }
     if (e.status === 429) { bubble('bot', md(`⏳ ${e.message}`)); if (e.usage) renderUsage({ today: { messages: e.usage.messages, tokens: e.usage.tokens } }); return; }
     if (e.status === 403) { bubble('bot', md(e.message)); return; }
     bubble('bot', md(`서버에 연결하지 못했어요. (${e.message})\n⚙︎ 설정에서 백엔드 주소를 확인해 주세요.`));
@@ -229,6 +257,7 @@ function renderUsage(u) {
   const chip = document.getElementById('usageChip'); if (chip && usageText) chip.textContent = usageText;
 }
 function showLogin(msg = '', ok = false) {
+  clearAiLock();
   timer?.stop(); timer = null;
   $('#settings').close(); $('#serverSettingsLink').hidden = true;
   $('#appView').hidden = true; $('#loginView').hidden = false;
@@ -256,6 +285,7 @@ async function refreshUsage() {
     const me = await api('/v1/auth/me', { timeoutMs: 10000 });
     syncExpiry(me.remainingSec);
     renderUsage({ session: { messages: me.session.messages, limit: me.limits.sessionMessages }, today: { messages: me.usage.today.messages, limit: me.limits.dailyMessages } });
+    applyAiLock(me.ai);
   } catch { /* 401 은 자동 로그아웃 처리 */ }
 }
 let ending = false;
@@ -324,6 +354,7 @@ async function boot() {
   // AUTH_MODE=off(로컬 개발 서버)일 때만 로그인 없이 바로 대화
   timer?.stop(); $('#loginView').hidden = true; $('#appView').hidden = false;
   chat.innerHTML = ''; welcome(); restore();
+  api('/v1/auth/me', { timeoutMs: 10000 }).then(me => applyAiLock(me.ai)).catch(() => {});
 }
 
 renderChips(); boot();
