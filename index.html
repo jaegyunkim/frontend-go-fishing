@@ -9,7 +9,7 @@
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" href="assets/icon.svg" type="image/svg+xml">
   <link rel="apple-touch-icon" href="assets/icon-192.png">
-  <link rel="stylesheet" href="style.css?v=1.3.0">
+  <link rel="stylesheet" href="style.css?v=1.3.1">
 </head>
 <body>
   <!-- 로그인 화면 -->
@@ -70,9 +70,8 @@
 
   <dialog id="settings">
     <form method="dialog" class="settings">
-      <h2>계정 설정</h2>
+      <div class="settings-header"><h2>계정 설정</h2><button value="cancel" class="ghost" aria-label="계정 설정 닫기">닫기</button></div>
       <a id="serverSettingsLink" class="link-btn" href="server-settings.html" hidden>서버 연결 설정</a>
-      <button value="cancel" class="ghost">닫기</button>
       <div id="accountBox" class="account" hidden>
         <h2>내 계정</h2>
         <p id="accountInfo"></p>
@@ -94,7 +93,7 @@
       <div class="row"><button type="submit">변경</button><button type="button" id="pwCancel" class="ghost">취소</button></div>
     </form>
   </dialog>
-  <script src="config.js?v=1.3.0"></script>
-  <script src="app.js?v=1.3.0" type="module"></script>
+  <script src="config.js?v=1.3.1"></script>
+  <script src="app.js?v=1.3.1" type="module"></script>
 </body>
 </html>

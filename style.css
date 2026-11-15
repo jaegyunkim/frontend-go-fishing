@@ -75,3 +75,5 @@ ul.list.stack li{flex-direction:column;gap:1px}ul.list.stack .m{white-space:norm
 .toast{margin:0 12px 6px;padding:8px 12px;border-radius:12px;font-size:12.5px;background:#2a1a05;border:1px solid #78350f;color:var(--warn)}
 .account{border-top:1px solid var(--line);margin-top:12px;padding-top:10px}.account h2{font-size:14px;margin:0 0 4px}
 .settings .danger{width:100%;background:#9f1239;margin-top:6px}.settings a.btn{flex:1;text-align:center;padding:9px;border-radius:10px;text-decoration:none;color:var(--text);background:var(--panel2);border:1px solid var(--line);font-size:14px}
+
+.settings-header{display:flex;align-items:center;justify-content:space-between;gap:16px}.settings-header h2{margin:0}.settings-header button{width:auto;flex:0 0 auto;margin-left:auto}

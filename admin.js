@@ -1,5 +1,5 @@
 // 어디물어 관리자 화면: 계정·세션·사용량·대화 로그·로그인/작업 기록. 관리자 계정으로 로그인한 탭에서만 동작.
-import { state, api, health, startTimer, syncExpiry, setOnAuthLost, logout } from './auth.js?v=1.3.0';
+import { state, api, health, startTimer, syncExpiry, setOnAuthLost, logout } from './auth.js?v=1.3.1';
 const $ = s => document.querySelector(s);
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const dt = v => v ? new Date(v).toLocaleString('ko-KR', { timeZone: 'Asia/Seoul', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }) : '-';
@@ -8,7 +8,7 @@ const view = $('#view');
 let current = 'users';
 
 function note(text, bad = false) { const m = $('#msg'); m.textContent = text; m.hidden = !text; m.style.color = bad ? 'var(--bad)' : ''; if (text) setTimeout(() => { if (m.textContent === text) m.hidden = true; }, 8000); }
-function gone(msg) { view.innerHTML = `<div class="card"><h3>관리자 로그인이 필요합니다</h3><p class="sub">${esc(msg)}</p><p><a class="link-btn" href="./">채팅 화면에서 관리자 계정으로 로그인 →</a></p></div>`; $('#timer').hidden = true; }
+function gone(msg) { $('#userPageLink').hidden = true; view.innerHTML = `<div class="card"><h3>관리자 로그인이 필요합니다</h3><p class="sub">${esc(msg)}</p><p><a class="link-btn" href="./">채팅 화면에서 관리자 계정으로 로그인 →</a></p></div>`; $('#timer').hidden = true; }
 setOnAuthLost(msg => { logout(); gone(msg); });
 
 const dialog = (html, onSubmit) => new Promise(resolve => {
@@ -43,7 +43,7 @@ const views = {
     $('#add').onclick = async () => {
       const r = await dialog(`<h2>계정 발급</h2><label>이메일 아이디(관리자는 기존 아이디 가능)<input name="loginId" required maxlength="254"></label><label>이름<input name="displayName" required maxlength="40"></label>
         <label>역할<select name="role"><option value="tester">테스터</option><option value="admin">관리자</option></select></label><label>메모<input name="memo" maxlength="100"></label>
-        <p class="hint">한도 기본값: 일반 사용자: 세션 10분 고정·24시간에 1회 로그인, 세션당 질문 30·하루 질문 100·토큰 30,000. 발급 후 '한도'에서 바꿀 수 있습니다.</p>`,
+        <p class="hint">한도 기본값: 일반 사용자: 세션 10분 고정·24시간에 1회 로그인, 세션당 질문 30·하루 질문 5·토큰 1,000. 발급 후 '한도'에서 바꿀 수 있습니다.</p>`,
         fd => api('/v1/admin/users', { method: 'POST', body: JSON.stringify(Object.fromEntries(fd)) }).catch(e => ({ error: e.message })));
       if (r?.error) return note(r.error, true);
       if (r?.user?.tempPassword) await showSecret(`${r.user.loginId} 계정을 만들었습니다`, r.user.tempPassword);
@@ -129,6 +129,7 @@ document.querySelectorAll('#atabs button').forEach(b => b.onclick = () => go(b.d
   try {
     const me = await api('/v1/auth/me');
     if (me.role !== 'admin') return gone('관리자 계정이 아닙니다.');
+    $('#userPageLink').hidden = false;
     syncExpiry(me.remainingSec);
     $('#who').textContent = `${me.user.displayName}(${me.user.loginId}) · 세션 ${me.limits.sessionMinutes}분`;
     startTimer($('#timer'), { onWarn: s => note(`약 ${s}초 뒤 자동 로그아웃됩니다`), onExpire: () => { logout('expired'); gone('이용 시간이 끝나 자동 로그아웃됐습니다.'); } });

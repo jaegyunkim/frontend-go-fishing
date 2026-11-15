@@ -7,14 +7,14 @@
   <meta name="robots" content="noindex">
   <title>어디물어 · 관리자</title>
   <link rel="icon" href="assets/icon.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="style.css?v=1.3.0">
-  <link rel="stylesheet" href="admin.css?v=1.3.0">
+  <link rel="stylesheet" href="style.css?v=1.3.1">
+  <link rel="stylesheet" href="admin.css?v=1.3.1">
 </head>
 <body>
   <div class="admin">
     <header class="top">
       <div class="brand"><img src="assets/icon.svg" alt="" width="30" height="30"><div><h1>어디물어 관리자</h1><p id="who">확인 중…</p></div></div>
-      <div class="top-right"><span id="timer" class="timer" hidden>10:00</span><a class="icon-btn" href="./" title="채팅 화면">💬</a></div>
+      <div class="top-right"><span id="timer" class="timer" hidden>10:00</span><a id="userPageLink" class="link-btn" href="./" hidden>일반 페이지로</a></div>
     </header>
     <nav class="atabs" id="atabs">
       <button data-v="requests">가입 승인</button><button data-v="model">AI 연결·크레딧</button><button data-v="users" class="active">사용자</button><button data-v="sessions">세션</button><button data-v="usage">사용량</button>
@@ -24,7 +24,7 @@
     <main id="view" class="aview"><p class="sub">불러오는 중…</p></main>
   </div>
   <dialog id="dlg"><form method="dialog" class="settings" id="dlgForm"></form></dialog>
-  <script src="config.js?v=1.3.0"></script>
-  <script src="admin.js?v=1.3.0" type="module"></script>
+  <script src="config.js?v=1.3.1"></script>
+  <script src="admin.js?v=1.3.1" type="module"></script>
 </body>
 </html>
