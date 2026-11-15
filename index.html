@@ -9,7 +9,7 @@
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" href="assets/icon.svg" type="image/svg+xml">
   <link rel="apple-touch-icon" href="assets/icon-192.png">
-  <link rel="stylesheet" href="style.css?v=1.3.23">
+  <link rel="stylesheet" href="style.css?v=1.4.0">
 </head>
 <body>
   <!-- 로그인 화면 -->
@@ -19,17 +19,17 @@
       <h1>어디물어</h1>
       <p class="sub">바다낚시 출조 AI 에이전트 · MVP 테스트</p>
       <form id="loginForm" autocomplete="on">
-        <label>이메일<input id="loginId" name="username" autocomplete="username" autocapitalize="none" spellcheck="false" required maxlength="254"></label>
-        <label>비밀번호<input id="loginPw" name="password" type="password" autocomplete="current-password" required maxlength="128"></label>
+        <label>이메일<input id="loginId" name="username" inputmode="email" placeholder="이메일 주소" autocomplete="username" autocapitalize="none" spellcheck="false" required maxlength="254"></label>
+        <label>비밀번호<input id="loginPw" name="password" type="password" placeholder="비밀번호" autocomplete="current-password" required maxlength="128"></label>
         <button type="submit" id="loginBtn">로그인</button>
       </form>
       <p id="loginMsg" class="login-msg" role="alert"></p>
-      <ul class="login-notes">
+      <details class="login-notes-wrap"><summary>이용 안내</summary><ul class="login-notes">
         <li>로그인 1회당 이용 시간은 <b id="sessionMinutesNote">10</b>분이며, 시간이 지나면 자동 로그아웃됩니다.</li>
         <li>질문 수와 AI 사용량에 하루 한도가 있습니다.</li>
         <li>대화 내용은 서비스 개선과 운영을 위해 30일간 보관되며, 출발지는 시·군·구 단위로만 저장합니다.</li>
         <li>로그인한 시각부터 24시간이 지나면 다시 이용할 수 있어요. 로그아웃해도 다음 이용 시각은 바뀌지 않습니다.</li>
-      </ul>
+      </ul></details>
       <a class="link-btn" href="register.html">처음이신가요? 이용 신청하기</a>
     </div>
   </section>
@@ -38,11 +38,11 @@
     <header class="top">
       <div class="brand">
         <img src="assets/icon.svg" alt="" width="34" height="34">
-        <div><h1>어디물어</h1><p>바다낚시 안전·출조 매니저</p></div>
+        <div><h1>어디물어</h1><p>바다낚시 출조 AI</p></div>
       </div>
       <div class="top-right">
         <span id="timer" class="timer" hidden title="남은 이용 시간">10:00</span>
-        <button id="btnSettings" class="icon-btn" aria-label="설정">⚙︎</button>
+        <button id="btnSettings" class="icon-btn" aria-label="설정"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg></button>
       </div>
     </header>
     <div id="aiLock" class="ai-lock" role="alert" hidden><h2>잠시 이용이 어려워요</h2><p id="aiLockMsg"></p><div class="ai-lock-actions"><a id="aiLockAdmin" class="ai-lock-btn primary" href="admin.html" hidden>관리자 페이지로 이동</a><button type="button" id="aiLockLogout" class="ai-lock-btn">로그아웃</button></div></div>
@@ -73,12 +73,12 @@
 
     <form id="composer" class="composer" autocomplete="off">
       <input id="msg" name="msg" placeholder="예) 이번주 토요일 부산 추천해줘" aria-label="메시지" maxlength="500">
-      <button type="submit" aria-label="보내기">➤</button>
+      <button type="submit" aria-label="보내기"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 19V5M5 12l7-7 7 7"/></svg></button>
     </form>
     <nav class="tabs">
-      <button data-tab="chat" class="active">💬<span>대화</span></button>
-      <button data-tab="brief">🧭<span>브리핑</span></button>
-      <button data-tab="points">📍<span>포인트</span></button>
+      <button data-tab="chat" class="active"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a8 8 0 0 1-11.6 7.1L4 20.5l1.4-4.9A8 8 0 1 1 21 12z"/></svg><span>대화</span></button>
+      <button data-tab="brief"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M15.5 8.5l-2 5-5 2 2-5z"/></svg><span>브리핑</span></button>
+      <button data-tab="points"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 21c-4.5-4.8-7-8.6-7-12a7 7 0 0 1 14 0c0 3.4-2.5 7.2-7 12z"/><circle cx="12" cy="9" r="2.5"/></svg><span>포인트</span></button>
     </nav>
   </div>
 
@@ -126,7 +126,7 @@
       <div class="row"><button type="submit">변경</button><button type="button" id="pwCancel" class="ghost">취소</button></div>
     </form>
   </dialog>
-  <script src="config.js?v=1.3.23"></script><script src="telemetry.js?v=1.3.23"></script>
-  <script src="app.js?v=1.3.23" type="module"></script>
+  <script src="config.js?v=1.4.0"></script><script src="telemetry.js?v=1.4.0"></script>
+  <script src="app.js?v=1.4.0" type="module"></script>
 </body>
 </html>
