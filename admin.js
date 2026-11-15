@@ -1,6 +1,6 @@
-import { approvalMailto } from './approval-email.js?v=1.3.24';
+import { approvalMailto } from './approval-email.js?v=1.3.25';
 // 어디물어 관리자 화면: 계정·세션·사용량·대화 로그·로그인/작업 기록. 관리자 계정으로 로그인한 탭에서만 동작.
-import { state, api, health, startTimer, syncExpiry, setOnAuthLost, logout } from './auth.js?v=1.3.24';
+import { state, api, health, startTimer, syncExpiry, setOnAuthLost, logout } from './auth.js?v=1.3.25';
 const $ = s => document.querySelector(s);
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const dt = v => v ? new Date(v).toLocaleString('ko-KR', { timeZone: 'Asia/Seoul', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }) : '-';
@@ -18,7 +18,7 @@ const dialog = (html, onSubmit) => new Promise(resolve => {
   $('#dlg').showModal();
 });
 const showSecret = async (title, pw, approvalEmail = null) => {
- const pending=dialog('<h2>'+esc(title)+'</h2><p class="hint">임시 비밀번호는 이 창에서만 확인할 수 있습니다. 신청자에게 안전하게 전달해 주세요. 첫 로그인에 비밀번호를 변경해야 합니다.</p><p class="access-url"><span>모바일 접속 주소</span><a id="accessUrl" target="_blank" rel="noopener noreferrer"></a></p><input id="issuedSecret" type="password" readonly autocomplete="off"><button id="revealSecret" type="button">비밀번호 보기</button>'+(approvalEmail?'<button id="sendApprovalEmail" type="button">메일 보내기</button><p id="approvalMailStatus" class="hint" role="status">기기의 기본 메일 앱에 받는 사람·제목·내용을 채웁니다. 메일 앱에서 확인 후 직접 보내 주세요. 메일 앱이 설정되어 있어야 합니다.</p>':''));
+ const pending=dialog('<h2>'+esc(title)+'</h2><p class="hint">임시 비밀번호는 이 창에서만 확인할 수 있습니다. 신청자에게 안전하게 전달해 주세요. 첫 로그인에 비밀번호를 변경해야 합니다.</p><p class="access-url"><span>모바일 접속 주소</span><a id="accessUrl" target="_blank" rel="noopener noreferrer"></a></p><input id="issuedSecret" type="password" readonly autocomplete="off"><div class="row secret-actions"><button id="revealSecret" type="button">비밀번호 보기</button>'+(approvalEmail?'<button id="sendApprovalEmail" type="button" class="ghost">메일 보내기</button></div><p id="approvalMailStatus" class="hint" role="status">기기의 기본 메일 앱에 받는 사람·제목·내용을 채웁니다. 메일 앱에서 확인 후 직접 보내 주세요. 메일 앱이 설정되어 있어야 합니다.</p>':'</div>'));
  const accessUrl=window.GOFISHING_PUBLIC_URL||new URL('./',location.href).href; $('#accessUrl').href=accessUrl; $('#accessUrl').textContent=accessUrl; $('#issuedSecret').value=pw; $('#revealSecret').onclick=()=>{const x=$('#issuedSecret');x.type=x.type==='password'?'text':'password';$('#revealSecret').textContent=x.type==='password'?'비밀번호 보기':'비밀번호 숨기기';};
  if (approvalEmail) $('#sendApprovalEmail').onclick = () => {
    try {
