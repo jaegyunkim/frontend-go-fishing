@@ -7,7 +7,7 @@ const GATE = { PASS: '안전 양호', PASS_WITH_CAUTION: '조건부 주의', REV
 const badge = g => g ? `<span class="badge b-${esc(g)}">${esc(GATE[g] ?? g)}</span>` : '';
 
 // ---- 설정·인증(auth.js) ----
-import { state, setApi, api, health, login, logout, startTimer, syncExpiry, saveAuth, setOnAuthLost, setOnMustChange, loadAuthImage, remaining, sessionMinutes } from './auth.js?v=1.6.2';
+import { state, setApi, api, health, login, logout, startTimer, syncExpiry, saveAuth, setOnAuthLost, setOnMustChange, loadAuthImage, remaining, sessionMinutes } from './auth.js?v=1.7.0';
 let SID = localStorage.getItem('gofishing.session') || (crypto.randomUUID?.() ?? String(Date.now()) + Math.random().toString(16).slice(2));
 localStorage.setItem('gofishing.session', SID);
 let slots = {}, lastBriefing = null, timer = null, usageText = '';
@@ -141,7 +141,7 @@ $('#aiLockLogout').onclick = () => { clearAiLock(); endSession('로그아웃했�
 // ---- 출발지(최대 5곳): 상단 스와이프 탭으로 고르고, 없으면 말풍선으로 등록을 권한다 ----
 let origins = [], originMax = 5, originTipTimer = null, originNudgeTimer = null;
 const activeOrigin = () => origins.find(o => o.active) ?? null;
-const TIP_FIRST = '어디서 출발하세요? 🚗\n자주 출발하는 동네를 등록해 두시면 가는 길·이동 시간·통행료까지 바로 알려 드릴게요. 최대 5곳까지 등록할 수 있어요.';
+const TIP_FIRST = '어디서 출발하세요? 🚗\n출발지를 등록해 두시면 하루에 한 번, 가까운 바다낚시 포인트와 오늘 오전·오후 날씨를 골라서 먼저 알려 드릴게요. 가는 길·이동 시간까지 함께 챙겨 드려요.\n출발지는 최대 5곳까지 등록할 수 있어요.';
 const TIP_MORE = '출발지는 5곳까지 등록해 둘 수 있어요. 위에서 눌러 바로 바꿔 보세요 🙂';
 function renderOrigins() {
   const bar = $('#originBar'), box = $('#originChips');
@@ -157,7 +157,7 @@ function renderOrigins() {
   }
   const add = document.createElement('button');
   add.type = 'button'; add.className = 'origin-chip add';
-  add.textContent = origins.length ? (origins.length < originMax ? '＋ 추가·편집' : '편집') : '＋ 출발지 등록';
+  add.textContent = origins.length ? (origins.length < originMax ? '＋ 출발지 추가' : '편집') : '＋ 출발지 등록';
   add.onclick = openOriginDialog; box.appendChild(add);
   box.querySelector('.active')?.scrollIntoView({ inline: 'nearest', block: 'nearest' });
 }
@@ -238,8 +238,11 @@ async function addOrigin(text, fromSearch = false) {
   btn.disabled = true; btn.textContent = '찾는 중…'; msg.textContent = '';
   try {
     const r = await api('/v1/origins', { method: 'POST', body: JSON.stringify({ text }) });
+    const wasEmpty = !origins.length;
     origins = r.origins; input.value = ''; renderOrigins(); renderOriginList();
-    toast(`'${r.origin.label}'을(를) 출발지로 등록했어요.`); return true;
+    toast(`'${r.origin.label}'을(를) 출발지로 등록했어요.`);
+    if (wasEmpty) { hideOriginTip(); showNearby(); }  // 첫 출발지를 등록하면 바로 주변 포인트를 추천
+    return true;
   } catch (err) {
     // 주소처럼 보이는데 못 찾았으면 주소 검색을 바로 열어 고를 수 있게 한다
     if (err.code === 'ORIGIN_NOT_FOUND' && !fromSearch && looksLikeAddress(text)) { msg.textContent = '주소를 정확히 찾지 못했어요. 아래 주소 검색에서 골라 주세요.'; openPostcode(text); }
@@ -361,6 +364,31 @@ $('#btnPw').onclick = () => { $('#settings').close(); openPw(false); };
 $('#resetSession').onclick = () => { SID = crypto.randomUUID?.() ?? String(Date.now()); localStorage.setItem('gofishing.session', SID); chat.innerHTML = ''; slots = {}; renderChips(); $('#settings').close(); welcome(); };
 
 // ---- 오늘의 추천 말풍선: 내가 찾아본 포인트 중 한 곳을 오늘 예보로 짧게(무작위). 음성은 버튼을 눌렀을 때만 재생. ----
+// ---- 출발지 주변 포인트 추천(하루 한 번 대화 말풍선) ----
+const GATE_TEXT = { PASS: '출조 무난', PASS_WITH_CAUTION: '주의', REVIEW_REQUIRED: '판단 보류', HARD_BLOCK: '쉬어 가세요' };
+const nearbyKey = () => 'gofishing.nearbyAt.' + (state.auth?.user?.id ?? '');
+const kstToday = () => new Date(Date.now() + 9 * 3600000).toISOString().slice(0, 10);
+/** 오늘 아직 안 보여 줬으면 주변 추천을 대화에 띄운다. 띄웠으면 true */
+async function showNearby() {
+  if (!state.auth || aiLocked || localStorage.getItem(nearbyKey()) === kstToday()) return false;
+  const wait = bubble('bot typing-note', '📍 출발지 주변 포인트와 오늘 날씨를 살펴보는 중이에요…');
+  try {
+    const r = await api('/v1/suggest/nearby', { timeoutMs: 30000 });
+    wait.remove();
+    if (!state.auth) return false;
+    if (!r?.available) { if (r?.reason === 'no-points' && r.text) { bubble('bot', esc(r.text)); localStorage.setItem(nearbyKey(), kstToday()); return true; } return false; }
+    localStorage.setItem(nearbyKey(), kstToday());
+    const items = r.items.map(i => {
+      const line = [i.am ? `<span class="nb-slot">오전</span> ${esc(i.am)}` : '', i.pm ? `<span class="nb-slot">오후</span> ${esc(i.pm)}` : ''].filter(Boolean).join('<br>') || '<span class="sub">오늘 예보를 아직 받지 못했어요</span>';
+      const click = i.gate !== 'HARD_BLOCK';
+      return `<${click ? 'button type="button"' : 'div'} class="item nb-item" ${click ? `data-nb="${esc(i.id)}"` : ''}><div class="nb-head"><span class="rank">${i.rank}</span><b>${esc(i.name)}</b><span class="nb-dist">${i.distanceKm}km</span><span class="badge b-${esc(i.gate)}">${esc(GATE_TEXT[i.gate] ?? i.verdict)}</span></div><div class="nb-wx">${line}</div></${click ? 'button' : 'div'}>`;
+    }).join('');
+    const card = node(`<h3>📍 ${esc(r.origin.label)} 주변 오늘의 포인트</h3><p class="nb-intro">${esc(r.text).replace(/\n/g, '<br>')}</p>${items}${r.source ? `<p class="src">출처: ${esc(r.source)} · 반경 ${r.radiusKm}km · 출입·낚시 허용은 현장 안내판을 꼭 확인해 주세요</p>` : ''}`, 'card top3 nearby');
+    card.querySelectorAll('[data-nb]').forEach(b => b.onclick = () => { const a = r.actions.find(x => x.pointId === b.dataset.nb); if (a) send(a.message, { pointId: a.pointId, date: a.date }); });
+    return true;
+  } catch { wait.remove(); return false; }
+}
+
 let todayTipData = null, todayAudio = null, todayAudioUrl = null;
 function hideTodayTip() { $('#todayTip').hidden = true; if (todayAudio) { todayAudio.pause(); } }
 async function showTodayTip() {
@@ -456,8 +484,8 @@ function enterApp() {
     bubble('bot', md(`**${u.displayName}**님, 반가워요. 이번 로그인은 **${sessionMinutes()}분** 동안 이용할 수 있어요.`));
     refreshUsage();
     suggestWeekend();
-    loadOrigins();
-    showTodayTip();
+    // 출발지가 있으면 하루 한 번 주변 포인트 추천, 아니면(또는 오늘 이미 봤으면) 장기기억 기반 오늘의 추천
+    loadOrigins().then(async () => { if (!(origins.length && await showNearby())) showTodayTip(); });
     clearInterval(window.__usageSync); window.__usageSync = setInterval(() => { if (state.auth) refreshUsage(); }, 60000);
   }
   welcome(); restore();
