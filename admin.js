@@ -1,5 +1,5 @@
 // 어디물어 관리자 화면: 계정·세션·사용량·대화 로그·로그인/작업 기록. 관리자 계정으로 로그인한 탭에서만 동작.
-import { state, api, health, startTimer, syncExpiry, setOnAuthLost, logout } from './auth.js?v=1.3.12';
+import { state, api, health, startTimer, syncExpiry, setOnAuthLost, logout } from './auth.js?v=1.3.13';
 const $ = s => document.querySelector(s);
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const dt = v => v ? new Date(v).toLocaleString('ko-KR', { timeZone: 'Asia/Seoul', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }) : '-';
@@ -64,9 +64,9 @@ const views = {
           const r = await dialog(`<h2>${esc(login)} 한도</h2><div class="grid2">
             <label>세션 시간(분)<input name="sessionMinutes" type="number" min="1" max="120" value="${L.sessionMinutes}" ${u.role === "admin" ? "" : "disabled"}></label><label>세션당 질문<input name="sessionMessages" type="number" min="1" value="${L.sessionMessages}"></label>
             <label>하루 질문<input name="dailyMessages" type="number" min="1" value="${L.dailyMessages}"></label><label>하루 로그인<input name="dailySessions" type="number" min="1" value="${L.dailySessions}" disabled></label>
-            <label>하루 AI 토큰<input name="dailyTokens" type="number" min="0" value="${L.dailyTokens}"></label></div><p class="hint">일반 사용자는 10분·24시간 1회 고정입니다. 관리자 세션 시간 변경은 다음 로그인부터 적용됩니다.</p>`,
+            <label>하루 AI 토큰<input name="dailyTokens" type="number" min="0" value="${L.dailyTokens}"></label></div><p class="hint">질문·토큰 한도는 저장 즉시 적용됩니다. 관리자 계정의 세션 시간은 이용 중인 세션에도 바로 반영됩니다(로그인 시각 기준). 일반 사용자는 10분·24시간 1회 고정입니다.</p>`,
           fd => patch(Object.fromEntries([...fd].map(([k, v]) => [k, Number(v)]))));
-          if (r) note(`${login} 한도를 바꿨습니다`);
+          if (r) { note(`${login} 한도를 저장했습니다 · 즉시 적용${r.adjustedSessions ? ` (이용 중인 세션 ${r.adjustedSessions}개 시간 변경)` : ''}`); if (String(id) === String(state.auth?.user?.id)) { const me = await api('/v1/auth/me'); syncExpiry(me.remainingSec); $('#who').textContent = `${me.user.displayName}(${me.user.loginId}) · 세션 ${me.limits.sessionMinutes}분`; } }
         } else if (b.dataset.a === 'reset') {
           if (!confirm(`${login} 비밀번호를 초기화할까요? 접속 중인 세션도 종료됩니다.`)) return;
           const r = await patch({ resetPassword: true, unlock: true }); await showSecret(`${login} 비밀번호를 초기화했습니다`, r.tempPassword);
