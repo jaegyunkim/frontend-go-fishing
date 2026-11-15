@@ -31,3 +31,18 @@ python3 -m http.server 8080   # http://localhost:8080/?api=http://localhost:8787
 ```
 
 > 공식 발표·관측과 공개 자료를 정리한 참고 정보입니다. 조과·안전·출입을 보장하지 않습니다. 해상사고 122 · 화재/구급 119
+
+## 프런트 오류 보고 → 백엔드 → Slack
+- `telemetry.js`는 **classic script**로 모든 HTML에서 `config.js` 다음, 첫 module 앞에 로드합니다. 초기 모듈 실행/로드 오류(`error`, capture)와 `unhandledrejection`을 수집합니다.
+- `auth.js`의 `api()`는 network/timeout, HTTP 5xx, JSON 파싱 실패를 보고합니다. 정상 응답/일반 4xx는 보고하지 않습니다. 기존 예외·인증 처리와 JSON 실패 시 `{}` 반환 동작은 유지합니다.
+- 수집기는 공개 `POST <실제 API base>/v1/client-errors`에 `{kind,message,stack,page}`만 보냅니다. 최대 길이는 각각 40/1000/2000/200자입니다. 초기 query → 저장된 주소 → config → localhost 순서와 설정 변경/예비 서버 전환을 반영합니다. `report(kind, message, stack, actualBase)`로 요청 당시 주소를 명시할 수 있고, `setApiBase()`로 이후 전역 오류 목적지를 변경합니다.
+- 인증 헤더·쿠키·리퍼러·요청/응답 본문·사용자 객체·폼 값은 보내지 않습니다. API 오류 문구는 고정 문자열/HTTP 상태 코드만 사용합니다. 전역 오류 문자열에서는 URL, query/hash, 비밀번호/토큰/키 관련 문구, Bearer/JWT, 이메일, 인용문과 긴 토큰 형태를 제거합니다. stack은 알려진 앱 JS의 파일명·줄·열만, page는 알려진 HTML 파일명만 남깁니다. **임의 오류 문자열의 개인정보를 완벽히 판별할 수는 없으므로 애플리케이션에서 사용자 입력·비밀번호·토큰을 Error 메시지에 넣지 마세요.**
+- 동일 정제 payload는 60초 동안 중복 제거, 탭의 페이지 로드당 최대 30회, 60초당 최대 5회 전송 시도합니다. 실패도 횟수에 포함합니다. 메모리 내 제한이라 새로고침하면 초기화되며, 서버의 Origin 허용 목록과 rate limit을 대체하지 않습니다.
+- 전송은 `api()`가 아닌 별도 `fetch`를 사용하며 인증정보 생략, 리퍼러 없음, redirect 거절, 5초 abort를 적용합니다. 재시도/응답 파싱/전송 오류 재보고는 없고 기다리지 않습니다. 수집기 부재·예외·오프라인·서버 미배포 상태도 본 기능을 중단하지 않습니다.
+- **Slack 토큰/Webhook은 프런트에 절대 넣지 않습니다.** Slack 전달과 자격증명은 백엔드 전담입니다. 백엔드 엔드포인트 및 허용 Origin/CORS 설정이 배포되기 전에는 전달되지 않을 수 있습니다.
+
+### 테스트
+```bash
+node --test
+```
+기존 가입 신청 테스트와 `test/telemetry.test.mjs`의 격리된 VM 테스트를 실행합니다. 외부 API/Slack 호출 없이 초기 이벤트, 개인정보 정제, 길이/중복/전송량, 실패 격리, 실제 API 주소와 fallback, HTML 로딩 순서를 검증합니다.

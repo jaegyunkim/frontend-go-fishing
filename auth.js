@@ -11,7 +11,15 @@ export const state = {
   sessionMinutes: 10,
   auth: JSON.parse(sessionStorage.getItem(KEY) || 'null') // { token, expiresAtLocal, user }
 };
-export function setApi(v) { state.api = String(v || '').trim().replace(/\/$/, ''); localStorage.setItem('gofishing.api', state.api); }
+// 외부 수집기가 없거나 고장 나도 인증/요청 동작은 그대로 유지한다.
+function telemetry(kind, message, actualBase = state.api) {
+  try { window.GOFISHING_TELEMETRY?.report(kind, message, '', actualBase); } catch { /* best effort */ }
+}
+function syncTelemetryBase() {
+  try { window.GOFISHING_TELEMETRY?.setApiBase(state.api); } catch { /* best effort */ }
+}
+syncTelemetryBase();
+export function setApi(v) { state.api = String(v || '').trim().replace(/\/$/, ''); localStorage.setItem('gofishing.api', state.api); syncTelemetryBase(); }
 export function saveAuth(a) { state.auth = a; if (a) sessionStorage.setItem(KEY, JSON.stringify(a)); else sessionStorage.removeItem(KEY); }
 /** 서버가 알려 준 남은 초로 로컬 만료 시각을 맞춘다(기기 시계가 틀려도 안전). */
 export function syncExpiry(remainingSec) { if (state.auth && Number.isFinite(remainingSec)) saveAuth({ ...state.auth, expiresAtLocal: Date.now() + remainingSec * 1000 }); }
@@ -28,13 +36,17 @@ export async function api(path, opts = {}) {
   if (!state.api) throw Object.assign(new Error('백엔드 주소가 설정되지 않았습니다'), { status: 0 });
   const headers = { 'Content-Type': 'application/json', ...(opts.headers || {}) };
   if (state.auth?.token && !opts.noAuth) headers.Authorization = `Bearer ${state.auth.token}`;
+  const requestBase = state.api;
+  syncTelemetryBase();
   let r;
-  try { r = await fetch(state.api + path, { ...opts, headers, signal: AbortSignal.timeout(opts.timeoutMs ?? 60000) }); }
+  try { r = await fetch(requestBase + path, { ...opts, headers, signal: AbortSignal.timeout(opts.timeoutMs ?? 60000) }); }
   catch (e) {
+    telemetry('api_network', e?.name === 'TimeoutError' ? 'API request timed out' : 'API network request failed', requestBase);
     const local = /\/\/(localhost|127\.0\.0\.1)/.test(state.api) && location.protocol === 'https:';
     throw Object.assign(new Error(e.name === 'TimeoutError' ? (local ? '로컬 서버 응답 없음 — 브라우저의 “로컬 네트워크 접근 허용” 팝업을 확인하거나 HTTPS 공개 주소를 쓰세요' : '응답 시간 초과') : '네트워크 오류'), { status: 0 });
   }
-  const j = await r.json().catch(() => ({}));
+  if (r.status >= 500) telemetry('api_5xx', `HTTP ${r.status}`, requestBase);
+  const j = await r.json().catch(() => { telemetry('api_json', 'API response JSON parsing failed', requestBase); return {}; });
   if (!r.ok) {
     const e = Object.assign(new Error(j.error || `HTTP ${r.status}`), { status: r.status, code: j.code, usage: j.usage });
     if (r.status === 401 && state.auth && !opts.noAuth) onAuthLost(e.message, e.code);
@@ -63,7 +75,7 @@ export async function health() {
     const backups = fromConfig ? (window.GOFISHING_API_FALLBACKS || []).filter(u => u && u !== state.api) : [];
     const primary = state.api;
     for (const u of backups) { state.api = u; try { return await probe(); } catch { /* 다음 예비 주소 */ } }
-    state.api = primary; state.authMode = null; return { error: e.message };
+    state.api = primary; syncTelemetryBase(); state.authMode = null; return { error: e.message };
   }
 }
 export async function login(loginId, password) {
