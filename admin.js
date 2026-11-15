@@ -37,7 +37,7 @@ const views = {
     ${users.map(u => `<tr><td><b>${esc(u.loginId)}</b><br><span class="sub">${esc(u.displayName)}${u.memo ? ' · ' + esc(u.memo) : ''}</span></td>
       <td>${u.role === 'admin' ? '관리자' : '테스터'}<br><span class="pill ${u.status === 'active' ? 'ok' : 'bad'}">${u.status === 'active' ? '사용' : '중지'}</span>${u.lockedUntil && new Date(u.lockedUntil) > new Date() ? ' <span class="pill warn">잠김</span>' : ''}${u.activeSessions ? ' <span class="pill ok">접속 중</span>' : ''}${u.mustChangePassword ? ' <span class="pill warn">비번 변경 대기</span>' : ''}</td>
       <td class="num">${n(u.today.messages)}/${n(u.limits.dailyMessages)}${u.today.blocked ? `<br><span class="sub">거절 ${u.today.blocked}</span>` : ''}</td><td class="num">${n(u.today.tokens)}/${n(u.limits.dailyTokens)}</td>
-      <td class="num">${n(u.today.sessions)}/${n(u.limits.dailySessions)}</td><td>${u.limits.sessionMinutes}분 · 질문 ${u.limits.sessionMessages}</td><td>${esc(u.device?.platform)}<br>${esc(u.device?.browser)}<br>${dt(u.lastLoginAt)}${u.nextLoginAt?`<br><span class="sub">재이용 ${dt(u.nextLoginAt)}</span>`:""}</td>
+      <td class="num">${n(u.today.sessions)}<br><span class="sub">${u.role === "admin" ? "관리자 제한 면제" : "24시간 1회"}</span></td><td>${u.limits.sessionMinutes}분 · 질문 ${u.limits.sessionMessages}</td><td>${esc(u.device?.platform)}<br>${esc(u.device?.browser)}<br>${dt(u.lastLoginAt)}${u.nextLoginAt?`<br><span class="sub">재이용 ${dt(u.nextLoginAt)}</span>`:""}</td>
       <td><div class="acts" data-id="${u.id}" data-login="${esc(u.loginId)}"><button data-a="limits">한도</button><button data-a="reset">비번 초기화</button>${u.lockedUntil ? '<button data-a="unlock">잠금 해제</button>' : ''}
         <button data-a="toggle" class="${u.status === 'active' ? 'danger' : ''}">${u.status === 'active' ? '중지' : '재개'}</button><button data-a="chats">대화</button></div></td></tr>`).join('')}</table></div>`;
     $('#add').onclick = async () => {
@@ -56,9 +56,9 @@ const views = {
         if (b.dataset.a === 'limits') {
           const L = u.limits;
           const r = await dialog(`<h2>${esc(login)} 한도</h2><div class="grid2">
-            <label>세션 시간(분)<input name="sessionMinutes" type="number" min="1" max="120" value="${L.sessionMinutes}"></label><label>세션당 질문<input name="sessionMessages" type="number" min="1" value="${L.sessionMessages}"></label>
-            <label>하루 질문<input name="dailyMessages" type="number" min="1" value="${L.dailyMessages}"></label><label>하루 로그인<input name="dailySessions" type="number" min="1" value="${L.dailySessions}"></label>
-            <label>하루 AI 토큰<input name="dailyTokens" type="number" min="0" value="${L.dailyTokens}"></label></div><p class="hint">세션 시간 변경은 다음 로그인부터 적용됩니다.</p>`,
+            <label>세션 시간(분)<input name="sessionMinutes" type="number" min="1" max="120" value="${L.sessionMinutes}" ${u.role === "admin" ? "" : "disabled"}></label><label>세션당 질문<input name="sessionMessages" type="number" min="1" value="${L.sessionMessages}"></label>
+            <label>하루 질문<input name="dailyMessages" type="number" min="1" value="${L.dailyMessages}"></label><label>하루 로그인<input name="dailySessions" type="number" min="1" value="${L.dailySessions}" disabled></label>
+            <label>하루 AI 토큰<input name="dailyTokens" type="number" min="0" value="${L.dailyTokens}"></label></div><p class="hint">일반 사용자는 10분·24시간 1회 고정입니다. 관리자 세션 시간 변경은 다음 로그인부터 적용됩니다.</p>`,
           fd => patch(Object.fromEntries([...fd].map(([k, v]) => [k, Number(v)]))));
           if (r) note(`${login} 한도를 바꿨습니다`);
         } else if (b.dataset.a === 'reset') {
