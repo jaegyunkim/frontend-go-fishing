@@ -7,7 +7,7 @@ const GATE = { PASS: '안전 양호', PASS_WITH_CAUTION: '조건부 주의', REV
 const badge = g => g ? `<span class="badge b-${esc(g)}">${esc(GATE[g] ?? g)}</span>` : '';
 
 // ---- 설정·인증(auth.js) ----
-import { state, setApi, api, health, login, logout, startTimer, syncExpiry, saveAuth, setOnAuthLost, setOnMustChange, loadAuthImage, remaining, sessionMinutes } from './auth.js?v=1.3.19';
+import { state, setApi, api, health, login, logout, startTimer, syncExpiry, saveAuth, setOnAuthLost, setOnMustChange, loadAuthImage, remaining, sessionMinutes } from './auth.js?v=1.3.20';
 let SID = localStorage.getItem('gofishing.session') || (crypto.randomUUID?.() ?? String(Date.now()) + Math.random().toString(16).slice(2));
 localStorage.setItem('gofishing.session', SID);
 let slots = {}, lastBriefing = null, timer = null, usageText = '';
@@ -178,25 +178,70 @@ function renderOriginList() {
   $('#originCount').textContent = `${origins.length}/${originMax}`;
   const full = origins.length >= originMax;
   $('#originInput').disabled = full; $('#originAddBtn').disabled = full;
-  $('#originInput').placeholder = full ? '5곳을 모두 등록했어요. 하나를 지우면 추가할 수 있어요' : '예) 양산시 물금읍, 부산 남천동';
+  $('#originInput').placeholder = full ? '5곳을 모두 등록했어요. 하나를 지우면 추가할 수 있어요' : '도로명·지번 주소 또는 동네 이름';
+  $('#postcodeOpen').disabled = full;
   $('#originList').innerHTML = origins.length ? origins.map(o => `<li class="origin-item${o.active ? ' active' : ''}"><div class="origin-item-text"><b>${esc(o.label)}</b>${o.active ? ' <span class="origin-badge">사용 중</span>' : ''}<span>${esc(o.coarse)}</span></div><div class="origin-item-acts">${o.active ? '' : `<button type="button" data-use="${o.id}">사용</button>`}<button type="button" class="danger" data-del="${o.id}" aria-label="${esc(o.label)} 삭제">삭제</button></div></li>`).join('') : '<li class="origin-empty">아직 등록한 출발지가 없어요.</li>';
   $('#originList').querySelectorAll('[data-use]').forEach(b => b.onclick = async () => { const o = origins.find(x => String(x.id) === b.dataset.use); await chooseOrigin(o); renderOriginList(); });
   $('#originList').querySelectorAll('[data-del]').forEach(b => b.onclick = async () => {
     const o = origins.find(x => String(x.id) === b.dataset.del); if (!confirm(`'${o.label}' 출발지를 지울까요?`)) return;
-    try { const r = await api(`/v1/origins/${o.id}/delete`, { method: 'POST', body: '{}' }); origins = r.origins; renderOrigins(); renderOriginList(); } catch (e) { $('#originFormMsg').textContent = e.message; }
+    try { const r = await api(`/v1/origins/${o.id}/delete`, { method: 'POST', body: '{}' }); origins = r.origins; renderOrigins(); renderOriginList(); } catch (e) { $('#originFormMsg').textContent = originError(e); }
   });
 }
-function openOriginDialog() { hideOriginTip(); $('#originFormMsg').textContent = ''; renderOriginList(); $('#originDialog').showModal(); if (origins.length < originMax) setTimeout(() => $('#originInput').focus(), 50); }
-$('#originDialogClose').onclick = () => $('#originDialog').close();
+// ---- 다음(카카오) 우편번호 서비스: 도로명·지번 주소 검색. 키 없이 쓰는 공개 스크립트를 처음 열 때만 불러온다. ----
+let postcodeLoading = null;
+function loadPostcode() {
+  if (window.daum?.Postcode) return Promise.resolve();
+  return postcodeLoading ??= new Promise((ok, no) => {
+    const urls = ['https://t1.kakaocdn.net/mapjsapi/bundle/postcode/prod/postcode.v2.js', 'https://t1.daumcdn.net/mapjsapi/bundle/postcode/prod/postcode.v2.js'];
+    const tryNext = i => { if (i >= urls.length) { postcodeLoading = null; return no(new Error('주소 검색을 불러오지 못했어요. 동네 이름으로 입력해 주세요.')); }
+      const s = document.createElement('script'); s.src = urls[i]; s.async = true; s.onload = () => ok(); s.onerror = () => { s.remove(); tryNext(i + 1); }; document.head.appendChild(s); };
+    tryNext(0);
+  });
+}
+/** 주소 형식(도로명 …로/…길 + 번호, 지번 번호)인지 */
+const looksLikeAddress = t => /(로|길)\s*\d|번길|\d+(-\d+)?\s*(번지)?$/.test(String(t).trim());
+async function openPostcode(query = '') {
+  const msg = $('#originFormMsg');
+  try { await loadPostcode(); } catch (e) { msg.textContent = e.message; return; }
+  const wrap = $('#postcodeWrap'), box = $('#postcodeBox'); box.innerHTML = ''; wrap.hidden = false;
+  new window.daum.Postcode({
+    width: '100%', height: '100%',
+    oncomplete: d => {
+      // 서버에는 시·도 시·군·구 읍·면·동까지만 보낸다(도로명·건물번호는 보내지도 저장하지도 않음)
+      const town = d.bname1 || d.bname || '';
+      const coarse = [d.sido, d.sigungu, town].filter(Boolean).join(' ');
+      wrap.hidden = true; box.innerHTML = '';
+      $('#originInput').value = d.roadAddress || d.jibunAddress || coarse;
+      addOrigin(coarse, true);
+    }
+  }).embed(box, { q: query, autoClose: false });
+  wrap.scrollIntoView({ block: 'nearest' });
+}
+$('#postcodeOpen').onclick = () => { $('#originFormMsg').textContent = ''; openPostcode($('#originInput').value.trim()); };
+$('#postcodeClose').onclick = () => { $('#postcodeWrap').hidden = true; $('#postcodeBox').innerHTML = ''; };
+const originError = e => e.status === 404 && !e.code ? '출발지 기능이 아직 서버에 적용되지 않았어요. 관리자가 서버를 업데이트하면 바로 쓸 수 있어요.' : e.message;
+async function addOrigin(text, fromSearch = false) {
+  const input = $('#originInput'), btn = $('#originAddBtn'), msg = $('#originFormMsg');
+  btn.disabled = true; btn.textContent = '찾는 중…'; msg.textContent = '';
+  try {
+    const r = await api('/v1/origins', { method: 'POST', body: JSON.stringify({ text }) });
+    origins = r.origins; input.value = ''; renderOrigins(); renderOriginList();
+    toast(`'${r.origin.label}'을(를) 출발지로 등록했어요.`); return true;
+  } catch (err) {
+    // 주소처럼 보이는데 못 찾았으면 주소 검색을 바로 열어 고를 수 있게 한다
+    if (err.code === 'ORIGIN_NOT_FOUND' && !fromSearch && looksLikeAddress(text)) { msg.textContent = '주소를 정확히 찾지 못했어요. 아래 주소 검색에서 골라 주세요.'; openPostcode(text); }
+    else msg.textContent = originError(err);
+    return false;
+  } finally { btn.textContent = '추가'; renderOriginList(); }
+}
+function openOriginDialog() { hideOriginTip(); $('#originFormMsg').textContent = ''; $('#postcodeWrap').hidden = true; $('#postcodeBox').innerHTML = ''; renderOriginList(); $('#originDialog').showModal(); if (origins.length < originMax) setTimeout(() => $('#originInput').focus(), 50); }
+$('#originDialogClose').onclick = () => { $('#postcodeWrap').hidden = true; $('#postcodeBox').innerHTML = ''; $('#originDialog').close(); };
 $('#originTipAdd').onclick = openOriginDialog;
 $('#originTipClose').onclick = hideOriginTip;
 $('#originForm').addEventListener('submit', async e => {
   e.preventDefault(); const input = $('#originInput'), btn = $('#originAddBtn'), msg = $('#originFormMsg');
-  const text = input.value.trim(); if (!text) { msg.textContent = '동네 이름을 적어 주세요.'; return; }
-  btn.disabled = true; btn.textContent = '찾는 중…'; msg.textContent = '';
-  try { const r = await api('/v1/origins', { method: 'POST', body: JSON.stringify({ text }) }); origins = r.origins; input.value = ''; renderOrigins(); renderOriginList(); toast(`'${r.origin.label}'을(를) 출발지로 등록했어요.`); }
-  catch (err) { msg.textContent = err.message; }
-  finally { btn.textContent = '추가'; renderOriginList(); }
+  const text = input.value.trim(); if (!text) { msg.textContent = '주소나 동네 이름을 적어 주세요.'; return; }
+  await addOrigin(text);
 });
 
 async function send(text, extra = {}) {

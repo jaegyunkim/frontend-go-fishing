@@ -122,3 +122,11 @@ ul.list.stack li{flex-direction:column;gap:1px}ul.list.stack .m{white-space:norm
 .origin-item-acts{display:flex;gap:6px}.origin-item-acts button{min-height:36px;padding:6px 12px;border-radius:10px;border:1px solid var(--line);background:var(--panel);color:var(--text);font-size:13px;cursor:pointer}
 .origin-item-acts .danger{color:var(--bad);border-color:#9f1239}
 .origin-empty{color:var(--dim);font-size:13px;padding:6px 2px}
+
+.origin-dialog .settings-header button,#originDialogClose{min-height:36px;padding:6px 14px;border-radius:10px;border:1px solid #64748b;background:#1e293b;color:#f8fafc;font-size:14px;font-weight:600;cursor:pointer}
+.postcode-open{width:100%;min-height:42px;margin-top:8px;border-radius:12px;border:1px solid #38bdf8;background:#0e2a3a;color:#e0f7fb;font-size:14px;font-weight:600;cursor:pointer}
+.postcode-open:disabled{opacity:.5}
+.postcode-wrap{margin-top:10px;border:1px solid #38bdf8;border-radius:12px;overflow:hidden;background:#fff}
+.postcode-head{display:flex;align-items:center;justify-content:space-between;padding:6px 10px;background:#0e2a3a;color:#e0f7fb;font-size:13px;font-weight:600}
+.postcode-head button{min-height:32px;padding:4px 12px;border-radius:8px;border:1px solid #64748b;background:#1e293b;color:#f8fafc;cursor:pointer}
+.postcode-box{height:min(440px,60dvh)}

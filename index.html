@@ -9,7 +9,7 @@
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" href="assets/icon.svg" type="image/svg+xml">
   <link rel="apple-touch-icon" href="assets/icon-192.png">
-  <link rel="stylesheet" href="style.css?v=1.3.19">
+  <link rel="stylesheet" href="style.css?v=1.3.20">
 </head>
 <body>
   <!-- 로그인 화면 -->
@@ -85,10 +85,12 @@
   </dialog>
   <dialog id="originDialog" class="origin-dialog" aria-labelledby="originDialogTitle">
     <div class="settings-header"><h2 id="originDialogTitle">내 출발지 <span id="originCount" class="origin-count"></span></h2><button type="button" id="originDialogClose" class="ghost" aria-label="출발지 관리 닫기">닫기</button></div>
-    <p class="hint">자주 출발하는 동네를 최대 5곳까지 등록할 수 있어요. 정확한 주소 대신 시·군·구·동 단위로만 저장해요.</p>
+    <p class="hint">자주 출발하는 곳을 최대 5곳까지 등록할 수 있어요. 도로명·지번 주소를 넣으셔도 정확한 주소는 저장하지 않고 시·군·구·동(읍·면) 단위로만 저장해요.</p>
     <form id="originForm" class="origin-form" autocomplete="off">
-      <label for="originInput">동네 이름</label>
-      <div class="origin-form-row"><input id="originInput" maxlength="60" placeholder="예) 양산시 물금읍, 부산 남천동" enterkeyhint="done" autocapitalize="none"><button type="submit" id="originAddBtn">추가</button></div>
+      <label for="originInput">주소</label>
+      <div class="origin-form-row"><input id="originInput" maxlength="80" placeholder="도로명·지번 주소 또는 동네 이름" enterkeyhint="done" autocapitalize="none"><button type="submit" id="originAddBtn">추가</button></div>
+      <button type="button" id="postcodeOpen" class="postcode-open">🔍 주소 검색으로 찾기</button>
+      <div id="postcodeWrap" class="postcode-wrap" hidden><div class="postcode-head"><span>주소 검색</span><button type="button" id="postcodeClose" aria-label="주소 검색 닫기">닫기</button></div><div id="postcodeBox" class="postcode-box"></div></div>
       <p id="originFormMsg" class="origin-form-msg" role="alert"></p>
     </form>
     <ul id="originList" class="origin-list"></ul>
@@ -118,7 +120,7 @@
       <div class="row"><button type="submit">변경</button><button type="button" id="pwCancel" class="ghost">취소</button></div>
     </form>
   </dialog>
-  <script src="config.js?v=1.3.19"></script>
-  <script src="app.js?v=1.3.19" type="module"></script>
+  <script src="config.js?v=1.3.20"></script>
+  <script src="app.js?v=1.3.20" type="module"></script>
 </body>
 </html>
