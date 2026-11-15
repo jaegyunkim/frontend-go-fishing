@@ -1,5 +1,5 @@
 // 어디물어 관리자 화면: 계정·세션·사용량·대화 로그·로그인/작업 기록. 관리자 계정으로 로그인한 탭에서만 동작.
-import { state, api, health, startTimer, syncExpiry, setOnAuthLost, logout } from './auth.js?v=1.3.14';
+import { state, api, health, startTimer, syncExpiry, setOnAuthLost, logout } from './auth.js?v=1.3.15';
 const $ = s => document.querySelector(s);
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const dt = v => v ? new Date(v).toLocaleString('ko-KR', { timeZone: 'Asia/Seoul', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }) : '-';
@@ -72,6 +72,8 @@ async function renderLlm() {
   pick();
 }
 const noteTop = (t, bad) => note(t, bad);
+const ROLE_LABEL = { admin: '관리자', tester: '테스터', user: '일반' };
+const roleText = r => ROLE_LABEL[r] ?? r;
 const views = {
  async requests(){
  const {requests}=await api('/v1/admin/registrations');
@@ -92,14 +94,14 @@ const views = {
     view.innerHTML = `<div class="tool"><h2>사용자 ${users.length}명</h2><div class="acts"><button id="add">+ 계정 발급</button></div></div>
     <div class="scroll"><table class="tbl"><tr><th>아이디·이름</th><th>역할·상태</th><th class="num">오늘 질문</th><th class="num">오늘 토큰</th><th class="num">로그인</th><th>세션 한도</th><th>기기·최근 로그인</th><th>작업</th></tr>
     ${users.map(u => `<tr><td><b>${esc(u.loginId)}</b><br><span class="sub">${esc(u.displayName)}${u.memo ? ' · ' + esc(u.memo) : ''}</span></td>
-      <td>${u.role === 'admin' ? '관리자' : '테스터'}<br><span class="pill ${u.status === 'active' ? 'ok' : 'bad'}">${u.status === 'active' ? '사용' : '중지'}</span>${u.lockedUntil && new Date(u.lockedUntil) > new Date() ? ' <span class="pill warn">잠김</span>' : ''}${u.activeSessions ? ' <span class="pill ok">접속 중</span>' : ''}${u.mustChangePassword ? ' <span class="pill warn">비번 변경 대기</span>' : ''}</td>
+      <td>${roleText(u.role)} <span class="sub">${u.role === 'user' ? '· 1기기' : '· 동시 접속 허용'}</span><br><span class="pill ${u.status === 'active' ? 'ok' : 'bad'}">${u.status === 'active' ? '사용' : '중지'}</span>${u.lockedUntil && new Date(u.lockedUntil) > new Date() ? ' <span class="pill warn">잠김</span>' : ''}${u.activeSessions ? ' <span class="pill ok">접속 중</span>' : ''}${u.mustChangePassword ? ' <span class="pill warn">비번 변경 대기</span>' : ''}</td>
       <td class="num">${n(u.today.messages)}/${n(u.limits.dailyMessages)}${u.today.blocked ? `<br><span class="sub">거절 ${u.today.blocked}</span>` : ''}</td><td class="num">${n(u.today.tokens)}/${n(u.limits.dailyTokens)}</td>
-      <td class="num">${n(u.today.sessions)}<br><span class="sub">${u.role === "admin" ? "관리자 제한 면제" : "24시간 1회"}</span></td><td>${u.limits.sessionMinutes}분 · 질문 ${u.limits.sessionMessages}</td><td>${esc(u.device?.platform)}<br>${esc(u.device?.browser)}<br>${dt(u.lastLoginAt)}${u.nextLoginAt?`<br><span class="sub">재이용 ${dt(u.nextLoginAt)}</span>`:""}</td>
-      <td><div class="acts" data-id="${u.id}" data-login="${esc(u.loginId)}"><button data-a="limits">한도</button><button data-a="reset">비번 초기화</button>${u.lockedUntil ? '<button data-a="unlock">잠금 해제</button>' : ''}
+      <td class="num">${n(u.today.sessions)}<br><span class="sub">${u.role === "user" ? "24시간 1회" : "제한 없음"}</span></td><td>${u.limits.sessionMinutes}분 · 질문 ${u.limits.sessionMessages}</td><td>${esc(u.device?.platform)}<br>${esc(u.device?.browser)}<br>${dt(u.lastLoginAt)}${u.nextLoginAt?`<br><span class="sub">재이용 ${dt(u.nextLoginAt)}</span>`:""}</td>
+      <td><div class="acts" data-id="${u.id}" data-login="${esc(u.loginId)}"><button data-a="limits">한도</button><button data-a="role">권한</button><button data-a="reset">비번 초기화</button>${u.lockedUntil ? '<button data-a="unlock">잠금 해제</button>' : ''}
         <button data-a="toggle" class="${u.status === 'active' ? 'danger' : ''}">${u.status === 'active' ? '중지' : '재개'}</button><button data-a="chats">대화</button></div></td></tr>`).join('')}</table></div>`;
     $('#add').onclick = async () => {
-      const r = await dialog(`<h2>계정 발급</h2><label>이메일 아이디(관리자는 기존 아이디 가능)<input name="loginId" required maxlength="254"></label><label>이름<input name="displayName" required maxlength="40"></label>
-        <label>역할<select name="role"><option value="tester">테스터</option><option value="admin">관리자</option></select></label><label>메모<input name="memo" maxlength="100"></label>
+      const r = await dialog(`<h2>계정 발급</h2><label>아이디 (일반은 이메일, 관리자·테스터는 영문 아이디도 가능)<input name="loginId" required maxlength="254"></label><label>이름<input name="displayName" required maxlength="40"></label>
+        <label>역할<select name="role"><option value="user">일반 (한 기기만)</option><option value="tester">테스터 (동시 접속 허용)</option><option value="admin">관리자 (동시 접속 허용)</option></select></label><label>메모<input name="memo" maxlength="100"></label>
         <p class="hint">한도 기본값: 일반 사용자: 세션 10분 고정·24시간에 1회 로그인, 세션당 질문 30·하루 질문 5·토큰 1,000. 발급 후 '한도'에서 바꿀 수 있습니다.</p>`,
         fd => api('/v1/admin/users', { method: 'POST', body: JSON.stringify(Object.fromEntries(fd)) }).catch(e => ({ error: e.message })));
       if (r?.error) return note(r.error, true);
@@ -118,6 +120,12 @@ const views = {
             <label>하루 AI 토큰<input name="dailyTokens" type="number" min="0" value="${L.dailyTokens}"></label></div><p class="hint">질문·토큰 한도는 저장 즉시 적용됩니다. 관리자 계정의 세션 시간은 이용 중인 세션에도 바로 반영됩니다(로그인 시각 기준). 일반 사용자는 10분·24시간 1회 고정입니다.</p>`,
           fd => patch(Object.fromEntries([...fd].map(([k, v]) => [k, Number(v)]))));
           if (r) { note(`${login} 한도를 저장했습니다 · 즉시 적용${r.adjustedSessions ? ` (이용 중인 세션 ${r.adjustedSessions}개 시간 변경)` : ''}`); if (String(id) === String(state.auth?.user?.id)) { const me = await api('/v1/auth/me'); syncExpiry(me.remainingSec); $('#who').textContent = `${me.user.displayName}(${me.user.loginId}) · 세션 ${me.limits.sessionMinutes}분`; } }
+        } else if (b.dataset.a === 'role') {
+          const r = await dialog(`<h2>${esc(login)} 권한</h2><label>역할<select name="role">${['user', 'tester', 'admin'].map(x => `<option value="${x}"${x === u.role ? ' selected' : ''}>${roleText(x)}</option>`).join('')}</select></label>
+            <p class="hint">일반: 한 기기에서만 로그인 · 테스터·관리자: 여러 기기 동시 접속 허용 · 관리자만 이 관리자 페이지를 쓸 수 있어요.<br>권한을 바꾸면 이 계정의 이용 중인 세션은 종료되고, 다시 로그인할 때 새 권한이 적용돼요.</p>`,
+            fd => patch({ role: fd.get('role') }).catch(e => ({ error: e.message })));
+          if (r?.error) return note(r.error, true);
+          if (r) note(`${login} 권한: ${roleText(r.user.role)}`);
         } else if (b.dataset.a === 'reset') {
           if (!confirm(`${login} 비밀번호를 초기화할까요? 접속 중인 세션도 종료됩니다.`)) return;
           const r = await patch({ resetPassword: true, unlock: true }); await showSecret(`${login} 비밀번호를 초기화했습니다`, r.tempPassword);

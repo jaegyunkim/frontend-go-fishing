@@ -7,7 +7,7 @@ const GATE = { PASS: '안전 양호', PASS_WITH_CAUTION: '조건부 주의', REV
 const badge = g => g ? `<span class="badge b-${esc(g)}">${esc(GATE[g] ?? g)}</span>` : '';
 
 // ---- 설정·인증(auth.js) ----
-import { state, setApi, api, health, login, logout, startTimer, syncExpiry, saveAuth, setOnAuthLost, setOnMustChange, loadAuthImage, remaining, sessionMinutes } from './auth.js?v=1.3.14';
+import { state, setApi, api, health, login, logout, startTimer, syncExpiry, saveAuth, setOnAuthLost, setOnMustChange, loadAuthImage, remaining, sessionMinutes } from './auth.js?v=1.3.15';
 let SID = localStorage.getItem('gofishing.session') || (crypto.randomUUID?.() ?? String(Date.now()) + Math.random().toString(16).slice(2));
 localStorage.setItem('gofishing.session', SID);
 let slots = {}, lastBriefing = null, timer = null, usageText = '';
@@ -220,7 +220,7 @@ async function openSettings() {
   const a = state.auth;
   $('#accountBox').hidden = !(authed() && a);
   $('#resetSession').hidden = authed();
-  if (a) { $('#accountInfo').textContent = `${a.user.displayName}(${a.user.loginId}) · ${a.user.role === 'admin' ? '관리자' : '테스터'} · 남은 시간 ${Math.floor(remaining() / 60)}분 ${remaining() % 60}초`; $('#adminLink').hidden = a.user.role !== 'admin'; }
+  if (a) { $('#accountInfo').textContent = `${a.user.displayName}(${a.user.loginId}) · ${({ admin: '관리자', tester: '테스터', user: '일반' })[a.user.role] ?? a.user.role} · 남은 시간 ${Math.floor(remaining() / 60)}분 ${remaining() % 60}초`; $('#adminLink').hidden = a.user.role !== 'admin'; }
   $('#settings').showModal();
 }
 $('#btnSettings').onclick = openSettings;
