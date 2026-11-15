@@ -7,7 +7,7 @@ const GATE = { PASS: '안전 양호', PASS_WITH_CAUTION: '조건부 주의', REV
 const badge = g => g ? `<span class="badge b-${esc(g)}">${esc(GATE[g] ?? g)}</span>` : '';
 
 // ---- 설정·인증(auth.js) ----
-import { state, setApi, api, health, login, logout, startTimer, syncExpiry, saveAuth, setOnAuthLost, setOnMustChange, loadAuthImage, remaining, sessionMinutes } from './auth.js?v=1.7.0';
+import { state, setApi, api, health, login, logout, startTimer, syncExpiry, saveAuth, setOnAuthLost, setOnMustChange, loadAuthImage, remaining, sessionMinutes } from './auth.js?v=1.7.1';
 let SID = localStorage.getItem('gofishing.session') || (crypto.randomUUID?.() ?? String(Date.now()) + Math.random().toString(16).slice(2));
 localStorage.setItem('gofishing.session', SID);
 let slots = {}, lastBriefing = null, timer = null, usageText = '';
@@ -28,7 +28,7 @@ function showTab(name) {
   document.querySelectorAll('.tabs button').forEach(b => b.classList.toggle('active', b.dataset.tab === name));
   if (name === 'points') loadPoints();
 }
-document.querySelectorAll('.tabs button').forEach(b => b.addEventListener('click', () => showTab(b.dataset.tab)));
+document.querySelectorAll('.tabs button[data-tab]').forEach(b => b.addEventListener('click', () => showTab(b.dataset.tab)));
 
 // ---- 대화 ----
 const chat = $('#chat');
@@ -359,11 +359,45 @@ async function openSettings() {
   $('#settings').showModal();
 }
 $('#btnSettings').onclick = openSettings;
-$('#btnLogout').onclick = () => { $('#settings').close(); endSession('로그아웃했습니다.', true); };
+$('#btnLogout').onclick = () => {
+  const role = state.auth?.user?.role; $('#settings').close(); endSession('로그아웃했습니다.', true);
+  // 일반 사용자는 로그인한 시각부터 24시간 뒤에 다시 이용할 수 있어 내일 방문을 안내, 관리자·테스터는 바로 다시 로그인 가능
+  showNotice('로그아웃되었습니다', role === 'user'
+    ? '오늘도 어디물어를 이용해 주셔서 감사합니다.\n내일 다시 찾아 주시면 바다 소식 전해 드릴게요. 🎣'
+    : '이용해 주셔서 감사합니다.\n필요하실 때 언제든 다시 로그인해 주세요.');
+};
 $('#btnPw').onclick = () => { $('#settings').close(); openPw(false); };
 $('#resetSession').onclick = () => { SID = crypto.randomUUID?.() ?? String(Date.now()); localStorage.setItem('gofishing.session', SID); chat.innerHTML = ''; slots = {}; renderChips(); $('#settings').close(); welcome(); };
 
 // ---- 오늘의 추천 말풍선: 내가 찾아본 포인트 중 한 곳을 오늘 예보로 짧게(무작위). 음성은 버튼을 눌렀을 때만 재생. ----
+// ---- 하단 '의견' 탭: 별점(선택)+의견 500자 ----
+let opinionRating = null;
+function setOpinionRating(v) {
+  opinionRating = opinionRating === v ? null : v;
+  document.querySelectorAll('.op-star').forEach(b => { const on = opinionRating && Number(b.dataset.v) <= opinionRating; b.classList.toggle('on', !!on); b.setAttribute('aria-checked', String(Number(b.dataset.v) === opinionRating)); });
+}
+function openOpinion() {
+  if (!state.auth) return;
+  $('#opinionMsg').textContent = ''; $('#opinionMsg').className = 'login-msg'; $('#opinionSend').disabled = false;
+  $('#opinionDialog').showModal(); setTimeout(() => $('#opinionText').focus(), 50);
+}
+$('#btnOpinion').onclick = openOpinion;
+document.querySelectorAll('.op-star').forEach(b => b.onclick = () => setOpinionRating(Number(b.dataset.v)));
+$('#opinionText').addEventListener('input', () => { $('#opinionCount').textContent = `${$('#opinionText').value.length}/500`; });
+$('#opinionClose').onclick = $('#opinionCancel').onclick = () => $('#opinionDialog').close();
+$('#opinionForm').addEventListener('submit', async e => {
+  e.preventDefault();
+  const text = $('#opinionText').value.trim(), m = $('#opinionMsg'), btn = $('#opinionSend');
+  if (!text) { m.textContent = '의견을 한 줄이라도 적어 주세요.'; return; }
+  btn.disabled = true; m.textContent = '';
+  try {
+    await api('/v1/opinions', { method: 'POST', body: JSON.stringify({ rating: opinionRating, text }) });
+    $('#opinionText').value = ''; $('#opinionCount').textContent = '0/500'; opinionRating = 1; setOpinionRating(1);
+    $('#opinionDialog').close(); toast('소중한 의견 감사합니다! 꼼꼼히 읽고 더 나은 어디물어로 보답할게요. 🙏');
+  } catch (err) { m.textContent = err.message || '의견을 보내지 못했어요. 잠시 뒤 다시 시도해 주세요.'; }
+  finally { btn.disabled = false; }
+});
+
 // ---- 출발지 주변 포인트 추천(하루 한 번 대화 말풍선) ----
 const GATE_TEXT = { PASS: '출조 무난', PASS_WITH_CAUTION: '주의', REVIEW_REQUIRED: '판단 보류', HARD_BLOCK: '쉬어 가세요' };
 const nearbyKey = () => 'gofishing.nearbyAt.' + (state.auth?.user?.id ?? '');
@@ -507,8 +541,11 @@ function endSession(msg, ok = false, reason = 'logout') {
 }
 function showSessionEnd(min) {
   // 이용 시간 만료 안내창: 로그아웃은 이미 끝났고, 확인을 누르면 로그인 화면에 그대로 머문다
+  showNotice('오늘 이용 시간이 끝났습니다', `오늘 하루 이용 시간은 로그인 1회당 ${min}분입니다.\n이용해 주셔서 감사합니다. 내일 다시 찾아 주세요.`);
+}
+function showNotice(title, msg) {
   const d = $('#sessionEndDialog'); if (!d || d.open) return;
-  $('#sessionEndMsg').textContent = `오늘 하루 이용 시간은 로그인 1회당 ${min}분입니다.\n이용해 주셔서 감사합니다. 내일 다시 찾아 주세요.`;
+  $('#sessionEndTitle').textContent = title; $('#sessionEndMsg').textContent = msg;
   try { d.showModal(); } catch { /* 안내창을 못 띄워도 로그인 화면 문구로 안내됨 */ }
 }
 function toast(text) { const t = $('#toast'); t.textContent = text; t.hidden = !text; if (text) setTimeout(() => { if (t.textContent === text) t.hidden = true; }, 15000); }

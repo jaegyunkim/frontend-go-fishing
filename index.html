@@ -9,7 +9,7 @@
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" href="assets/icon.svg" type="image/svg+xml">
   <link rel="apple-touch-icon" href="assets/icon-192.png">
-  <link rel="stylesheet" href="style.css?v=1.7.0">
+  <link rel="stylesheet" href="style.css?v=1.7.1">
 </head>
 <body>
   <!-- 로그인 화면 -->
@@ -79,6 +79,7 @@
       <button data-tab="chat" class="active"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a8 8 0 0 1-11.6 7.1L4 20.5l1.4-4.9A8 8 0 1 1 21 12z"/></svg><span>대화</span></button>
       <button data-tab="brief"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M15.5 8.5l-2 5-5 2 2-5z"/></svg><span>브리핑</span></button>
       <button data-tab="points"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 21c-4.5-4.8-7-8.6-7-12a7 7 0 0 1 14 0c0 3.4-2.5 7.2-7 12z"/><circle cx="12" cy="9" r="2.5"/></svg><span>포인트</span></button>
+      <button type="button" id="btnOpinion" class="tab-opinion"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></svg><span>의견</span></button>
     </nav>
   </div>
 
@@ -94,6 +95,21 @@
       <h2 id="sessionEndTitle">오늘 이용 시간이 끝났습니다</h2>
       <p id="sessionEndMsg" style="white-space:pre-line"></p>
       <button type="submit" autofocus>확인</button>
+    </form>
+  </dialog>
+  <dialog id="opinionDialog" class="opinion-dialog" aria-labelledby="opinionTitle">
+    <form id="opinionForm" class="settings" autocomplete="off">
+      <div class="settings-header"><h2 id="opinionTitle">의견 보내기</h2><button type="button" id="opinionClose" class="ghost" aria-label="의견 보내기 닫기">닫기</button></div>
+      <p class="hint">어디물어를 써 보시니 어떠셨나요? 좋았던 점, 불편했던 점, 바라는 점을 편하게 남겨 주세요. 더 좋은 출조 길잡이가 되도록 꼼꼼히 읽고 반영할게요.</p>
+      <div class="op-stars" role="radiogroup" aria-label="만족도(선택)">
+        <span class="op-stars-label">만족도 <small>(선택)</small></span>
+        <div class="op-star-row"><button type="button" class="op-star" data-v="1" role="radio" aria-checked="false" aria-label="1점">★</button><button type="button" class="op-star" data-v="2" role="radio" aria-checked="false" aria-label="2점">★</button><button type="button" class="op-star" data-v="3" role="radio" aria-checked="false" aria-label="3점">★</button><button type="button" class="op-star" data-v="4" role="radio" aria-checked="false" aria-label="4점">★</button><button type="button" class="op-star" data-v="5" role="radio" aria-checked="false" aria-label="5점">★</button></div>
+      </div>
+      <label for="opinionText">의견</label>
+      <textarea id="opinionText" maxlength="500" rows="5" placeholder="예) 출발지 주변 추천이 유용했어요. 물때 정보도 함께 보여 주면 좋겠어요."></textarea>
+      <div class="op-meta"><span id="opinionCount">0/500</span><span>비밀번호·집 주소 같은 개인정보는 적지 말아 주세요</span></div>
+      <p id="opinionMsg" class="login-msg" role="alert"></p>
+      <div class="row"><button type="submit" id="opinionSend">보내기</button><button type="button" id="opinionCancel" class="ghost">취소</button></div>
     </form>
   </dialog>
   <dialog id="originDialog" class="origin-dialog" aria-labelledby="originDialogTitle">
@@ -133,7 +149,7 @@
       <div class="row"><button type="submit">변경</button><button type="button" id="pwCancel" class="ghost">취소</button></div>
     </form>
   </dialog>
-  <script src="config.js?v=1.7.0"></script><script src="telemetry.js?v=1.7.0"></script>
-  <script src="app.js?v=1.7.0" type="module"></script>
+  <script src="config.js?v=1.7.1"></script><script src="telemetry.js?v=1.7.1"></script>
+  <script src="app.js?v=1.7.1" type="module"></script>
 </body>
 </html>

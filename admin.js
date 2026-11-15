@@ -1,6 +1,6 @@
-import { approvalMailto } from './approval-email.js?v=1.7.0';
+import { approvalMailto } from './approval-email.js?v=1.7.1';
 // 어디물어 관리자 화면: 계정·세션·사용량·대화 로그·로그인/작업 기록. 관리자 계정으로 로그인한 탭에서만 동작.
-import { state, api, health, startTimer, syncExpiry, setOnAuthLost, logout } from './auth.js?v=1.7.0';
+import { state, api, health, startTimer, syncExpiry, setOnAuthLost, logout } from './auth.js?v=1.7.1';
 const $ = s => document.querySelector(s);
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const dt = v => v ? new Date(v).toLocaleString('ko-KR', { timeZone: 'Asia/Seoul', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }) : '-';
@@ -183,6 +183,13 @@ const views = {
     const { logins } = await api('/v1/admin/logins');
     view.innerHTML = `<div class="tool"><h2>로그인 기록(최근 200)</h2></div><div class="scroll"><table class="tbl"><tr><th>시각</th><th>아이디</th><th>결과</th><th>기기</th></tr>
     ${logins.map(l => `<tr><td>${dt(l.at)}</td><td>${esc(l.login_id)}</td><td><span class="pill ${l.success ? 'ok' : 'bad'}">${l.success ? '성공' : '실패'}</span> <span class="sub">${esc(l.reason ?? '')}</span></td><td class="sub">${esc((l.user_agent ?? '').slice(0, 60))}</td></tr>`).join('')}</table></div>`;
+  },
+  async opinions() {
+    const { opinions } = await api('/v1/admin/opinions');
+    const avg = opinions.filter(o => o.rating).map(o => o.rating);
+    view.innerHTML = `<div class="tool"><h2>사용자 의견(최근 200)</h2></div><p class="sub">하단 '의견' 탭으로 받은 의견입니다.${avg.length ? ` 평균 만족도 ${(avg.reduce((a, b) => a + b, 0) / avg.length).toFixed(1)}점(${avg.length}건)` : ''}</p>
+    ${opinions.length ? `<div class="scroll"><table class="tbl"><tr><th>시각</th><th>아이디</th><th>만족도</th><th>의견</th></tr>
+    ${opinions.map(o => `<tr><td>${dt(o.createdAt)}</td><td>${esc(o.loginId ?? '')}</td><td>${o.rating ? '★'.repeat(o.rating) + '☆'.repeat(5 - o.rating) : '<span class="sub">-</span>'}</td><td style="white-space:pre-wrap">${esc(o.text)}</td></tr>`).join('')}</table></div>` : '<div class="card"><p class="sub">아직 받은 의견이 없어요.</p></div>'}`;
   },
   async actions() {
     const { actions } = await api('/v1/admin/actions');
