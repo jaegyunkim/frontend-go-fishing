@@ -203,3 +203,64 @@ dialog{border-radius:20px;border-color:var(--line)}
 .login-card input::placeholder{color:#55657f}
 #registerSubmit{min-height:50px;border:0;border-radius:14px;background:var(--grad);font-size:16px}#registerSubmit:hover{background:var(--grad);filter:brightness(1.08)}
 .login-card a.back-to-login,.login-card a.back-to-login:visited{border-color:var(--line);background:transparent;border-radius:14px}
+
+/* ==== 배경 테마: 모닝 라군 v1.5.0 (Canva 후보 C) ==== */
+:root{--ink:#0b2534;--sub:#4f6b7a;--line:#cde6ef;--acc:#0891b2;--accInk:#0e7490;--accSoft:#e3f6fb;--accLine:#9ad8e8;--panelSoft:#f3fafd;--bgtop:#ddf4fb;--bgbot:#f7fcfe;--bg2:#f7fcfe;--bgfill:linear-gradient(180deg,#ddf4fb 0%,#eef9fd 45%,#f7fcfe 100%);--grad:linear-gradient(135deg,#06b6d4,#2563eb);--bg:#f7fcfe;--panel2:#f3fafd}
+:root{--panel:#fff;--text:var(--ink);--dim:var(--sub);--ok:#059669;--warn:#b45309;--info:#0284c7;--bad:#e11d48;--blue:var(--acc);color-scheme:light}
+html,body{background:var(--bg2);color:var(--ink)}
+.app{background:var(--bgfill);border-color:var(--line)}
+.top{background:color-mix(in srgb,var(--bgtop) 85%,transparent)}
+.brand p,.status{color:var(--sub)}.status.ok{color:var(--ok)}
+.icon-btn{border-color:var(--line);color:var(--ink);background:#fff}
+.timer{background:var(--accSoft);border-color:var(--accLine);color:var(--accInk)}
+main{border-top-color:var(--line)}
+.chip{background:#fff;border-color:var(--line);color:var(--sub)}
+.msg.bot{background:#fff;border-color:var(--line);color:var(--ink);box-shadow:0 1px 2px rgba(15,40,60,.05)}
+.msg.user{color:#fff}.msg b{color:var(--accInk)}.msg.user b{color:#fff}
+.card,.login-card,dialog{background:#fff;border-color:var(--line);color:var(--ink);box-shadow:0 6px 24px rgba(15,60,90,.08)}
+.card .sub,.prow .d,.metric .l,.reason,.src,.disc,.typing{color:var(--sub)}
+.top3 .item,.prow,.metric{background:var(--panelSoft)}.prow .c{color:var(--ink)}
+.grade{background:var(--panelSoft);border-color:var(--line)}
+.sec h4{color:var(--accInk)}
+.b-PASS{color:#047857;border-color:#a7f3d0;background:#ecfdf5}.b-PASS_WITH_CAUTION{color:#b45309;border-color:#fde68a;background:#fffbeb}
+.b-REVIEW_REQUIRED{color:#0369a1;border-color:#bae6fd;background:#f0f9ff}.b-HARD_BLOCK{color:#be123c;border-color:#fecdd3;background:#fff1f2}
+.block{background:#fff1f2;border-color:#fecdd3}
+.actions button{background:#fff;border-color:var(--accLine);color:var(--accInk)}
+.bar{background:var(--panelSoft)}
+ul.list li{border-bottom-color:var(--line)}
+table.routes th,table.routes td{border-bottom-color:var(--line)}
+.links a{background:#ecfdf5;border-color:#a7f3d0;color:#047857}
+.composer{background:color-mix(in srgb,var(--bgbot) 92%,transparent);border-top-color:var(--line)}
+.composer input,.login-card input,.settings input,.origin-form-row input{background:#fff;border-color:var(--line);color:var(--ink)}
+.composer input::placeholder,.login-card input::placeholder{color:#94a3b8}
+.tabs{background:#fff;border-top-color:var(--line)}.tabs button{color:#94a3b8}.tabs button.active{color:var(--accInk)}
+.origin-chip{background:#fff;border-color:var(--line);color:var(--sub)}
+.origin-chip.active{background:var(--accSoft);border-color:var(--acc);color:var(--accInk)}
+.origin-chip.add{color:var(--accInk);background:transparent}
+.origin-tip,.origin-tip::before{background:#f0f9ff;border-color:#7dd3fc;color:#0c4a6e}
+.origin-tip-actions button{background:#fff;border-color:var(--line);color:var(--ink)}.origin-tip-actions .primary{background:var(--acc);border-color:var(--acc);color:#fff}
+.today-tip,.today-tip::before{background:#ecfdf5;border-color:#6ee7b7;color:#064e3b}
+.today-tip-badge,.today-tip-src{color:#047857}.today-tip-x{color:#047857}
+.today-tip-actions button{background:#fff;border-color:#6ee7b7;color:#065f46}
+.msg.suggest{background:#f0f9ff;border-color:#bae6fd}
+.msg.web-ref{background:#f8fafc;border-color:var(--line)}.web-ref-src a{color:#1d4ed8}
+.toast{background:#fffbeb;border-color:#fde68a;color:#92400e}
+.ai-lock{background:#fffbeb;border-color:#fcd34d;color:#78350f}.ai-lock h2{color:#92400e}
+.ai-lock-btn{background:#fff;border-color:var(--line);color:var(--ink)}.ai-lock-btn.primary{background:var(--acc);border-color:var(--acc);color:#fff}
+.login-view{background:var(--bgfill)}
+.login-notes-wrap{border-color:var(--line)}.login-notes-wrap summary{color:var(--sub)}
+.login-notes{background:var(--panelSoft);color:var(--sub)}
+.link-btn{color:var(--accInk)}
+.login-card label{color:var(--sub)}
+.login-card label.consent-row{background:var(--panelSoft);border-color:var(--line);color:var(--ink)}
+.login-card a.back-to-login,.login-card a.back-to-login:visited{background:#fff;border-color:var(--line);color:var(--ink)}
+.registration-result{background:var(--panelSoft);border-color:var(--line);color:var(--ink)}
+.registration-dialog{background:#fff;border-color:var(--line);color:var(--ink)}.registration-dialog .hint{color:var(--sub)}
+.settings p{color:var(--ink)}.settings .ghost,.settings a.btn{background:var(--panelSoft);border-color:var(--line);color:var(--ink)}
+.settings button{color:#fff}.settings .ghost{color:var(--ink)}
+.origin-item,.postcode-head{background:var(--panelSoft);border-color:var(--line);color:var(--ink)}
+.origin-item-acts button,.postcode-head button,.origin-dialog .settings-header button,#originDialogClose{background:#fff;border-color:var(--line);color:var(--ink)}
+.postcode-open{background:var(--accSoft);border-color:var(--accLine);color:var(--accInk)}
+dialog::backdrop{background:rgba(15,40,60,.35)}
+code{background:var(--panelSoft)}
+.login-card .consent-row strong{color:#0e7490}
