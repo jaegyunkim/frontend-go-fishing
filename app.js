@@ -7,7 +7,7 @@ const GATE = { PASS: '안전 양호', PASS_WITH_CAUTION: '조건부 주의', REV
 const badge = g => g ? `<span class="badge b-${esc(g)}">${esc(GATE[g] ?? g)}</span>` : '';
 
 // ---- 설정·인증(auth.js) ----
-import { state, setApi, api, health, login, logout, startTimer, syncExpiry, saveAuth, setOnAuthLost, setOnMustChange, loadAuthImage, remaining, sessionMinutes } from './auth.js?v=1.3.18';
+import { state, setApi, api, health, login, logout, startTimer, syncExpiry, saveAuth, setOnAuthLost, setOnMustChange, loadAuthImage, remaining, sessionMinutes } from './auth.js?v=1.3.19';
 let SID = localStorage.getItem('gofishing.session') || (crypto.randomUUID?.() ?? String(Date.now()) + Math.random().toString(16).slice(2));
 localStorage.setItem('gofishing.session', SID);
 let slots = {}, lastBriefing = null, timer = null, usageText = '';
@@ -54,7 +54,7 @@ function renderMessage(m) {
     case 'text': bubble('bot', md(m.text)); break;
     case 'actions': {
       const d = node('', 'actions');
-      for (const b of m.buttons) { const el = document.createElement('button'); el.textContent = b.label; el.onclick = () => b.message.endsWith(' ') ? ($('#msg').value = b.message, $('#msg').focus()) : send(b.message, b.pointId ? { pointId: b.pointId, date: b.date } : {}); d.appendChild(el); }
+      for (const b of m.buttons) { const el = document.createElement('button'); el.textContent = b.label; el.onclick = () => (b.message === '출발지는 ' && authed() && state.auth) ? openOriginDialog() : b.message.endsWith(' ') ? ($('#msg').value = b.message, $('#msg').focus()) : send(b.message, b.pointId ? { pointId: b.pointId, date: b.date } : {}); d.appendChild(el); }
       break;
     }
     case 'points_table': {
@@ -125,6 +125,80 @@ function clearAiLock() {
 new MutationObserver(() => { if (aiLocked) $('#appView').querySelectorAll('button:not([disabled]), input:not([disabled])').forEach(el => { if (!el.closest('#aiLock')) el.disabled = true; }); }).observe(document.getElementById('appView'), { childList: true, subtree: true });
 $('#aiLockLogout').onclick = () => { clearAiLock(); endSession('로그아웃했습니다.', true); };
 
+// ---- 출발지(최대 5곳): 상단 스와이프 탭으로 고르고, 없으면 말풍선으로 등록을 권한다 ----
+let origins = [], originMax = 5, originTipTimer = null, originNudgeTimer = null;
+const activeOrigin = () => origins.find(o => o.active) ?? null;
+const TIP_FIRST = '어디서 출발하세요? 🚗\n자주 출발하는 동네를 등록해 두시면 가는 길·이동 시간·통행료까지 바로 알려 드릴게요. 최대 5곳까지 등록할 수 있어요.';
+const TIP_MORE = '출발지는 5곳까지 등록해 둘 수 있어요. 위에서 눌러 바로 바꿔 보세요 🙂';
+function renderOrigins() {
+  const bar = $('#originBar'), box = $('#originChips');
+  bar.hidden = !(authed() && state.auth);
+  if (bar.hidden) return;
+  box.innerHTML = '';
+  for (const o of origins) {
+    const b = document.createElement('button');
+    b.type = 'button'; b.className = 'origin-chip' + (o.active ? ' active' : ''); b.setAttribute('role', 'tab'); b.setAttribute('aria-selected', String(o.active)); b.title = o.coarse;
+    b.innerHTML = '<span aria-hidden="true">📍</span>' + esc(o.label);
+    b.onclick = () => o.active ? openOriginDialog() : chooseOrigin(o);
+    box.appendChild(b);
+  }
+  const add = document.createElement('button');
+  add.type = 'button'; add.className = 'origin-chip add';
+  add.textContent = origins.length ? (origins.length < originMax ? '＋ 추가·편집' : '편집') : '＋ 출발지 등록';
+  add.onclick = openOriginDialog; box.appendChild(add);
+  box.querySelector('.active')?.scrollIntoView({ inline: 'nearest', block: 'nearest' });
+}
+async function loadOrigins() {
+  if (!authed() || !state.auth) return;
+  try { const r = await api('/v1/origins', { timeoutMs: 10000 }); origins = r.origins; originMax = r.max ?? 5; } catch { origins = []; }
+  renderOrigins(); nudgeOrigins();
+}
+function showOriginTip(text) {
+  if (aiLocked) return;
+  $('#originTipText').textContent = text; $('#originTip').hidden = false;
+  clearTimeout(originTipTimer); originTipTimer = setTimeout(hideOriginTip, 15000);
+}
+function hideOriginTip() { $('#originTip').hidden = true; clearTimeout(originTipTimer); }
+/** 가끔씩 안내: 출발지가 없으면 로그인할 때마다 + 3분 뒤 한 번 더, 1~4곳이면 사흘에 한 번 */
+function nudgeOrigins() {
+  clearTimeout(originNudgeTimer);
+  if (!origins.length) {
+    showOriginTip(TIP_FIRST);
+    originNudgeTimer = setTimeout(() => { if (state.auth && !origins.length) showOriginTip(TIP_FIRST); }, 180000);
+  } else if (origins.length < originMax) {
+    const last = Number(localStorage.getItem('gofishing.originTipAt') || 0);
+    if (Date.now() - last > 3 * 86400000) { localStorage.setItem('gofishing.originTipAt', String(Date.now())); showOriginTip(TIP_MORE); }
+  }
+}
+async function chooseOrigin(o) {
+  try { const r = await api(`/v1/origins/${o.id}/select`, { method: 'POST', body: '{}' }); origins = r.origins; renderOrigins(); toast(`출발지를 ${o.label}(으)로 바꿨어요.`); }
+  catch (e) { toast(e.message); }
+}
+function renderOriginList() {
+  $('#originCount').textContent = `${origins.length}/${originMax}`;
+  const full = origins.length >= originMax;
+  $('#originInput').disabled = full; $('#originAddBtn').disabled = full;
+  $('#originInput').placeholder = full ? '5곳을 모두 등록했어요. 하나를 지우면 추가할 수 있어요' : '예) 양산시 물금읍, 부산 남천동';
+  $('#originList').innerHTML = origins.length ? origins.map(o => `<li class="origin-item${o.active ? ' active' : ''}"><div class="origin-item-text"><b>${esc(o.label)}</b>${o.active ? ' <span class="origin-badge">사용 중</span>' : ''}<span>${esc(o.coarse)}</span></div><div class="origin-item-acts">${o.active ? '' : `<button type="button" data-use="${o.id}">사용</button>`}<button type="button" class="danger" data-del="${o.id}" aria-label="${esc(o.label)} 삭제">삭제</button></div></li>`).join('') : '<li class="origin-empty">아직 등록한 출발지가 없어요.</li>';
+  $('#originList').querySelectorAll('[data-use]').forEach(b => b.onclick = async () => { const o = origins.find(x => String(x.id) === b.dataset.use); await chooseOrigin(o); renderOriginList(); });
+  $('#originList').querySelectorAll('[data-del]').forEach(b => b.onclick = async () => {
+    const o = origins.find(x => String(x.id) === b.dataset.del); if (!confirm(`'${o.label}' 출발지를 지울까요?`)) return;
+    try { const r = await api(`/v1/origins/${o.id}/delete`, { method: 'POST', body: '{}' }); origins = r.origins; renderOrigins(); renderOriginList(); } catch (e) { $('#originFormMsg').textContent = e.message; }
+  });
+}
+function openOriginDialog() { hideOriginTip(); $('#originFormMsg').textContent = ''; renderOriginList(); $('#originDialog').showModal(); if (origins.length < originMax) setTimeout(() => $('#originInput').focus(), 50); }
+$('#originDialogClose').onclick = () => $('#originDialog').close();
+$('#originTipAdd').onclick = openOriginDialog;
+$('#originTipClose').onclick = hideOriginTip;
+$('#originForm').addEventListener('submit', async e => {
+  e.preventDefault(); const input = $('#originInput'), btn = $('#originAddBtn'), msg = $('#originFormMsg');
+  const text = input.value.trim(); if (!text) { msg.textContent = '동네 이름을 적어 주세요.'; return; }
+  btn.disabled = true; btn.textContent = '찾는 중…'; msg.textContent = '';
+  try { const r = await api('/v1/origins', { method: 'POST', body: JSON.stringify({ text }) }); origins = r.origins; input.value = ''; renderOrigins(); renderOriginList(); toast(`'${r.origin.label}'을(를) 출발지로 등록했어요.`); }
+  catch (err) { msg.textContent = err.message; }
+  finally { btn.textContent = '추가'; renderOriginList(); }
+});
+
 async function send(text, extra = {}) {
   if (aiLocked) return;
   text = String(text || '').trim(); if (!text) return;
@@ -132,7 +206,7 @@ async function send(text, extra = {}) {
   bubble('user', esc(text));
   const t = document.createElement('div'); t.className = 'typing'; t.textContent = '어디물어가 공공데이터를 조회하고 있어요…'; chat.appendChild(t); scroll();
   try {
-    const r = await api('/v1/chat', { method: 'POST', body: JSON.stringify({ ...(authed() ? { message: text, client: 'pages' } : { sessionId: SID, message: text, client: 'pages' }), ...extra }) });
+    const r = await api('/v1/chat', { method: 'POST', body: JSON.stringify({ ...(authed() ? { message: text, client: 'pages', ...(activeOrigin() ? { originLabel: activeOrigin().coarse } : {}) } : { sessionId: SID, message: text, client: 'pages' }), ...extra }) });
     t.remove();
     if (!authed() && r.sessionId && r.sessionId !== SID) { SID = r.sessionId; localStorage.setItem('gofishing.session', SID); }
     if (r.session) syncExpiry(r.session.remainingSec);
@@ -267,6 +341,7 @@ function renderUsage(u) {
   const chip = document.getElementById('usageChip'); if (chip && usageText) chip.textContent = usageText;
 }
 function showLogin(msg = '', ok = false) {
+  origins = []; clearTimeout(originNudgeTimer); hideOriginTip(); $('#originBar').hidden = true; if ($('#originDialog').open) $('#originDialog').close();
   clearAiLock();
   timer?.stop(); timer = null;
   $('#settings').close(); $('#serverSettingsLink').hidden = true;
@@ -288,6 +363,7 @@ function enterApp() {
     bubble('bot', md(`**${u.displayName}**님, 반가워요. 이번 로그인은 **${sessionMinutes()}분** 동안 이용할 수 있어요.`));
     refreshUsage();
     suggestWeekend();
+    loadOrigins();
     clearInterval(window.__usageSync); window.__usageSync = setInterval(() => { if (state.auth) refreshUsage(); }, 60000);
   }
   welcome(); restore();

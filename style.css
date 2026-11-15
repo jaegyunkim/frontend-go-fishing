@@ -91,3 +91,34 @@ ul.list.stack li{flex-direction:column;gap:1px}ul.list.stack .m{white-space:norm
 .ai-locked main,.ai-locked .composer,.ai-locked .tabs,.ai-locked .chips,.ai-locked #btnSettings{opacity:.45;pointer-events:none;user-select:none}
 
 .msg.suggest{border-color:#155e75;background:#0b2233}.suggest-src{margin-top:6px;font-size:11px;color:var(--dim)}
+
+/* ---- 출발지 스와이프 탭 · 말풍선 · 관리 ---- */
+.origin-bar{padding:2px 0 6px}
+.origin-scroll{display:flex;gap:8px;overflow-x:auto;padding:2px 14px 4px;scroll-snap-type:x proximity;scrollbar-width:none;-webkit-overflow-scrolling:touch;overscroll-behavior-x:contain}
+.origin-scroll::-webkit-scrollbar{display:none}
+.origin-chip{flex:0 0 auto;scroll-snap-align:start;display:inline-flex;align-items:center;gap:4px;min-height:36px;padding:7px 14px;border-radius:999px;border:1px solid var(--line);background:var(--panel2);color:#cbd5e1;font-size:13.5px;white-space:nowrap;cursor:pointer}
+.origin-chip.active{background:#0e2a3a;border-color:#22d3ee;color:#e0f7fb;font-weight:700}
+.origin-chip.add{border-style:dashed;color:#a5f3fc;background:transparent}
+.origin-chip:focus-visible{outline:2px solid #67e8f9;outline-offset:2px}
+.origin-tip{position:relative;margin:4px 14px 8px;padding:12px 14px;border-radius:16px;background:#12304a;border:1px solid #38bdf8;color:#e0f2fe;font-size:13.5px;line-height:1.6;box-shadow:0 6px 18px rgba(0,0,0,.35);animation:tipIn .25s ease-out}
+.origin-tip::before{content:"";position:absolute;top:-8px;left:28px;width:14px;height:14px;background:#12304a;border-left:1px solid #38bdf8;border-top:1px solid #38bdf8;transform:rotate(45deg)}
+.origin-tip p{margin:0 0 10px;white-space:pre-line}
+.origin-tip-actions{display:flex;gap:8px}.origin-tip-actions button{min-height:38px;padding:8px 14px;border-radius:10px;border:1px solid #64748b;background:#1e293b;color:#f8fafc;font-size:13.5px;cursor:pointer}.origin-tip-actions .primary{background:#1d4ed8;border-color:#60a5fa;font-weight:700;flex:1}
+@keyframes tipIn{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:none}}
+@media (prefers-reduced-motion:reduce){.origin-tip{animation:none}}
+.origin-dialog{padding:16px}.origin-dialog .hint{font-size:12.5px;color:var(--dim);line-height:1.6;margin:6px 0 12px}
+.origin-count{font-size:13px;color:var(--dim);font-weight:600}
+.origin-form label{font-size:12.5px;color:var(--dim)}
+.origin-form-row{display:flex;gap:8px;margin-top:4px}
+.origin-form-row input{flex:1;min-width:0;min-height:44px;box-sizing:border-box;padding:10px 12px;border-radius:12px;border:1px solid var(--line);background:var(--bg);color:var(--text);font-size:16px}
+.origin-form-row button{min-height:44px;padding:0 16px;border-radius:12px;border:0;background:var(--blue);color:#fff;font-weight:700;font-size:15px;cursor:pointer}
+.origin-form-row button:disabled,.origin-form-row input:disabled{opacity:.55}
+.origin-form-msg{min-height:18px;margin:6px 0 4px;font-size:12.5px;color:var(--bad)}
+.origin-list{list-style:none;margin:6px 0 0;padding:0;display:flex;flex-direction:column;gap:8px}
+.origin-item{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:12px;border:1px solid var(--line);background:var(--panel2)}
+.origin-item.active{border-color:#22d3ee}
+.origin-item-text{flex:1;min-width:0;display:flex;flex-direction:column;font-size:14px}.origin-item-text span{font-size:11.5px;color:var(--dim);overflow-wrap:anywhere}
+.origin-badge{display:inline-block;margin-left:4px;padding:1px 7px;border-radius:999px;border:1px solid #065f46;color:var(--ok);font-size:11px!important}
+.origin-item-acts{display:flex;gap:6px}.origin-item-acts button{min-height:36px;padding:6px 12px;border-radius:10px;border:1px solid var(--line);background:var(--panel);color:var(--text);font-size:13px;cursor:pointer}
+.origin-item-acts .danger{color:var(--bad);border-color:#9f1239}
+.origin-empty{color:var(--dim);font-size:13px;padding:6px 2px}
