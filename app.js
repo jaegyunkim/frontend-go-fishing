@@ -317,8 +317,11 @@ async function boot() {
     } catch (e) { if (e.status !== 401) showLogin(e.message); }
     return;
   }
+  // 서버에 연결되지 않으면 로그인 화면에서 안내(로그인 필요 서비스이므로 대화 화면을 먼저 열지 않음)
+  if (!h) return showLogin(state.api ? '서버에 연결할 수 없습니다. 운영 서버가 켜져 있는지 확인하거나, 아래 "서버 연결 설정"에서 주소를 확인해 주세요.' : '서버 주소가 설정되지 않았습니다. 아래 "서버 연결 설정"에서 백엔드 주소를 입력해 주세요.');
+  // AUTH_MODE=off(로컬 개발 서버)일 때만 로그인 없이 바로 대화
   timer?.stop(); $('#loginView').hidden = true; $('#appView').hidden = false;
-  chat.innerHTML = ''; welcome(); if (h) restore();
+  chat.innerHTML = ''; welcome(); restore();
 }
 
 renderChips(); boot();
