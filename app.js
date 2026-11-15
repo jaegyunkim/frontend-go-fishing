@@ -7,7 +7,7 @@ const GATE = { PASS: '안전 양호', PASS_WITH_CAUTION: '조건부 주의', REV
 const badge = g => g ? `<span class="badge b-${esc(g)}">${esc(GATE[g] ?? g)}</span>` : '';
 
 // ---- 설정·인증(auth.js) ----
-import { state, setApi, api, health, login, logout, startTimer, syncExpiry, saveAuth, setOnAuthLost, setOnMustChange, loadAuthImage, remaining, sessionMinutes } from './auth.js?v=1.3.15';
+import { state, setApi, api, health, login, logout, startTimer, syncExpiry, saveAuth, setOnAuthLost, setOnMustChange, loadAuthImage, remaining, sessionMinutes } from './auth.js?v=1.3.16';
 let SID = localStorage.getItem('gofishing.session') || (crypto.randomUUID?.() ?? String(Date.now()) + Math.random().toString(16).slice(2));
 localStorage.setItem('gofishing.session', SID);
 let slots = {}, lastBriefing = null, timer = null, usageText = '';
@@ -18,7 +18,7 @@ async function checkServer() {
   if (!state.api) { setStatus('백엔드 미연결 · ⚙︎ 설정에서 서버 주소를 입력하세요', 'bad'); return null; }
   const h = await health();
   if (h.error) { setStatus(`서버 연결 실패 (${state.api}) · ${h.error}`, 'bad'); return null; }
-  setStatus(`서버 연결됨 v${h.version} · ${authed() ? `로그인 세션 ${state.sessionMinutes}분` : '로그인 없음(개발 모드)'} · 기억 ${h.memory?.store ?? '-'}`, 'ok');
+  setStatus(`서버 연결됨 v${h.version} · ${authed() ? `로그인 세션 ${state.sessionMinutes}분` : '로그인 없음(개발 모드)'}`, 'ok');
   return h;
 }
 
@@ -54,7 +54,7 @@ function renderMessage(m) {
     case 'text': bubble('bot', md(m.text)); break;
     case 'actions': {
       const d = node('', 'actions');
-      for (const b of m.buttons) { const el = document.createElement('button'); el.textContent = b.label; el.onclick = () => b.message.endsWith(' ') ? ($('#msg').value = b.message, $('#msg').focus()) : send(b.message); d.appendChild(el); }
+      for (const b of m.buttons) { const el = document.createElement('button'); el.textContent = b.label; el.onclick = () => b.message.endsWith(' ') ? ($('#msg').value = b.message, $('#msg').focus()) : send(b.message, b.pointId ? { pointId: b.pointId, date: b.date } : {}); d.appendChild(el); }
       break;
     }
     case 'points_table': {
@@ -125,14 +125,14 @@ function clearAiLock() {
 new MutationObserver(() => { if (aiLocked) $('#appView').querySelectorAll('button:not([disabled]), input:not([disabled])').forEach(el => { if (!el.closest('#aiLock')) el.disabled = true; }); }).observe(document.getElementById('appView'), { childList: true, subtree: true });
 $('#aiLockLogout').onclick = () => { clearAiLock(); endSession('로그아웃했습니다.', true); };
 
-async function send(text) {
+async function send(text, extra = {}) {
   if (aiLocked) return;
   text = String(text || '').trim(); if (!text) return;
   showTab('chat');
   bubble('user', esc(text));
   const t = document.createElement('div'); t.className = 'typing'; t.textContent = '어디물어가 공공데이터를 조회하고 있어요…'; chat.appendChild(t); scroll();
   try {
-    const r = await api('/v1/chat', { method: 'POST', body: JSON.stringify(authed() ? { message: text, client: 'pages' } : { sessionId: SID, message: text, client: 'pages' }) });
+    const r = await api('/v1/chat', { method: 'POST', body: JSON.stringify({ ...(authed() ? { message: text, client: 'pages' } : { sessionId: SID, message: text, client: 'pages' }), ...extra }) });
     t.remove();
     if (!authed() && r.sessionId && r.sessionId !== SID) { SID = r.sessionId; localStorage.setItem('gofishing.session', SID); }
     if (r.session) syncExpiry(r.session.remainingSec);
@@ -228,6 +228,16 @@ $('#btnLogout').onclick = () => { $('#settings').close(); endSession('로그아�
 $('#btnPw').onclick = () => { $('#settings').close(); openPw(false); };
 $('#resetSession').onclick = () => { SID = crypto.randomUUID?.() ?? String(Date.now()); localStorage.setItem('gofishing.session', SID); chat.innerHTML = ''; slots = {}; renderChips(); $('#settings').close(); welcome(); };
 
+// 장기기억(내가 자주 찾은 포인트) 기반 이번 주말 출조 제안. 히스토리가 없으면 아무것도 보이지 않는다.
+async function suggestWeekend() {
+  try {
+    const s = await api('/v1/suggest', { timeoutMs: 20000 });
+    if (!s?.available || aiLocked || !state.auth) return;
+    const d = bubble('bot suggest', md('**📌 이번 주말 출조 제안**\n' + s.text) + (s.sources?.length ? '<div class="suggest-src">출처: ' + esc(s.sources.join(' · ')) + ' · 내 이용 기록 기준 추천</div>' : ''));
+    if (s.actions?.length) renderMessage({ type: 'actions', buttons: s.actions });
+    return d;
+  } catch { /* 제안은 부가 기능: 실패해도 대화는 그대로 */ }
+}
 function welcome() {
   bubble('bot', md('안녕하세요! **어디물어**예요 🎣\n출발지와 날짜, 가고 싶은 지역을 알려 주시면 공공데이터로 바다 상태를 확인하고 포인트·가는 길·주변 정보까지 정리해 드릴게요.'));
   renderMessage({ type: 'actions', buttons: [
@@ -277,6 +287,7 @@ function enterApp() {
     const u = state.auth.user;
     bubble('bot', md(`**${u.displayName}**님, 반가워요. 이번 로그인은 **${sessionMinutes()}분** 동안 이용할 수 있어요.`));
     refreshUsage();
+    suggestWeekend();
     clearInterval(window.__usageSync); window.__usageSync = setInterval(() => { if (state.auth) refreshUsage(); }, 60000);
   }
   welcome(); restore();
