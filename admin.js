@@ -1,5 +1,5 @@
 // 어디물어 관리자 화면: 계정·세션·사용량·대화 로그·로그인/작업 기록. 관리자 계정으로 로그인한 탭에서만 동작.
-import { state, api, health, startTimer, syncExpiry, setOnAuthLost, logout } from './auth.js?v=1.3.11';
+import { state, api, health, startTimer, syncExpiry, setOnAuthLost, logout } from './auth.js?v=1.3.12';
 const $ = s => document.querySelector(s);
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const dt = v => v ? new Date(v).toLocaleString('ko-KR', { timeZone: 'Asia/Seoul', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }) : '-';
@@ -126,6 +126,16 @@ async function go(v, opt) {
   try { await views[v](opt); } catch (e) { if (e.status !== 401) view.innerHTML = `<div class="card"><p class="sub">${esc(e.message)}</p></div>`; }
 }
 document.querySelectorAll('#atabs button').forEach(b => b.onclick = () => go(b.dataset.v));
+// 모바일 카드형 표: 각 칸에 머리글을 data-label 로 붙여, 좁은 화면에서 '머리글: 값' 카드로 보이게 한다(CSS).
+function labelTables(root = view) {
+  root.querySelectorAll('table.tbl').forEach(t => {
+    const rows = [...t.rows]; const head = rows.find(r => r.querySelector('th')); if (!head) return;
+    head.classList.add('thead-row');
+    const labels = [...head.cells].map(c => c.textContent.trim());
+    rows.forEach(r => { if (r === head) return; [...r.cells].forEach((c, i) => { if (c.hasAttribute('data-label')) return; c.setAttribute('data-label', labels[i] ?? ''); if (!labels[i]) c.classList.add('no-label'); const w = document.createElement('div'); w.className = 'cell'; while (c.firstChild) w.appendChild(c.firstChild); c.appendChild(w); }); });
+  });
+}
+new MutationObserver(() => labelTables()).observe(view, { childList: true, subtree: true });
 
 (async () => {
   const h = await health();
