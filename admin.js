@@ -1,6 +1,6 @@
-import { approvalMailto } from './approval-email.js?v=1.12.0';
+import { approvalMailto } from './approval-email.js?v=1.13.0';
 // 어디물어 관리자 화면: 계정·세션·사용량·대화 로그·로그인/작업 기록. 관리자 계정으로 로그인한 탭에서만 동작.
-import { state, api, health, startTimer, syncExpiry, setOnAuthLost, logout } from './auth.js?v=1.12.0';
+import { state, api, health, startTimer, syncExpiry, setOnAuthLost, logout } from './auth.js?v=1.13.0';
 const $ = s => document.querySelector(s);
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const dt = v => v ? new Date(v).toLocaleString('ko-KR', { timeZone: 'Asia/Seoul', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }) : '-';
@@ -184,6 +184,38 @@ const views = {
     const { logins } = await api('/v1/admin/logins');
     view.innerHTML = `<div class="tool"><h2>로그인 기록(최근 200)</h2></div><div class="scroll"><table class="tbl"><tr><th>시각</th><th>아이디</th><th>결과</th><th>기기</th></tr>
     ${logins.map(l => `<tr><td>${dt(l.at)}</td><td>${esc(l.login_id)}</td><td><span class="pill ${l.success ? 'ok' : 'bad'}">${l.success ? '성공' : '실패'}</span> <span class="sub">${esc(l.reason ?? '')}</span></td><td class="sub">${esc((l.user_agent ?? '').slice(0, 60))}</td></tr>`).join('')}</table></div>`;
+  },
+  async reports() {
+    const { reports } = await api('/v1/admin/reports?limit=90');
+    const ST = { ok: '<span class="pill ok">정상</span>', warn: '<span class="pill warn">주의</span>', critical: '<span class="pill bad">위험</span>' };
+    view.innerHTML = `<div class="tool"><h2>서버 운영 리포트</h2><div class="acts"><button id="genReport">오늘 리포트 지금 만들기</button></div></div>
+    <p class="sub">매일 00:10(한국 시간)에 전날 리포트를 자동으로 만들고 Slack 로그 채널에 요약을 보냅니다. 수동 생성은 오늘 0시부터 지금까지를 집계합니다. 리포트는 2년, 시간별 지표는 180일 보관합니다.</p>
+    ${reports.length ? `<div class="rep-list">${reports.map(r => `<button class="rep-item" data-date="${esc(r.date)}"><div class="rep-top"><b>${esc(r.date)}</b>${ST[r.status] ?? esc(r.status)}${r.alert_count ? `<span class="sub">경보 ${r.alert_count}</span>` : ''}<span class="sub">${r.trigger === 'auto' ? '자동' : '수동'} · ${dt(r.generated_at)}</span></div>
+      <div class="rep-nums"><span>요청 <b>${n(r.requests)}</b></span><span>로그인 <b>${n(r.users)}</b>명</span><span>질문 <b>${n(r.questions)}</b></span></div></button>`).join('')}</div>` : '<div class="card"><p class="sub">아직 만들어진 리포트가 없어요. 위 버튼으로 오늘 리포트를 만들어 보세요.</p></div>'}`;
+    $('#genReport').onclick = async () => { const b = $('#genReport'); b.disabled = true; b.textContent = '만드는 중…'; try { const { report } = await api('/v1/admin/reports/generate', { method: 'POST', body: '{}' }); go('report', { date: report.date }); } catch (e) { note(e.message, true); b.disabled = false; b.textContent = '오늘 리포트 지금 만들기'; } };
+    view.querySelectorAll('[data-date]').forEach(b => b.onclick = () => go('report', { date: b.dataset.date }));
+  },
+  async report(opt = {}) {
+    const { report: r } = await api(`/v1/admin/reports/${opt.date}`); const m = r.metrics, t = m.traffic, u = m.users, res = m.resources;
+    const ST = { ok: ['정상', 'ok'], warn: ['주의', 'warn'], critical: ['위험', 'bad'] }[r.status] ?? [r.status, ''];
+    const kv = rows => `<dl class="kv rep-kv">${rows.filter(Boolean).map(([k, v]) => `<dt>${esc(k)}</dt><dd>${v}</dd>`).join('')}</dl>`;
+    const pctTxt = v => v == null ? '-' : (Math.round(v * 1000) / 10) + '%';
+    const hours = Array.from({ length: 24 }, (_, i) => { const h = (t.hourly ?? []).find(x => Number(x.h) === i); return { i, n: h?.n ?? 0, e: h?.e ?? 0 }; }), hmax = Math.max(1, ...hours.map(h => h.n));
+    view.innerHTML = `<div class="tool"><div class="acts"><button id="backReports">← 리포트 목록</button></div><h2>운영 리포트 · ${esc(r.date)} <span class="pill ${ST[1]}">${ST[0]}</span></h2></div>
+    <p class="sub">${esc(r.summary)}<br>${r.trigger === 'auto' ? '자동' : '수동'} 생성 ${dt(r.generated_at)} · 집계 ${dt(r.period_start)} ~ ${dt(r.period_end)} · 백엔드 v${esc(r.version ?? '-')}</p>
+    <div class="card"><h3>경보 ${r.alerts.length}건</h3>${r.alerts.length ? `<ul class="rep-alerts">${r.alerts.map(a => `<li class="${a.level}"><span class="pill ${a.level === 'critical' ? 'bad' : 'warn'}">${a.level === 'critical' ? '위험' : '주의'}</span> <b>${esc(a.area)}</b> ${esc(a.message)}</li>`).join('')}</ul>` : '<p class="sub">경보 없음 — 모든 지표가 기준 안에 있어요.</p>'}</div>
+    <div class="card"><h3>가용성·트래픽</h3>${kv([['서버 재시작', `${n(m.availability.restarts)}회`], ['요청', `${n(t.requests)}건 (가장 많은 시간 ${t.peakHour ? esc(t.peakHour.h) + '시 ' + n(t.peakHour.n) + '건' : '-'})`], ['오류', `서버 오류(5xx) ${n(t.errors5xx)}건 (${pctTxt(t.errorRate5xx)}) · 요청 오류(4xx) ${n(t.errors4xx)}건 · 요청 제한(429) ${n(t.rateLimited429)}건`], ['응답 시간', `평균 ${t.avgMs ?? '-'}ms · 95% ${t.p95Ms ?? '-'}ms 이하`], ['클라이언트 오류 보고', `${n(m.errors.clientReports)}건`]])}
+      <div class="rep-hours" aria-label="시간별 요청">${hours.map(h => `<i title="${h.i}시 ${h.n}건" style="height:${Math.max(2, h.n / hmax * 100)}%" class="${h.e ? 'err' : ''}"></i>`).join('')}</div><div class="rep-axis"><span>0시</span><span>6시</span><span>12시</span><span>18시</span><span>24시</span></div>
+      ${t.topRoutes?.length ? `<div class="scroll"><table class="tbl"><tr><th>많이 쓴 경로</th><th class="num">요청</th><th class="num">평균</th><th class="num">최대</th><th class="num">5xx</th></tr>${t.topRoutes.map(x => `<tr><td>${esc(x.route)}</td><td class="num">${n(x.requests)}</td><td class="num">${x.avgMs}ms</td><td class="num">${x.maxMs}ms</td><td class="num">${n(x.errors5xx)}</td></tr>`).join('')}</table></div>` : ''}</div>
+    <div class="card"><h3>사용자·서비스</h3>${kv([['로그인', `성공 ${n(u.loginOk)} · 실패 ${n(u.loginFail)} · 이용자 ${n(u.activeUsers)}명`], ['신청·승인', `신청 ${n(u.registrations)} · 승인 ${n(u.approvals)} · 거절 ${n(u.rejections)}`], ['질문·AI', `질문 ${n(u.questions)} · AI 호출 ${n(u.llmCalls)} · 토큰 ${n(u.tokens)} · 한도 거절 ${n(u.blockedByLimit)}`], ['답변 시간', `평균 ${u.answer?.avgMs ?? '-'}ms · 95% ${u.answer?.p95Ms ?? '-'}ms (${n(u.answer?.count)}건)`], ['의견', `${n(u.opinions)}건${u.avgRating != null ? ` · 평균 ${u.avgRating}점` : ''}`],
+      ['정원', `오늘 신청 ${u.capacity.registers.used}/${u.capacity.registers.max} · 일반 사용자 ${u.capacity.users.used}/${u.capacity.users.max} · 오늘 로그인 ${u.capacity.logins.used}/${u.capacity.logins.max}`]])}</div>
+    <div class="card"><h3>외부 API 사용량</h3>${m.external.length ? `<div class="scroll"><table class="tbl"><tr><th>제공기관</th><th class="num">호출</th><th class="num">하루 한도</th><th>사용률</th><th class="num">오류</th></tr>${m.external.map(e => `<tr><td>${esc(e.provider)}</td><td class="num">${n(e.calls)}</td><td class="num">${e.quota ? n(e.quota) : '-'}</td><td>${e.usage != null ? `<div class="ubar"><i style="width:${Math.min(100, e.usage * 100).toFixed(1)}%"${e.usage >= 0.8 ? ' class="over"' : ''}></i></div><span class="sub">${pctTxt(e.usage)}</span>` : '-'}</td><td class="num">${n(e.errors)}</td></tr>`).join('')}</table></div><p class="sub">로그인 사용자 요청에서 실제로 호출한 수(캐시 적중 제외)</p>` : '<p class="sub">호출 기록 없음</p>'}</div>
+    <div class="card"><h3>오류 로그</h3>${kv([['건수', `오류 ${n(m.errors.error)} · 경고 ${n(m.errors.warn)} · 정보 ${n(m.errors.info)}`]])}${m.errors.top.length ? `<ul class="qlist">${m.errors.top.map(e => `<li><span class="sub">${n(e.n)}회 · 마지막 ${dt(e.last)}</span><div>${esc(e.title)}</div></li>`).join('')}</ul>` : '<p class="sub">오류·경고 없음</p>'}</div>
+    <div class="card"><h3>자원·백업 <span class="sub">(${dt(res.sampledAt)} 측정)</span></h3>${kv([['서버 프로세스', `가동 ${res.process.uptimeH}시간 · 메모리 ${res.process.rssMB}MB · Node ${esc(res.process.node)}`], ['호스트', `CPU ${res.host.cpus}개 · 부하 ${res.host.load.join(' / ')} · 메모리 ${res.host.memTotalGB}GB`],
+      ['디스크', res.disk ? `남은 공간 ${res.disk.freeGB}GB / ${res.disk.totalGB}GB (${pctTxt(res.disk.freeRatio)})` : '-'], ['DB', `${res.db.sizeMB}MB · 큰 테이블 ${res.db.tables.slice(0, 3).map(x => `${esc(x.name)} ${x.sizeMB}MB`).join(', ')}`],
+      ['백업', res.backup.latest ? `마지막 ${dt(res.backup.latest.at)} · ${esc(res.backup.latest.file)} (${res.backup.latest.sizeMB}MB)` : '<span class="st-error">백업 파일 없음</span>'], ['Notion 요약', res.notionSummary?.log ? esc(res.notionSummary.log) : '-']])}</div>
+    <div class="card"><h3>AI</h3>${kv([['상태', m.ai.status?.available === false ? '<span class="pill bad">크레딧 소진 잠금</span>' : '<span class="pill ok">이용 가능</span>'], ['크레딧', m.ai.credit?.remaining != null ? `${n(m.ai.credit.remaining)} / ${n(m.ai.credit.total)} (${dt(m.ai.credit.checkedAt)} 확인값)` : '확인 기록 없음']])}</div>`;
+    $('#backReports').onclick = () => go('reports');
   },
   async user_usage(opt = {}) {
     const { user, days } = await api(`/v1/admin/users/${opt.user}/usage?days=30`);
