@@ -97,3 +97,9 @@ table th,table td{border-color:var(--line)}
 .qday{padding:0;overflow:hidden}.qday summary{padding:12px 14px;cursor:pointer;display:flex;gap:8px;align-items:center}
 .qlist{list-style:none;margin:0;padding:4px 14px 12px;display:flex;flex-direction:column;gap:8px;border-top:1px dashed var(--line)}.qlist li div{font-size:14px;color:var(--ink);white-space:pre-wrap}
 @media (max-width:720px){.mini-btn{min-height:34px;padding:5px 12px;font-size:12.5px}}
+/* 운영 정원 표시 v1.12.0 */
+.capbar{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:8px 0 2px}
+.capbar>div{background:#fff;border:1px solid var(--line);border-radius:12px;padding:8px 10px;display:flex;flex-direction:column;gap:3px}
+.capbar span{font-size:11.5px;color:var(--sub)}.capbar b{font-size:15px;color:var(--ink)}
+.capbar i{display:block;height:6px;border-radius:4px;background:#eef2f7;overflow:hidden}.capbar em{display:block;height:100%;background:var(--grad,linear-gradient(90deg,#06b6d4,#2563eb))}
+.capbar .near em{background:#f59e0b}.capbar .full em{background:#e11d48}.capbar .full b{color:#be123c}

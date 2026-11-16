@@ -1,6 +1,6 @@
-import { approvalMailto } from './approval-email.js?v=1.11.0';
+import { approvalMailto } from './approval-email.js?v=1.12.0';
 // 어디물어 관리자 화면: 계정·세션·사용량·대화 로그·로그인/작업 기록. 관리자 계정으로 로그인한 탭에서만 동작.
-import { state, api, health, startTimer, syncExpiry, setOnAuthLost, logout } from './auth.js?v=1.11.0';
+import { state, api, health, startTimer, syncExpiry, setOnAuthLost, logout } from './auth.js?v=1.12.0';
 const $ = s => document.querySelector(s);
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const dt = v => v ? new Date(v).toLocaleString('ko-KR', { timeZone: 'Asia/Seoul', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }) : '-';
@@ -86,8 +86,8 @@ const ROLE_LABEL = { admin: '관리자', tester: '테스터', user: '일반' };
 const roleText = r => ROLE_LABEL[r] ?? r;
 const views = {
  async requests(){
- const {requests}=await api('/v1/admin/registrations');
- view.innerHTML='<div class="tool"><h2>가입 신청 · 승인</h2></div><p class="sub">승인 즉시 랜덤 임시 비밀번호가 발급됩니다. 승인 완료 창의 메일 보내기로 신청자에게 안내해 주세요. 메일 앱에서 직접 발송해야 합니다.</p><div class="requestCards">'+requests.map(r=>'<article class="card"><h3>'+esc(r.login_id)+' · '+esc(r.display_name)+'</h3><p class="sub">'+dt(r.created_at)+' · '+esc({pending:'승인 대기',approved:'승인 완료',rejected:'거절'}[r.status])+'</p>'+(r.reapply_count?'<p><span class="pill warn">재신청 '+n(r.reapply_count)+'회</span> <span class="sub">'+(r.last_rejected_at?dt(r.last_rejected_at)+'에 거절했던 신청':'이전에 거절했던 신청')+'</span></p>':'')+(r.status==='pending'?'<div class="acts"><button data-review="approve" data-id="'+r.id+'">승인·비밀번호 발급</button><button data-review="reject" data-id="'+r.id+'">거절</button></div>':'')+'</article>').join('')+'</div>';
+ const {requests,capacity}=await api('/v1/admin/registrations');
+ view.innerHTML='<div class="tool"><h2>가입 신청 · 승인</h2></div>'+capBar(capacity)+'<p class="sub">승인 즉시 랜덤 임시 비밀번호가 발급됩니다. 승인 완료 창의 메일 보내기로 신청자에게 안내해 주세요. 메일 앱에서 직접 발송해야 합니다.</p><div class="requestCards">'+requests.map(r=>'<article class="card"><h3>'+esc(r.login_id)+' · '+esc(r.display_name)+'</h3><p class="sub">'+dt(r.created_at)+' · '+esc({pending:'승인 대기',approved:'승인 완료',rejected:'거절'}[r.status])+'</p>'+(r.reapply_count?'<p><span class="pill warn">재신청 '+n(r.reapply_count)+'회</span> <span class="sub">'+(r.last_rejected_at?dt(r.last_rejected_at)+'에 거절했던 신청':'이전에 거절했던 신청')+'</span></p>':'')+(r.status==='pending'?'<div class="acts"><button data-review="approve" data-id="'+r.id+'">승인·비밀번호 발급</button><button data-review="reject" data-id="'+r.id+'">거절</button></div>':'')+'</article>').join('')+'</div>';
  if(!requests.length)view.innerHTML+='<p>접수된 신청이 없습니다.</p>';
  view.querySelectorAll('[data-review]').forEach(b=>b.onclick=async()=>{if(!confirm(b.dataset.review==='approve'?'이 사용자를 승인할까요?':'이 신청을 거절할까요?'))return;b.disabled=true;try{const out=await api('/v1/admin/registrations/'+b.dataset.id+'/review',{method:'POST',body:JSON.stringify({action:b.dataset.review})});if(out.tempPassword)await showSecret(out.user.loginId+' 승인 완료',out.tempPassword,out.user.loginId);await views.requests();}catch(e){note(e.message,true);b.disabled=false;}});
  },
@@ -100,8 +100,8 @@ const views = {
  renderLlm();
  },
   async users() {
-    const { users } = await api('/v1/admin/users');
-    view.innerHTML = `<div class="tool"><h2>사용자 ${users.length}명</h2><div class="acts"><button id="add">+ 계정 발급</button></div></div>
+    const [{ users }, { capacity }] = await Promise.all([api('/v1/admin/users'), api('/v1/admin/capacity')]);
+    view.innerHTML = `<div class="tool"><h2>사용자 ${users.length}명</h2><div class="acts"><button id="add">+ 계정 발급</button></div></div>${capBar(capacity)}
     <div class="scroll"><table class="tbl"><tr><th>아이디·이름</th><th>역할·상태</th><th class="num">오늘 질문</th><th class="num">오늘 토큰</th><th class="num">로그인</th><th>세션 한도</th><th>기기·최근 로그인</th><th>작업</th></tr>
     ${users.map(u => `<tr><td><b>${esc(u.loginId)}</b><br><span class="sub">${esc(u.displayName)}${u.memo ? ' · ' + esc(u.memo) : ''}</span><br><button class="mini-btn" data-detail="opinions" data-id="${u.id}" data-login="${esc(u.loginId)}"${u.opinionCount ? '' : ' disabled title="보낸 의견이 없어요"'}>의견 ${n(u.opinionCount)}</button></td>
       <td>${roleText(u.role)} <span class="sub">${u.role === 'user' ? '· 1기기' : '· 동시 접속 허용'}</span><br><span class="pill ${u.status === 'active' ? 'ok' : 'bad'}">${u.status === 'active' ? '사용' : '중지'}</span>${u.lockedUntil && new Date(u.lockedUntil) > new Date() ? ' <span class="pill warn">잠김</span>' : ''}${u.activeSessions ? ' <span class="pill ok">접속 중</span>' : ''}${u.mustChangePassword ? ' <span class="pill warn">비번 변경 대기</span>' : ''}</td>
@@ -113,7 +113,7 @@ const views = {
     $('#add').onclick = async () => {
       const r = await dialog(`<h2>계정 발급</h2><label>아이디 (일반은 이메일, 관리자·테스터는 영문 아이디도 가능)<input name="loginId" required maxlength="254"></label><label>이름<input name="displayName" required maxlength="40"></label>
         <label>역할<select name="role"><option value="user">일반 (한 기기만)</option><option value="tester">테스터 (동시 접속 허용)</option><option value="admin">관리자 (동시 접속 허용)</option></select></label><label>메모<input name="memo" maxlength="100"></label>
-        <p class="hint">한도 기본값: 일반 사용자: 세션 10분 고정·24시간에 1회 로그인, 세션당 질문 5·하루 질문 5·토큰 1,000. 발급 후 '한도'에서 바꿀 수 있습니다.</p>`,
+        <p class="hint">한도 기본값: 일반 사용자: 세션 10분 고정·24시간에 1회 로그인, 세션당 질문 10·하루 질문 10·토큰 1,000. 정원: 일반 사용자 100명·하루 신청 100건·하루 로그인 100명(관리자·테스터 예외). 발급 후 '한도'에서 바꿀 수 있습니다.</p>`,
         fd => api('/v1/admin/users', { method: 'POST', body: JSON.stringify(Object.fromEntries(fd)) }).catch(e => ({ error: e.message })));
       if (r?.error) return note(r.error, true);
       if (r?.user?.tempPassword) await showSecret(`${r.user.loginId} 계정을 만들었습니다`, r.user.tempPassword);
@@ -224,6 +224,7 @@ const views = {
     ${actions.map(a => `<tr><td>${dt(a.at)}</td><td>${esc(a.admin ?? 'CLI')}</td><td>${esc(a.action)}</td><td>${esc(a.target ?? '')}</td><td class="sub">${esc(JSON.stringify(a.detail ?? {}))}</td></tr>`).join('')}</table></div>`;
   }
 };
+const capBar = c => c ? `<div class="capbar">${[['오늘 신청', c.registers], ['일반 사용자', c.users], ['오늘 로그인', c.logins]].map(([l, v]) => `<div class="${v.used >= v.max ? 'full' : v.used >= v.max * 0.8 ? 'near' : ''}"><span>${l}</span><b>${n(v.used)} / ${n(v.max)}</b><i><em style="width:${Math.min(100, v.max ? v.used / v.max * 100 : 100).toFixed(1)}%"></em></i></div>`).join('')}</div><p class="sub">정원에 닿으면 새 신청·승인·로그인을 막습니다(관리자·테스터 예외).</p>` : '';
 const backBar = title => `<div class="tool"><div class="acts"><button id="backUsers">← 사용자</button></div><h2>${title}</h2></div>`;
 function bindBack() { const b = $('#backUsers'); if (b) b.onclick = () => go('users'); }
 async function go(v, opt) {
