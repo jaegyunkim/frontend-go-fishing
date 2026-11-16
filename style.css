@@ -323,3 +323,11 @@ button.op-star.on{color:#f59e0b}
 .has-tip::before{content:"";position:absolute;top:calc(100% + 4px);left:50%;transform:translate(-50%,-4px);border:5px solid transparent;border-bottom-color:#0b2534;border-top:0;opacity:0;pointer-events:none;transition:opacity .15s,transform .15s;z-index:30}
 .has-tip:hover::after,.has-tip:hover::before,.has-tip:focus-visible::after,.has-tip:focus-visible::before{opacity:1;transform:translate(-50%,0)}
 @media (prefers-reduced-motion:reduce){.has-tip::after,.has-tip::before{transition:none}}
+/* 입력칸 지우기(ⓧ) v1.13.1 */
+.clearable{position:relative;display:block}
+.clearable input{width:100%;box-sizing:border-box;padding-right:44px}
+.clear-btn{position:absolute;right:6px;top:50%;transform:translateY(-50%);width:34px;height:34px;display:grid;place-items:center;border:0;background:transparent;border-radius:50%;cursor:pointer;color:#94a3b8}
+.clear-btn svg circle{fill:#cbd5e1}.clear-btn svg path{stroke:#fff;stroke-width:2;stroke-linecap:round}
+.clear-btn:hover svg circle,.clear-btn:focus-visible svg circle{fill:#64748b}.clear-btn:focus-visible{outline:2px solid #22d3ee;outline-offset:1px}
+.clear-btn[hidden]{display:none}
+.login-card .field{display:flex;flex-direction:column;gap:4px;text-align:left}

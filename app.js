@@ -7,7 +7,7 @@ const GATE = { PASS: '안전 양호', PASS_WITH_CAUTION: '조건부 주의', REV
 const badge = g => g ? `<span class="badge b-${esc(g)}">${esc(GATE[g] ?? g)}</span>` : '';
 
 // ---- 설정·인증(auth.js) ----
-import { state, setApi, api, health, login, logout, startTimer, syncExpiry, saveAuth, setOnAuthLost, setOnMustChange, loadAuthImage, remaining, sessionMinutes } from './auth.js?v=1.13.0';
+import { state, setApi, api, health, login, logout, startTimer, syncExpiry, saveAuth, setOnAuthLost, setOnMustChange, loadAuthImage, remaining, sessionMinutes } from './auth.js?v=1.13.1';
 let SID = localStorage.getItem('gofishing.session') || (crypto.randomUUID?.() ?? String(Date.now()) + Math.random().toString(16).slice(2));
 localStorage.setItem('gofishing.session', SID);
 let slots = {}, lastBriefing = null, timer = null, usageText = '';
@@ -427,6 +427,16 @@ $('#opinionForm').addEventListener('submit', async e => {
   finally { btn.disabled = false; }
 });
 
+// ---- 입력칸 오른쪽 ⓧ: 값이 있을 때만 보이고, 누르면 지운 뒤 그 칸에 다시 포커스 ----
+document.querySelectorAll('input[data-clearable]').forEach(inp => {
+  const btn = inp.parentElement.querySelector('.clear-btn'); if (!btn) return;
+  const sync = () => { btn.hidden = !inp.value; };
+  ['input', 'change', 'focus'].forEach(ev => inp.addEventListener(ev, sync));
+  setTimeout(sync, 300); // 비밀번호 관리자의 자동 입력 반영
+  btn.addEventListener('mousedown', e => e.preventDefault()); // 포커스가 빠져 키보드가 닫히지 않게
+  btn.onclick = () => { inp.value = ''; inp.dispatchEvent(new Event('input', { bubbles: true })); inp.focus(); };
+});
+
 // ---- 로그인 위치: 브라우저가 위치 허용을 묻고, 허용한 경우만 세션당 1회 저장(서버에서 약 100m 단위로 반올림) ----
 function recordLoginLocation() {
   const sid = state.auth?.token?.slice(-12); if (!sid || sessionStorage.getItem('gofishing.locAsked') === sid) return;
@@ -642,13 +652,13 @@ $('#loginForm').addEventListener('submit', async e => {
   try {
     const pwTyped = $('#loginPw').value;
     const r = await login($('#loginId').value.trim(), pwTyped);
-    $('#loginPw').value = '';
+    $('#loginPw').value = ''; $('#loginPw').dispatchEvent(new Event('input'));
     loginPwMemo = r.user.mustChangePassword ? pwTyped : '';
     if (r.user.mustChangePassword) openPw(true); else enterApp();
   } catch (err) {
     if (err.code === 'ACTIVE_SESSION') {
       // 다른 기기 이용 중: 안내창 → 확인 시 로그인되지 않은 상태로 로그인 화면에 머문다
-      $('#loginPw').value = ''; saveAuth(null);
+      $('#loginPw').value = ''; $('#loginPw').dispatchEvent(new Event('input')); saveAuth(null);
       $('#activeSessionMsg').textContent = err.message;
       const d = $('#activeSessionDialog');
       d.onclose = () => { $('#loginMsg').textContent = ''; $('#loginId').focus(); };
