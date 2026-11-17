@@ -7,7 +7,7 @@ const GATE = { PASS: '안전 양호', PASS_WITH_CAUTION: '조건부 주의', REV
 const badge = g => g ? `<span class="badge b-${esc(g)}">${esc(GATE[g] ?? g)}</span>` : '';
 
 // ---- 설정·인증(auth.js) ----
-import { state, setApi, api, health, login, logout, startTimer, syncExpiry, saveAuth, setOnAuthLost, setOnMustChange, loadAuthImage, remaining, sessionMinutes } from './auth.js?v=1.14.0';
+import { state, setApi, api, health, login, logout, startTimer, syncExpiry, saveAuth, setOnAuthLost, setOnMustChange, loadAuthImage, remaining, sessionMinutes } from './auth.js?v=1.14.1';
 let SID = localStorage.getItem('gofishing.session') || (crypto.randomUUID?.() ?? String(Date.now()) + Math.random().toString(16).slice(2));
 localStorage.setItem('gofishing.session', SID);
 let slots = {}, lastBriefing = null, timer = null, usageText = '';
@@ -346,7 +346,7 @@ function renderBriefing(b) {
   const routes = b.routes ? `<table class="routes"><tr><th>경로</th><th>거리·시간</th><th>통행료</th><th>${esc(b.routes.fuel?.type ?? '연료')}비</th></tr>
       ${b.routes.options.map(o => o.km != null ? `<tr><td>${esc(o.name)}<div class="sub">${esc((o.via || []).slice(0, 5).join(' → '))}</div></td><td>${o.km}km<br>${o.minutes}분</td><td>${won(o.toll)}</td><td>${won(o.cost?.energy)}<div class="sub">왕복≈${won(o.cost?.roundTripEstimate)}</div></td></tr>` : `<tr><td>${esc(o.name)}</td><td colspan="3" class="sub">${esc(o.message ?? '조회 실패')}</td></tr>`).join('')}</table>
       <div class="sub">${esc(b.routes.note)}${b.routes.fuel?.price ? ` · ${esc(b.routes.fuel.type)} ${esc(b.routes.fuel.scope)} ${Math.round(b.routes.fuel.price).toLocaleString('ko-KR')}원/L(오피넷)` : ''}${b.routes.fuel?.note ? ' · ' + esc(b.routes.fuel.note) : ''} · 연비 ${esc(b.routes.fuel?.efficiency ?? '')}</div>
-      <div class="links"><a href="${esc(b.routes.links.naverWeb)}" target="_blank" rel="noopener">네이버지도 길찾기</a><a href="${esc(b.routes.links.naverApp)}">네이버지도 앱</a></div>`
+      <div class="links"><a href="${esc(b.routes.links.naverWeb)}" target="_blank" rel="noopener">네이버지도 길찾기</a><a class="nmap-app" href="${esc(b.routes.links.naverApp)}" data-web="${esc(b.routes.links.naverWeb)}">네이버지도 앱</a></div>`
     : '<div class="sub">출발지를 알려 주시면 고속도로·일반도로 경로와 통행료·유류비를 계산합니다.</div>';
   const traffic = b.traffic ? (b.traffic.events.length ? list(b.traffic.events.slice(0, 5), e => `<li><span>${esc(e.type)}·${esc(e.detail)} · ${esc(e.road)} ${esc(e.start ?? '')}</span><span class="m">${esc(e.message)}</span></li>`, 'stack') : '<div class="sub">경로 주변 돌발상황 없음</div>') + `<div class="sub">${esc(b.traffic.note ?? '')}</div>` : '';
   const nearby = b.nearby.map(n => `<div class="nb-cat"><div class="nb-cat-head"><b>${esc(n.title)}</b>${n.radiusM ? `<span class="nb-cat-r">반경 ${n.radiusM / 1000}km${n.widened ? ' (확장 검색)' : ''}</span>` : ''}</div>
@@ -744,4 +744,38 @@ function beyondReliable(dateStr) {
   const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Seoul' }).format(new Date());
   const d = Math.round((Date.parse(dateStr + 'T00:00:00Z') - Date.parse(today + 'T00:00:00Z')) / 86400000);
   return d > RELIABLE_DAYS;
+}
+
+// 네이버지도 앱 열기: 미설치 시 설치 유도.
+//  - Android: intent:// 로 열어 미설치면 브라우저가 Play 스토어로 이동(오류 팝업 없음)
+//  - iOS 등: nmap:// 시도 후 1.6초 안에 화면이 앱으로 넘어가지 않으면 설치 안내 창 표시
+//    (iOS 브라우저의 '열 수 없음' 시스템 알림은 웹에서 막을 수 없어, 그 뒤에 안내 창이 이어서 뜬다)
+const NMAP_STORE = { ios: 'https://apps.apple.com/kr/app/id311867728', android: 'https://play.google.com/store/apps/details?id=com.nhn.android.nmap' };
+const isAndroid = /Android/i.test(navigator.userAgent), isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+document.addEventListener('click', e => {
+  const a = e.target.closest?.('a.nmap-app'); if (!a) return;
+  e.preventDefault();
+  const url = a.getAttribute('href'), web = a.dataset.web;
+  if (isAndroid) {
+    const rest = url.replace(/^nmap:\/\//, '');
+    location.href = `intent://${rest}#Intent;scheme=nmap;action=android.intent.action.VIEW;category=android.intent.category.BROWSABLE;package=com.nhn.android.nmap;S.browser_fallback_url=${encodeURIComponent(NMAP_STORE.android)};end`;
+    return;
+  }
+  let left = false; const mark = () => { left = true; };
+  document.addEventListener('visibilitychange', mark, { once: true }); window.addEventListener('pagehide', mark, { once: true });
+  const t0 = Date.now(); location.href = url;
+  setTimeout(() => { if (!left && document.visibilityState === 'visible' && Date.now() - t0 < 6000) nmapInstallDialog(web); }, 1600);
+});
+function nmapInstallDialog(web) {
+  let d = document.getElementById('nmapDialog');
+  if (!d) {
+    d = document.createElement('dialog'); d.id = 'nmapDialog'; d.className = 'registration-dialog nmap-dialog';
+    d.innerHTML = `<h2>네이버지도 앱이 필요해요</h2><p>앱이 설치되어 있지 않아 열지 못했어요. 앱을 설치하면 출발지에서 포인트까지 바로 길안내를 받을 수 있어요. 설치 없이 웹 지도로 보셔도 됩니다.</p>
+      <div class="nmap-btns"><a class="primary" target="_blank" rel="noopener" href="${isAndroid ? NMAP_STORE.android : NMAP_STORE.ios}">앱 설치하기</a><a class="web" target="_blank" rel="noopener">웹으로 길찾기</a><button type="button">닫기</button></div>`;
+    d.querySelector('button').onclick = () => d.close();
+    d.querySelectorAll('a').forEach(a => a.addEventListener('click', () => d.close()));
+    document.body.appendChild(d);
+  }
+  d.querySelector('a.web').href = web || 'https://map.naver.com';
+  d.showModal();
 }

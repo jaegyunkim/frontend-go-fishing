@@ -323,7 +323,7 @@ button.op-star.on{color:#f59e0b}
 .has-tip::before{content:"";position:absolute;top:calc(100% + 4px);left:50%;transform:translate(-50%,-4px);border:5px solid transparent;border-bottom-color:#0b2534;border-top:0;opacity:0;pointer-events:none;transition:opacity .15s,transform .15s;z-index:30}
 .has-tip:hover::after,.has-tip:hover::before,.has-tip:focus-visible::after,.has-tip:focus-visible::before{opacity:1;transform:translate(-50%,0)}
 @media (prefers-reduced-motion:reduce){.has-tip::after,.has-tip::before{transition:none}}
-/* 입력칸 지우기(ⓧ) v1.14.0 */
+/* 입력칸 지우기(ⓧ) v1.14.1 */
 .clearable{position:relative;display:block}
 .clearable input{width:100%;box-sizing:border-box;padding-right:44px}
 .clear-btn{position:absolute;right:6px;top:50%;transform:translateY(-50%);width:34px;height:34px;display:grid;place-items:center;border:0;background:transparent;border-radius:50%;cursor:pointer;color:#94a3b8}
@@ -356,3 +356,8 @@ button.op-star.on{color:#f59e0b}
 .hz-text{font-size:13px;line-height:1.55;color:#4a3a1a}
 .hz-ask{margin:10px 0 4px;font-size:12px;font-weight:700;color:#8a5300}
 .chip.chip-warn{border-color:#f5b94a;background:#fff3d6;color:#8a5300}
+/* 네이버지도 앱 설치 안내 */
+.nmap-dialog h2{margin:0 0 8px;font-size:17px}.nmap-dialog p{font-size:13.5px;line-height:1.55;margin:0 0 14px}
+.nmap-btns{display:flex;flex-direction:column;gap:8px}
+.nmap-btns a,.nmap-btns button{display:block;text-align:center;padding:11px;border-radius:12px;font-size:14px;font-weight:700;text-decoration:none;border:1px solid var(--line);background:#fff;color:var(--ink);cursor:pointer}
+.nmap-btns a.primary{background:#03c75a;border-color:#03c75a;color:#fff}
