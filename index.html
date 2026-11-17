@@ -9,7 +9,7 @@
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" href="assets/icon.svg" type="image/svg+xml">
   <link rel="apple-touch-icon" href="assets/icon-192.png">
-  <link rel="stylesheet" href="style.css?v=1.16.7">
+  <link rel="stylesheet" href="style.css?v=1.16.8">
 </head>
 <body>
   <!-- 로그인 화면 -->
@@ -141,11 +141,10 @@
       <div class="settings-header"><h2>계정 설정</h2><button value="cancel" class="ghost" aria-label="계정 설정 닫기">닫기</button></div>
       <a id="serverSettingsLink" class="link-btn" href="server-settings.html" hidden>서버 연결 설정</a>
       <div id="accountBox" class="account" hidden>
-        <h2>내 계정</h2>
+        <div class="acct-head"><h2>내 계정</h2><a id="adminLink" class="btn ghost small" href="admin.html" hidden>관리자 화면</a></div>
         <p id="accountInfo"></p>
         <p id="usageInfo" class="hint"></p>
         <div class="row acct-actions"><button type="button" id="btnHistory2" class="ghost">내 대화 기록 보기</button><button type="button" id="btnPw" class="ghost">비밀번호 변경</button></div>
-        <a id="adminLink" class="btn ghost" href="admin.html" hidden>관리자 화면</a>
       </div>
       <button type="button" id="resetSession" class="ghost small">새 대화 시작(세션 초기화)</button>
     </form>
@@ -161,7 +160,7 @@
       <div class="row"><button type="submit">변경</button><button type="button" id="pwCancel" class="ghost">취소</button></div>
     </form>
   </dialog>
-  <script src="config.js?v=1.16.7"></script><script src="telemetry.js?v=1.16.7"></script>
-  <script src="app.js?v=1.16.7" type="module"></script>
+  <script src="config.js?v=1.16.8"></script><script src="telemetry.js?v=1.16.8"></script>
+  <script src="app.js?v=1.16.8" type="module"></script>
 </body>
 </html>
