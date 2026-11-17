@@ -1,6 +1,6 @@
-import { approvalMailto } from './approval-email.js?v=1.16.11';
+import { approvalMailto } from './approval-email.js?v=1.16.12';
 // 어디물어 관리자 화면: 계정·세션·사용량·대화 로그·로그인/작업 기록. 관리자 계정으로 로그인한 탭에서만 동작.
-import { state, api, health, startTimer, syncExpiry, setOnAuthLost, logout } from './auth.js?v=1.16.11';
+import { state, api, health, startTimer, syncExpiry, setOnAuthLost, logout } from './auth.js?v=1.16.12';
 const $ = s => document.querySelector(s);
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const dt = v => v ? new Date(v).toLocaleString('ko-KR', { timeZone: 'Asia/Seoul', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }) : '-';
@@ -106,7 +106,7 @@ const views = {
     ${users.map(u => `<tr><td><b>${esc(u.loginId)}</b><br><span class="sub">${esc(u.displayName)}${u.memo ? ' · ' + esc(u.memo) : ''}</span><br><button class="mini-btn" data-detail="opinions" data-id="${u.id}" data-login="${esc(u.loginId)}"${u.opinionCount ? '' : ' disabled title="보낸 의견이 없습니다"'}>의견 ${n(u.opinionCount)}</button></td>
       <td>${roleText(u.role)} <span class="sub">${u.role === 'user' ? '· 1기기' : '· 동시 접속 허용'}</span><br><span class="pill ${u.status === 'active' ? 'ok' : 'bad'}">${u.status === 'active' ? '사용' : '중지'}</span>${u.lockedUntil && new Date(u.lockedUntil) > new Date() ? ' <span class="pill warn">잠김</span>' : ''}${u.activeSessions ? ' <span class="pill ok">접속 중</span>' : ''}${u.mustChangePassword ? ' <span class="pill warn">비번 변경 대기</span>' : ''}</td>
       <td class="num">${n(u.today.messages)}/${n(u.limits.dailyMessages)}${u.today.blocked ? `<br><span class="sub">거절 ${u.today.blocked}</span>` : ''}<br><button class="mini-btn" data-detail="questions" data-id="${u.id}" data-login="${esc(u.loginId)}">질문</button></td><td class="num">${n(u.today.tokens)}/${n(u.limits.dailyTokens)}<br><button class="mini-btn" data-detail="usage" data-id="${u.id}" data-login="${esc(u.loginId)}">토큰</button></td>
-      <td class="num">${n(u.today.sessions)}<br><span class="sub">${u.role === "user" ? "24시간 1회" : "제한 없음"}</span></td><td>${u.limits.sessionMinutes}분 · 질문 ${u.limits.sessionMessages}</td><td>${esc(u.device?.platform)}<br>${esc(u.device?.browser)}<br>${dt(u.lastLoginAt)}${u.nextLoginAt?`<br><span class="sub">재이용 ${dt(u.nextLoginAt)}</span>`:""}<br><button class="mini-btn" data-detail="logins" data-id="${u.id}" data-login="${esc(u.loginId)}">위치</button></td>
+      <td class="num">${n(u.today.sessions)}<br><span class="sub">${u.role === "user" ? "24시간 1회" : "제한 없음"}</span></td><td>${u.limits.sessionMinutes}분 · 질문 ${u.limits.sessionMessages}</td><td>${esc(devPlat(u.device))}<br>${esc(devBrowser(u.device))}<br>${dt(u.lastLoginAt)}${u.nextLoginAt?`<br><span class="sub">재이용 ${dt(u.nextLoginAt)}</span>`:""}<br><button class="mini-btn" data-detail="logins" data-id="${u.id}" data-login="${esc(u.loginId)}">위치</button></td>
       <td><div class="acts" data-id="${u.id}" data-login="${esc(u.loginId)}"><button data-a="limits">한도</button><button data-a="role">권한</button><button data-a="reset">비번 초기화</button>${u.lockedUntil ? '<button data-a="unlock">잠금 해제</button>' : ''}
         <button data-a="toggle" class="${u.status === 'active' ? 'danger' : ''}">${u.status === 'active' ? '중지' : '재개'}</button><button data-a="chats">대화</button></div></td></tr>`).join('')}</table></div>`;
     view.querySelectorAll('[data-detail]').forEach(b => b.onclick = () => go(b.dataset.detail === 'opinions' ? 'opinions' : 'user_' + b.dataset.detail, { user: b.dataset.id, label: b.dataset.login }));
@@ -158,7 +158,7 @@ const views = {
     ${sessions.map(s => { const left = Math.max(0, Math.round((new Date(s.expires_at) - Date.now()) / 1000));
       const end = s.active ? `<span class="pill ok">${Math.floor(left / 60)}:${String(left % 60).padStart(2, '0')}</span>` : `${dt(s.ended_at)}<br><span class="sub">${esc({ logout: '로그아웃', expired: '시간 만료', revoked: '강제 종료', replaced: '새 로그인', disabled: '계정 중지' }[s.end_reason] ?? s.end_reason ?? '만료')}</span>`;
       const apis = Object.entries(s.api_calls || {}).map(([k, v]) => `${esc(k)} ${v}`).join(', ') || '-';
-      return `<tr><td><b>${esc(s.login_id)}</b><br><span class="sub">${esc(s.display_name)} · ${esc(s.device?.platform ?? s.client ?? '')} · ${esc(s.device?.browser ?? '')}</span></td><td>${dt(s.created_at)}</td><td>${end}</td><td class="num">${n(s.message_count)}</td>
+      return `<tr><td><b>${esc(s.login_id)}</b><br><span class="sub">${esc(s.display_name)} · ${esc(s.device ? devPlat(s.device) : s.client ?? '')} · ${esc(devBrowser(s.device))}</span></td><td>${dt(s.created_at)}</td><td>${end}</td><td class="num">${n(s.message_count)}</td>
         <td class="num">${n(s.llm_calls)} · ${n(s.tokens_in + s.tokens_out)}</td><td class="sub">${apis}</td>
         <td><div class="acts"><button data-chat="${s.id}" data-label="${esc(s.login_id)}">대화</button>${s.active ? `<button class="danger" data-revoke="${s.id}">강제 종료</button>` : ''}</div></td></tr>`; }).join('')}</table></div>`;
     $('#tg').onclick = () => views.sessions({ all: !opt.all }); $('#rf').onclick = () => views.sessions(opt);
@@ -237,7 +237,7 @@ const views = {
     const ST = { granted: '<span class="pill ok">허용</span>', denied: '<span class="pill warn">거부</span>', unavailable: '<span class="pill">확인 불가</span>', none: '<span class="sub">요청 전·이전 버전</span>' };
     view.innerHTML = `${backBar(`로그인 위치 기록 · ${esc(user.loginId)}`)}<p class="sub">최근 30일 로그인 · 위치는 사용자가 허용한 경우만 약 100m 단위로 저장하고 30일 뒤 지웁니다</p>
     ${logins.length ? `<div class="scroll"><table class="tbl"><tr><th>로그인</th><th>기기</th><th>위치 동의</th><th>위경도</th><th>지도</th></tr>
-    ${logins.map(l => `<tr><td>${dt(l.at)}${l.endedAt ? `<br><span class="sub">종료 ${dt(l.endedAt)}${l.endReason ? ' · ' + esc(l.endReason) : ''}</span>` : ''}</td><td>${esc(l.device?.platform)}<br><span class="sub">${esc(l.device?.browser)}</span></td><td>${ST[l.locationStatus] ?? esc(l.locationStatus)}</td>
+    ${logins.map(l => `<tr><td>${dt(l.at)}${l.endedAt ? `<br><span class="sub">종료 ${dt(l.endedAt)}${l.endReason ? ' · ' + esc(l.endReason) : ''}</span>` : ''}</td><td>${esc(devPlat(l.device))}<br><span class="sub">${esc(devBrowser(l.device))}</span></td><td>${ST[l.locationStatus] ?? esc(l.locationStatus)}</td>
       <td>${l.location ? `${l.location.lat.toFixed(3)}, ${l.location.lon.toFixed(3)}${l.location.address ? ` (${esc(l.location.address)} 부근)` : ''}${l.location.accuracyM ? `<br><span class="sub">오차 약 ${n(l.location.accuracyM)}m</span>` : ''}` : '-'}</td>
       <td>${l.location ? `<a href="https://map.kakao.com/link/map/${encodeURIComponent(user.loginId + ' 로그인')},${l.location.lat},${l.location.lon}" target="_blank" rel="noopener noreferrer">카카오맵</a>` : '-'}</td></tr>`).join('')}</table></div>` : '<div class="card"><p class="sub">최근 30일 로그인 기록이 없습니다.</p></div>'}`;
     bindBack();
@@ -256,6 +256,9 @@ const views = {
     ${actions.map(a => `<tr><td>${dt(a.at)}</td><td>${esc(a.admin ?? 'CLI')}</td><td>${esc(a.action)}</td><td>${esc(a.target ?? '')}</td><td class="sub">${esc(JSON.stringify(a.detail ?? {}))}</td></tr>`).join('')}</table></div>`;
   }
 };
+// 기기 표시: 아이폰 · iOS 26.7.3 / Chrome 157 (User-Agent 추정, 구버전 서버 응답은 기존 필드로 표시)
+const devPlat = d => d ? [d.platform, d.model, d.os].filter(Boolean).join(' · ') : '';
+const devBrowser = d => d ? (d.label ?? d.browser ?? '') : '';
 const capBar = c => c ? `<div class="capbar">${[['오늘 신청', c.registers], ['베타 테스터', c.users], ['오늘 로그인', c.logins]].map(([l, v]) => `<div class="${v.used >= v.max ? 'full' : v.used >= v.max * 0.8 ? 'near' : ''}"><span>${l}</span><b>${n(v.used)} / ${n(v.max)}</b><i><em style="width:${Math.min(100, v.max ? v.used / v.max * 100 : 100).toFixed(1)}%"></em></i></div>`).join('')}</div><p class="sub">정원에 닿으면 새 신청·승인·로그인을 막습니다(관리자·내부 테스터 예외).</p>` : '';
 const backBar = title => `<div class="tool"><div class="acts"><button id="backUsers">← 사용자</button></div><h2>${title}</h2></div>`;
 function bindBack() { const b = $('#backUsers'); if (b) b.onclick = () => go('users'); }
