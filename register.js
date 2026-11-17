@@ -1,4 +1,4 @@
-import {api} from './auth.js?v=1.16.18';
+import {api} from './auth.js?v=1.16.19';
 const form=document.querySelector('#requestForm');
 const result=document.querySelector('#result');
 const button=document.querySelector('#registerSubmit');
@@ -20,7 +20,7 @@ async function checkDup(){
   const reviewed=r.reviewedDate?r.reviewedDate+'에 ':'';
   if(r.status==='pending')setDup('⏳ 승인 진행 중 · '+when+'이미 이용 신청을 하셨습니다. 관리자 승인을 기다려 주십시오. 승인되면 신청하신 이메일로 임시 비밀번호를 안내해 드립니다.','block');
   else if(r.status==='approved')setDup('✅ 승인 완료 · '+(reviewed||when)+'승인된 신청입니다.','block');
-  else if(r.status==='registered')setDup('✅ 이미 가입된 이메일입니다. 로그인 화면에서 이용해 주십시오. 비밀번호를 모르시면 관리자에게 문의해 주십시오.','block');
+  else if(r.status==='registered')setDup('✅ 이미 가입된 이메일입니다.','block');
   else if(r.status==='rejected')setDup('❌ 승인 거부 · '+(reviewed||when)+'신청이 승인되지 않았습니다. 내용을 확인하신 뒤 다시 신청하실 수 있습니다.','info');
   else if(r.status==='none')setDup('신청할 수 있는 이메일입니다.','ok');
   else setDup('');
