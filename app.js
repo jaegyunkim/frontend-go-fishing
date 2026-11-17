@@ -7,7 +7,7 @@ const GATE = { PASS: '안전 양호', PASS_WITH_CAUTION: '조건부 주의', REV
 const badge = g => g ? `<span class="badge b-${esc(g)}">${esc(GATE[g] ?? g)}</span>` : '';
 
 // ---- 설정·인증(auth.js) ----
-import { state, setApi, api, health, login, logout, startTimer, syncExpiry, saveAuth, setOnAuthLost, setOnMustChange, loadAuthImage, remaining, sessionMinutes } from './auth.js?v=1.14.2';
+import { state, setApi, api, health, login, logout, startTimer, syncExpiry, saveAuth, setOnAuthLost, setOnMustChange, loadAuthImage, remaining, sessionMinutes } from './auth.js?v=1.15.0';
 let SID = localStorage.getItem('gofishing.session') || (crypto.randomUUID?.() ?? String(Date.now()) + Math.random().toString(16).slice(2));
 localStorage.setItem('gofishing.session', SID);
 let slots = {}, lastBriefing = null, timer = null, usageText = '';
@@ -660,6 +660,26 @@ function showNotice(title, msg) {
 }
 function toast(text) { const t = $('#toast'); t.textContent = text; t.hidden = !text; if (text) setTimeout(() => { if (t.textContent === text) t.hidden = true; }, 15000); }
 setOnAuthLost(msg => endSession(msg, false, 'lost'));
+
+// 무응답 자동 로그아웃: 로그인 상태에서 5분간 터치·클릭·키 입력·스크롤이 없으면 로그아웃(4분에 1분 전 경고).
+// 답변을 기다리는 동안(조회 중 표시)은 무응답으로 세지 않는다. 백그라운드 탭은 타이머가 늦어지므로 다시 보일 때 바로 확인.
+const IDLE_MS = 5 * 60 * 1000, IDLE_WARN_MS = 4 * 60 * 1000;
+let lastActive = Date.now(), idleWarned = false;
+const markActive = () => { lastActive = Date.now(); if (idleWarned) { idleWarned = false; toast(''); } };
+['pointerdown', 'keydown', 'wheel', 'touchstart', 'scroll'].forEach(ev => window.addEventListener(ev, markActive, { passive: true, capture: true }));
+function checkIdle() {
+  if (!(authed() && state.auth)) { lastActive = Date.now(); idleWarned = false; return; }
+  if (document.querySelector('#chat .typing')) { lastActive = Date.now(); return; }
+  const idle = Date.now() - lastActive;
+  if (idle >= IDLE_MS) {
+    idleWarned = false;
+    endSession('5분 동안 사용이 없어 자동 로그아웃했어요.', false, 'idle');
+    showNotice('자동 로그아웃되었습니다', '5분 동안 사용이 없어 안전을 위해 로그아웃했어요.\n다시 로그인해 주세요.');
+  } else if (idle >= IDLE_WARN_MS && !idleWarned) { idleWarned = true; toast('1분 동안 사용이 없으면 자동 로그아웃돼요. 화면을 터치하면 계속 이용할 수 있어요.'); }
+}
+setInterval(checkIdle, 5000);
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') checkIdle(); });
+
 setOnMustChange(() => openPw(true));
 
 $('#loginForm').addEventListener('submit', async e => {
