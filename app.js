@@ -7,7 +7,7 @@ const GATE = { PASS: '안전 양호', PASS_WITH_CAUTION: '조건부 주의', REV
 const badge = g => g ? `<span class="badge b-${esc(g)}">${esc(GATE[g] ?? g)}</span>` : '';
 
 // ---- 설정·인증(auth.js) ----
-import { state, setApi, api, health, login, logout, startTimer, syncExpiry, saveAuth, setOnAuthLost, setOnMustChange, loadAuthImage, remaining, sessionMinutes } from './auth.js?v=1.16.1';
+import { state, setApi, api, health, login, logout, startTimer, syncExpiry, saveAuth, setOnAuthLost, setOnMustChange, loadAuthImage, remaining, sessionMinutes } from './auth.js?v=1.16.2';
 let SID = localStorage.getItem('gofishing.session') || (crypto.randomUUID?.() ?? String(Date.now()) + Math.random().toString(16).slice(2));
 localStorage.setItem('gofishing.session', SID);
 let slots = {}, lastBriefing = null, timer = null, usageText = '', pickedOrigin = null;
@@ -580,7 +580,7 @@ async function suggestWeekend() {
   try {
     const s = await api('/v1/suggest', { timeoutMs: 20000 });
     if (!s?.available || aiLocked || !state.auth) return;
-    const d = bubble('bot suggest', md('**📌 이번 주말 출조 제안**\n' + s.text) + (s.sources?.length ? '<div class="suggest-src">출처: ' + esc(s.sources.join(' · ')) + ' · 내 이용 기록 기준 추천</div>' : ''));
+    const d = bubble('bot suggest', md('**📌 이번 주말 출조 제안**\n' + s.text) + (s.sources?.length ? '<div class="suggest-src">출처: ' + esc(s.sources.join(' · ')) + ' · 누적·최근 조회 지역·출발지 기준 추천</div>' : ''));
     if (s.actions?.length) renderMessage({ type: 'actions', buttons: s.actions });
     return d;
   } catch { /* 제안은 부가 기능: 실패해도 대화는 그대로 */ }
