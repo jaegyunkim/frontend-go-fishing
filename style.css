@@ -323,7 +323,7 @@ button.op-star.on{color:#f59e0b}
 .has-tip::before{content:"";position:absolute;top:calc(100% + 4px);left:50%;transform:translate(-50%,-4px);border:5px solid transparent;border-bottom-color:#0b2534;border-top:0;opacity:0;pointer-events:none;transition:opacity .15s,transform .15s;z-index:30}
 .has-tip:hover::after,.has-tip:hover::before,.has-tip:focus-visible::after,.has-tip:focus-visible::before{opacity:1;transform:translate(-50%,0)}
 @media (prefers-reduced-motion:reduce){.has-tip::after,.has-tip::before{transition:none}}
-/* 입력칸 지우기(ⓧ) v1.13.4 */
+/* 입력칸 지우기(ⓧ) v1.14.0 */
 .clearable{position:relative;display:block}
 .clearable input{width:100%;box-sizing:border-box;padding-right:44px}
 .clear-btn{position:absolute;right:6px;top:50%;transform:translateY(-50%);width:34px;height:34px;display:grid;place-items:center;border:0;background:transparent;border-radius:50%;cursor:pointer;color:#94a3b8}
@@ -350,3 +350,9 @@ button.op-star.on{color:#f59e0b}
 .nb-cat-r{font-size:11.5px;color:var(--sub)}
 .nb-cat .list li{font-weight:400}
 .nb-cat-head b,.sec-label{color:#000 !important;font-weight:800 !important}
+/* 예보 신뢰 범위 밖 안내 */
+.card.horizon{border:1.5px solid #f5b94a;background:#fff8e8}
+.card.horizon h3{color:#8a5300}
+.hz-text{font-size:13px;line-height:1.55;color:#4a3a1a}
+.hz-ask{margin:10px 0 4px;font-size:12px;font-weight:700;color:#8a5300}
+.chip.chip-warn{border-color:#f5b94a;background:#fff3d6;color:#8a5300}

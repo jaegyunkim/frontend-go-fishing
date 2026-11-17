@@ -7,7 +7,7 @@ const GATE = { PASS: '안전 양호', PASS_WITH_CAUTION: '조건부 주의', REV
 const badge = g => g ? `<span class="badge b-${esc(g)}">${esc(GATE[g] ?? g)}</span>` : '';
 
 // ---- 설정·인증(auth.js) ----
-import { state, setApi, api, health, login, logout, startTimer, syncExpiry, saveAuth, setOnAuthLost, setOnMustChange, loadAuthImage, remaining, sessionMinutes } from './auth.js?v=1.13.4';
+import { state, setApi, api, health, login, logout, startTimer, syncExpiry, saveAuth, setOnAuthLost, setOnMustChange, loadAuthImage, remaining, sessionMinutes } from './auth.js?v=1.14.0';
 let SID = localStorage.getItem('gofishing.session') || (crypto.randomUUID?.() ?? String(Date.now()) + Math.random().toString(16).slice(2));
 localStorage.setItem('gofishing.session', SID);
 let slots = {}, lastBriefing = null, timer = null, usageText = '';
@@ -42,13 +42,13 @@ function renderChips() {
   const L = { gasoline: '휘발유', diesel: '경유', lpg: 'LPG', ev: '전기차' };
   const c = [];
   if (slots.origin?.coarse) c.push('🏠 ' + slots.origin.coarse);
-  if (slots.date) c.push('📅 ' + slots.date.replaceAll('-', '.'));
+  if (slots.date) c.push('📅 ' + slots.date.replaceAll('-', '.') + (beyondReliable(slots.date) ? ' · 참고용' : ''));
   if (slots.region) c.push('🌊 ' + slots.region);
   if (slots.species) c.push('🐟 ' + slots.species);
   if (slots.experience) c.push('🎓 ' + slots.experience);
   if (slots.companion === '가족동반') c.push('👨‍👩‍👧 가족');
   if (slots.fuel) c.push('⛽ ' + (L[slots.fuel] ?? slots.fuel) + (slots.efficiency ? ` ${slots.efficiency}` : ''));
-  $('#chips').innerHTML = (authed() && state.auth ? `<span class="chip" id="usageChip">${esc(usageText || '💬 질문 한도 확인 중')}</span>` : '') + (c.map(x => `<span class="chip">${esc(x)}</span>`).join('') || '<span class="chip">출발지·날짜·지역을 말씀해 주세요</span>');
+  $('#chips').innerHTML = (authed() && state.auth ? `<span class="chip" id="usageChip">${esc(usageText || '💬 질문 한도 확인 중')}</span>` : '') + (c.map(x => `<span class="chip${x.endsWith(' · 참고용') ? ' chip-warn' : ''}">${esc(x)}</span>`).join('') || '<span class="chip">출발지·날짜·지역을 말씀해 주세요</span>');
 }
 
 function renderMessage(m) {
@@ -65,6 +65,13 @@ function renderMessage(m) {
         else d.innerHTML = md(`공식 누리집에서도 ${m.date.replaceAll('-', '.')} 무렵의 믿을 만한 최신 전망을 찾지 못했어요. 출조 10일 전부터는 기상청 중기예보로 안내해 드릴 수 있으니 그때 다시 물어봐 주세요.`);
         scroll();
       }).catch(() => { d.innerHTML = md('누리집 검색에 실패했어요. 잠시 후 다시 물어봐 주세요.'); });
+      break;
+    }
+    case 'horizon_notice': { // 신뢰 예보 범위(오늘~글피)를 넘는 날짜: 안내 + 범위 안 날짜로 다시 묻는 버튼
+      const h = m.data;
+      const el = node(`<h3>⏳ 예보 신뢰 범위 밖이에요</h3><div class="hz-text">${esc(h.text)}</div><div class="hz-ask">이렇게 다시 물어보세요</div><div class="actions hz-actions"></div>`, 'card horizon');
+      const box = el.querySelector('.hz-actions');
+      for (const x of h.suggestions ?? []) { const b = document.createElement('button'); b.textContent = x.label; b.onclick = () => send(x.message); box.appendChild(b); }
       break;
     }
     case 'actions': {
@@ -729,4 +736,12 @@ function blockedList(list) {
   const rows = [...groups].map(([k, items]) => `<div class="blk-group"><div class="blk-head">${esc(k)}</div><ul class="blk-list">${
     items.map(i => `<li><span>${esc(i.name)}</span><b>${esc(i.val)}</b></li>`).join('')}</ul></div>`).join('');
   return `<details class="blocked"><summary>🚫 안전 기준으로 제외된 지점 ${list.length}곳</summary>${rows}</details>`;
+}
+
+// 신뢰 예보 범위: 오늘(KST)부터 RELIABLE_DAYS일 후까지(오늘·내일·모레·글피). 백엔드 FORECAST_RELIABLE_DAYS 와 맞춘다.
+const RELIABLE_DAYS = 3;
+function beyondReliable(dateStr) {
+  const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Seoul' }).format(new Date());
+  const d = Math.round((Date.parse(dateStr + 'T00:00:00Z') - Date.parse(today + 'T00:00:00Z')) / 86400000);
+  return d > RELIABLE_DAYS;
 }
