@@ -323,7 +323,7 @@ button.op-star.on{color:#f59e0b}
 .has-tip::before{content:"";position:absolute;top:calc(100% + 4px);left:50%;transform:translate(-50%,-4px);border:5px solid transparent;border-bottom-color:#0b2534;border-top:0;opacity:0;pointer-events:none;transition:opacity .15s,transform .15s;z-index:30}
 .has-tip:hover::after,.has-tip:hover::before,.has-tip:focus-visible::after,.has-tip:focus-visible::before{opacity:1;transform:translate(-50%,0)}
 @media (prefers-reduced-motion:reduce){.has-tip::after,.has-tip::before{transition:none}}
-/* 입력칸 지우기(ⓧ) v1.15.0 */
+/* 입력칸 지우기(ⓧ) v1.15.1 */
 .clearable{position:relative;display:block}
 .clearable input{width:100%;box-sizing:border-box;padding-right:44px}
 .clear-btn{position:absolute;right:6px;top:50%;transform:translateY(-50%);width:34px;height:34px;display:grid;place-items:center;border:0;background:transparent;border-radius:50%;cursor:pointer;color:#94a3b8}
@@ -361,3 +361,10 @@ button.op-star.on{color:#f59e0b}
 .nmap-btns{display:flex;flex-direction:column;gap:8px}
 .nmap-btns a,.nmap-btns button{display:block;text-align:center;padding:11px;border-radius:12px;font-size:14px;font-weight:700;text-decoration:none;border:1px solid var(--line);background:#fff;color:var(--ink);cursor:pointer}
 .nmap-btns a.primary{background:#03c75a;border-color:#03c75a;color:#fff}
+/* 출발지 등록 절차: 키워드 → 주소 찾기 → 추가 */
+.origin-form-row .postcode-open{width:auto;margin:0;white-space:nowrap;padding:0 14px}
+.origin-steps{font-size:12px;color:var(--sub);margin:6px 2px 0}
+.origin-picked{margin-top:10px;padding:10px 12px;border-radius:12px;background:#e9f7ee;border:1px solid #9fd8b4;display:flex;flex-direction:column;gap:2px}
+.origin-picked span{font-size:11.5px;color:#2f7a4c}.origin-picked b{font-size:14px;color:var(--ink)}
+.origin-add{display:block;width:100%;margin-top:10px;min-height:46px;font-weight:700}
+.origin-add:disabled,.postcode-open:disabled{opacity:.45;cursor:not-allowed}
