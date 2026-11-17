@@ -323,7 +323,7 @@ button.op-star.on{color:#f59e0b}
 .has-tip::before{content:"";position:absolute;top:calc(100% + 4px);left:50%;transform:translate(-50%,-4px);border:5px solid transparent;border-bottom-color:#0b2534;border-top:0;opacity:0;pointer-events:none;transition:opacity .15s,transform .15s;z-index:30}
 .has-tip:hover::after,.has-tip:hover::before,.has-tip:focus-visible::after,.has-tip:focus-visible::before{opacity:1;transform:translate(-50%,0)}
 @media (prefers-reduced-motion:reduce){.has-tip::after,.has-tip::before{transition:none}}
-/* 입력칸 지우기(ⓧ) v1.16.13 */
+/* 입력칸 지우기(ⓧ) v1.16.14 */
 .clearable{position:relative;display:block}
 .clearable input{width:100%;box-sizing:border-box;padding-right:44px}
 .clear-btn{position:absolute;right:6px;top:50%;transform:translateY(-50%);width:34px;height:34px;display:grid;place-items:center;border:0;background:transparent;border-radius:50%;cursor:pointer;color:#94a3b8}
@@ -396,3 +396,4 @@ button.op-star.on{color:#f59e0b}
 .cta-btn{margin-top:4px;padding:11px;border-radius:12px;background:#ff6b3d;color:#fff;font-size:15px;font-weight:800;text-align:center}
 @keyframes ctaPulse{0%,100%{box-shadow:0 0 0 0 rgba(255,107,61,.45)}50%{box-shadow:0 0 0 6px rgba(255,107,61,0)}}
 @media (prefers-reduced-motion:reduce){.cta-badge{animation:none}.signup-cta{transition:none}}
+.signup-cta,.signup-cta *{word-break:keep-all;overflow-wrap:anywhere}
