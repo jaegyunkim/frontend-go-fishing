@@ -7,7 +7,7 @@ const GATE = { PASS: '안전 양호', PASS_WITH_CAUTION: '조건부 주의', REV
 const badge = g => g ? `<span class="badge b-${esc(g)}">${esc(GATE[g] ?? g)}</span>` : '';
 
 // ---- 설정·인증(auth.js) ----
-import { state, setApi, api, health, login, logout, startTimer, syncExpiry, saveAuth, setOnAuthLost, setOnMustChange, loadAuthImage, remaining, sessionMinutes } from './auth.js?v=1.15.7';
+import { state, setApi, api, health, login, logout, startTimer, syncExpiry, saveAuth, setOnAuthLost, setOnMustChange, loadAuthImage, remaining, sessionMinutes } from './auth.js?v=1.16.0';
 let SID = localStorage.getItem('gofishing.session') || (crypto.randomUUID?.() ?? String(Date.now()) + Math.random().toString(16).slice(2));
 localStorage.setItem('gofishing.session', SID);
 let slots = {}, lastBriefing = null, timer = null, usageText = '', pickedOrigin = null;
@@ -15,7 +15,7 @@ const authed = () => state.authMode === 'required';
 
 function setStatus(text, cls = '') { const el = $('#status'); el.textContent = text; el.className = 'status ' + cls; }
 async function checkServer() {
-  if (!state.api) { setStatus('백엔드 미연결 · ⚙︎ 설정에서 서버 주소를 입력하세요', 'bad'); return null; }
+  if (!state.api) { setStatus('백엔드 미연결 · ⚙︎ 설정에서 서버 주소를 입력하십시오', 'bad'); return null; }
   const h = await health();
   if (h.error) { setStatus(`서버 연결 실패 (${state.api}) · ${h.error}`, 'bad'); return null; }
   setStatus(authed() ? `원활한 운영을 위해 로그인 세션 ${state.sessionMinutes}분 후 자동 로그아웃됩니다. 양해 부탁드립니다.` : `서버 연결됨 v${h.version} · 로그인 없음(개발 모드)`, 'ok');
@@ -56,28 +56,28 @@ function renderChips() {
   if (slots.experience) c.push('🎓 ' + slots.experience);
   if (slots.companion === '가족동반') c.push('👨‍👩‍👧 가족');
   if (slots.fuel) c.push('⛽ ' + (L[slots.fuel] ?? slots.fuel) + (slots.efficiency ? ` ${slots.efficiency}` : ''));
-  $('#chips').innerHTML = (authed() && state.auth ? `<span class="chip" id="usageChip">${esc(usageText || '💬 질문 한도 확인 중')}</span>` : '') + (c.map(x => `<span class="chip${x.endsWith(' · 참고용') ? ' chip-warn' : ''}">${esc(x)}</span>`).join('') || '<span class="chip">출발지·날짜·지역을 말씀해 주세요</span>');
+  $('#chips').innerHTML = (authed() && state.auth ? `<span class="chip" id="usageChip">${esc(usageText || '💬 질문 한도 확인 중')}</span>` : '') + (c.map(x => `<span class="chip${x.endsWith(' · 참고용') ? ' chip-warn' : ''}">${esc(x)}</span>`).join('') || '<span class="chip">출발지·날짜·지역을 말씀해 주십시오</span>');
 }
 
 function renderMessage(m) {
   switch (m.type) {
     case 'text': bubble('bot', md(m.text)); break;
     case 'web_lookup': { // 공공데이터·API 에 자료가 없는 날짜: 공식 누리집 웹 검색으로 보완(검증 통과한 경우만 내용 표시)
-      const d = bubble('bot web-ref', md(`🔎 ${m.region} ${m.date.replaceAll('-', '.')}은 아직 공공데이터 예보 범위 밖이라, 기상청·국립해양조사원 누리집에서 최신 전망을 찾아보고 있어요…`));
+      const d = bubble('bot web-ref', md(`🔎 ${m.region} ${m.date.replaceAll('-', '.')}은 아직 공공데이터 예보 범위 밖이라, 기상청·국립해양조사원 누리집에서 최신 전망을 찾아보고 있습니다…`));
       api(`/v1/web-outlook?region=${encodeURIComponent(m.region)}&date=${m.date}`, { timeoutMs: 100000 }).then(r => {
         if (r.status === 'ok') {
           const a = document.createElement('a'); a.href = r.url; a.target = '_blank'; a.rel = 'noopener noreferrer'; a.textContent = `${r.host} · ${r.published.replaceAll('-', '.')} 발표`;
-          d.innerHTML = md(`**📰 공식 누리집 참고 자료** (웹 검색)\n${r.summary}`) + '<div class="web-ref-src">출처: </div><div class="web-ref-note">공식 예보 API 수치가 아니라 참고용이며, 안전 판단에는 쓰지 않아요. 출조 10일 전부터 중기예보, 2~3일 전에는 상세 예보로 다시 확인해 주세요.</div>';
+          d.innerHTML = md(`**📰 공식 누리집 참고 자료** (웹 검색)\n${r.summary}`) + '<div class="web-ref-src">출처: </div><div class="web-ref-note">공식 예보 API 수치가 아니라 참고용이며, 안전 판단에는 쓰지 않습니다. 출조 10일 전부터 중기예보, 2~3일 전에는 상세 예보로 다시 확인해 주십시오.</div>';
           d.querySelector('.web-ref-src').appendChild(a);
-        } else if (r.status === 'limit') d.innerHTML = md('오늘은 누리집 검색을 더 할 수 없어요. 날짜가 가까워지면 다시 물어봐 주세요.');
-        else d.innerHTML = md(`공식 누리집에서도 ${m.date.replaceAll('-', '.')} 무렵의 믿을 만한 최신 전망을 찾지 못했어요. 출조 10일 전부터는 기상청 중기예보로 안내해 드릴 수 있으니 그때 다시 물어봐 주세요.`);
+        } else if (r.status === 'limit') d.innerHTML = md('오늘은 누리집 검색을 더 할 수 없습니다. 날짜가 가까워지면 다시 물어봐 주십시오.');
+        else d.innerHTML = md(`공식 누리집에서도 ${m.date.replaceAll('-', '.')} 무렵의 믿을 만한 최신 전망을 찾지 못했습니다. 출조 10일 전부터는 기상청 중기예보로 안내해 드릴 수 있으니 그때 다시 물어봐 주십시오.`);
         scroll();
-      }).catch(() => { d.innerHTML = md('누리집 검색에 실패했어요. 잠시 후 다시 물어봐 주세요.'); });
+      }).catch(() => { d.innerHTML = md('누리집 검색에 실패했습니다. 잠시 후 다시 물어봐 주십시오.'); });
       break;
     }
     case 'horizon_notice': { // 신뢰 예보 범위(오늘~글피)를 넘는 날짜: 안내 + 범위 안 날짜로 다시 묻는 버튼
       const h = m.data;
-      const el = node(`<h3>⏳ 예보 신뢰 범위 밖이에요</h3><div class="hz-text">${esc(h.text)}</div><div class="hz-ask">이렇게 다시 물어보세요</div><div class="actions hz-actions"></div>`, 'card horizon');
+      const el = node(`<h3>⏳ 예보 신뢰 범위 밖입니다</h3><div class="hz-text">${esc(h.text)}</div><div class="hz-ask">이렇게 다시 물어보십시오</div><div class="actions hz-actions"></div>`, 'card horizon');
       const box = el.querySelector('.hz-actions');
       for (const x of h.suggestions ?? []) { const b = document.createElement('button'); b.textContent = x.label; b.onclick = () => send(x.message); box.appendChild(b); }
       break;
@@ -132,7 +132,7 @@ function renderMessage(m) {
 
 // ---- AI 크레딧 소진 잠금: 메인 화면의 모든 입력·버튼을 막고 안내만 보여 준다(관리자는 관리자 페이지 이동 가능) ----
 let aiLocked = false;
-const AI_DEFAULT_MSG = '지금은 AI 이용량이 모두 소진되어 어디물어를 잠시 이용할 수 없어요. 관리자가 확인한 뒤 최대한 빨리 다시 열어 드릴게요. 기다려 주셔서 감사합니다.';
+const AI_DEFAULT_MSG = '지금은 AI 이용량이 모두 소진되어 어디물어를 잠시 이용할 수 없습니다. 관리자가 확인한 뒤 최대한 빨리 다시 열어 드리겠습니다. 기다려 주셔서 감사합니다.';
 function applyAiLock(ai) {
   if (!ai || ai.available !== false) return;
   aiLocked = true;
@@ -158,8 +158,8 @@ $('#aiLockLogout').onclick = () => { clearAiLock(); endSession('로그아웃했�
 // ---- 출발지(최대 5곳): 상단 스와이프 탭으로 고르고, 없으면 말풍선으로 등록을 권한다 ----
 let origins = [], originMax = 5, originTipTimer = null, originNudgeTimer = null;
 const activeOrigin = () => origins.find(o => o.active) ?? null;
-const TIP_FIRST = '어디서 출발하세요? 🚗\n출발지를 등록해 두시면 하루에 한 번, 가까운 바다낚시 포인트와 오늘 오전·오후 날씨를 골라서 먼저 알려 드릴게요. 가는 길·이동 시간까지 함께 챙겨 드려요.\n출발지는 최대 5곳까지 등록할 수 있어요.';
-const TIP_MORE = '출발지는 5곳까지 등록해 둘 수 있어요. 위에서 눌러 바로 바꿔 보세요 🙂';
+const TIP_FIRST = '어디서 출발하십니까? 🚗\n출발지를 등록해 두시면 하루에 한 번, 가까운 바다낚시 포인트와 오늘 오전·오후 날씨를 골라서 먼저 알려 드리겠습니다. 가는 길·이동 시간까지 함께 챙겨 드립니다.\n출발지는 최대 5곳까지 등록할 수 있습니다.';
+const TIP_MORE = '출발지는 5곳까지 등록해 둘 수 있습니다. 위에서 눌러 바로 바꿔 보십시오 🙂';
 function renderOrigins() {
   const bar = $('#originBar'), box = $('#originChips');
   bar.hidden = !(authed() && state.auth);
@@ -201,19 +201,19 @@ function nudgeOrigins() {
   }
 }
 async function chooseOrigin(o) {
-  try { const r = await api(`/v1/origins/${o.id}/select`, { method: 'POST', body: '{}' }); origins = r.origins; renderOrigins(); toast(`출발지를 ${o.label}(으)로 바꿨어요.`); }
+  try { const r = await api(`/v1/origins/${o.id}/select`, { method: 'POST', body: '{}' }); origins = r.origins; renderOrigins(); toast(`출발지를 ${o.label}(으)로 바꿨습니다.`); }
   catch (e) { toast(e.message); }
 }
 function renderOriginList() {
   $('#originCount').textContent = `${origins.length}/${originMax}`;
   const full = origins.length >= originMax;
   $('#originInput').disabled = full;
-  $('#originInput').placeholder = full ? '5곳을 모두 등록했어요. 하나를 지우면 추가할 수 있어요' : '동네·도로명 키워드 입력';
+  $('#originInput').placeholder = full ? '5곳을 모두 등록했습니다. 하나를 지우면 추가할 수 있습니다' : '동네·도로명 키워드 입력';
   syncOriginButtons();
-  $('#originList').innerHTML = origins.length ? origins.map(o => `<li class="origin-item${o.active ? ' active' : ''}"><div class="origin-item-text"><b>${esc(o.label)}</b>${o.active ? ' <span class="origin-badge">사용 중</span>' : ''}<span>${esc(o.coarse)}</span></div><div class="origin-item-acts">${o.active ? '' : `<button type="button" data-use="${o.id}">사용</button>`}<button type="button" class="danger" data-del="${o.id}" aria-label="${esc(o.label)} 삭제">삭제</button></div></li>`).join('') : '<li class="origin-empty">아직 등록한 출발지가 없어요.</li>';
+  $('#originList').innerHTML = origins.length ? origins.map(o => `<li class="origin-item${o.active ? ' active' : ''}"><div class="origin-item-text"><b>${esc(o.label)}</b>${o.active ? ' <span class="origin-badge">사용 중</span>' : ''}<span>${esc(o.coarse)}</span></div><div class="origin-item-acts">${o.active ? '' : `<button type="button" data-use="${o.id}">사용</button>`}<button type="button" class="danger" data-del="${o.id}" aria-label="${esc(o.label)} 삭제">삭제</button></div></li>`).join('') : '<li class="origin-empty">아직 등록한 출발지가 없습니다.</li>';
   $('#originList').querySelectorAll('[data-use]').forEach(b => b.onclick = async () => { const o = origins.find(x => String(x.id) === b.dataset.use); await chooseOrigin(o); renderOriginList(); });
   $('#originList').querySelectorAll('[data-del]').forEach(b => b.onclick = async () => {
-    const o = origins.find(x => String(x.id) === b.dataset.del); if (!confirm(`'${o.label}' 출발지를 지울까요?`)) return;
+    const o = origins.find(x => String(x.id) === b.dataset.del); if (!confirm(`'${o.label}' 출발지를 지우시겠습니까?`)) return;
     try { const r = await api(`/v1/origins/${o.id}/delete`, { method: 'POST', body: '{}' }); origins = r.origins; renderOrigins(); renderOriginList(); } catch (e) { $('#originFormMsg').textContent = originError(e); }
   });
 }
@@ -223,7 +223,7 @@ function loadPostcode() {
   if (window.daum?.Postcode) return Promise.resolve();
   return postcodeLoading ??= new Promise((ok, no) => {
     const urls = ['https://t1.kakaocdn.net/mapjsapi/bundle/postcode/prod/postcode.v2.js', 'https://t1.daumcdn.net/mapjsapi/bundle/postcode/prod/postcode.v2.js'];
-    const tryNext = i => { if (i >= urls.length) { postcodeLoading = null; return no(new Error('주소 검색을 불러오지 못했어요. 동네 이름으로 입력해 주세요.')); }
+    const tryNext = i => { if (i >= urls.length) { postcodeLoading = null; return no(new Error('주소 검색을 불러오지 못했습니다. 동네 이름으로 입력해 주십시오.')); }
       const s = document.createElement('script'); s.src = urls[i]; s.async = true; s.onload = () => ok(); s.onerror = () => { s.remove(); tryNext(i + 1); }; document.head.appendChild(s); };
     tryNext(0);
   });
@@ -258,10 +258,10 @@ function setPicked(coarse) {
   if (pickedOrigin) $('#originAddBtn').focus();
 }
 $('#originInput').addEventListener('input', () => { if (pickedOrigin) setPicked(null); else syncOriginButtons(); });
-$('#postcodeOpen').onclick = e => { e.preventDefault(); const q = $('#originInput').value.trim(); $('#originFormMsg').textContent = ''; if (!q) { $('#originFormMsg').textContent = '찾을 동네나 도로명을 먼저 입력해 주세요.'; return; } openPostcode(q); };
-$('#originAddBtn').onclick = async () => { if (!pickedOrigin) { $('#originFormMsg').textContent = '주소 찾기에서 주소를 먼저 선택해 주세요.'; return; } if (await addOrigin(pickedOrigin, true)) setPicked(null); };
+$('#postcodeOpen').onclick = e => { e.preventDefault(); const q = $('#originInput').value.trim(); $('#originFormMsg').textContent = ''; if (!q) { $('#originFormMsg').textContent = '찾을 동네나 도로명을 먼저 입력해 주십시오.'; return; } openPostcode(q); };
+$('#originAddBtn').onclick = async () => { if (!pickedOrigin) { $('#originFormMsg').textContent = '주소 찾기에서 주소를 먼저 선택해 주십시오.'; return; } if (await addOrigin(pickedOrigin, true)) setPicked(null); };
 $('#postcodeClose').onclick = () => { $('#postcodeWrap').hidden = true; $('#postcodeBox').innerHTML = ''; };
-const originError = e => e.status === 404 && !e.code ? '출발지 기능이 아직 서버에 적용되지 않았어요. 관리자가 서버를 업데이트하면 바로 쓸 수 있어요.' : e.message;
+const originError = e => e.status === 404 && !e.code ? '출발지 기능이 아직 서버에 적용되지 않았습니다. 관리자가 서버를 업데이트하면 바로 쓸 수 있습니다.' : e.message;
 async function addOrigin(text, fromSearch = false) {
   const input = $('#originInput'), btn = $('#originAddBtn'), msg = $('#originFormMsg');
   btn.disabled = true; btn.textContent = '찾는 중…'; msg.textContent = '';
@@ -269,7 +269,7 @@ async function addOrigin(text, fromSearch = false) {
     const r = await api('/v1/origins', { method: 'POST', body: JSON.stringify({ text }) });
     const wasEmpty = !origins.length;
     origins = r.origins; input.value = ''; renderOrigins(); renderOriginList();
-    toast(`'${r.origin.label}'을(를) 출발지로 등록했어요.`);
+    toast(`'${r.origin.label}'을(를) 출발지로 등록했습니다.`);
     if (wasEmpty) { hideOriginTip(); showNearby(); }  // 첫 출발지를 등록하면 바로 주변 포인트를 추천
     return true;
   } catch (err) {
@@ -292,7 +292,7 @@ async function send(text, extra = {}) {
   text = String(text || '').trim(); if (!text) return;
   showTab('chat');
   qAnchor = null; const qEl = bubble('user', esc(text));
-  const t = document.createElement('div'); t.className = 'typing'; t.textContent = '어디물어가 공공데이터를 조회하고 있어요…'; chat.appendChild(t); scroll();
+  const t = document.createElement('div'); t.className = 'typing'; t.textContent = '어디물어가 공공데이터를 조회하고 있습니다…'; chat.appendChild(t); scroll();
   try {
     const r = await api('/v1/chat', { method: 'POST', body: JSON.stringify({ ...(authed() ? { message: text, client: 'pages', ...(activeOrigin() ? { originLabel: activeOrigin().coarse } : {}) } : { sessionId: SID, message: text, client: 'pages' }), ...extra }) });
     t.remove();
@@ -309,7 +309,7 @@ async function send(text, extra = {}) {
     if (e.code === 'AI_CREDIT_EXHAUSTED') { applyAiLock({ available: false, message: e.message }); return; }
     if (e.status === 429) { bubble('bot', md(`⏳ ${e.message}`)); if (e.usage) renderUsage({ today: { messages: e.usage.messages, tokens: e.usage.tokens } }); return; }
     if (e.status === 403) { bubble('bot', md(e.message)); return; }
-    bubble('bot', md(`서버에 연결하지 못했어요. (${e.message})\n⚙︎ 설정에서 백엔드 주소를 확인해 주세요.`));
+    bubble('bot', md(`서버에 연결하지 못했습니다. (${e.message})\n⚙︎ 설정에서 백엔드 주소를 확인해 주십시오.`));
   }
 }
 $('#composer').addEventListener('submit', e => { e.preventDefault(); const v = $('#msg').value; $('#msg').value = ''; send(v); });
@@ -424,8 +424,8 @@ $('#btnLogout').onclick = () => {
   const role = state.auth?.user?.role; $('#settings').close(); endSession('로그아웃했습니다.', true);
   // 일반 사용자는 로그인한 시각부터 24시간 뒤에 다시 이용할 수 있어 내일 방문을 안내, 관리자·테스터는 바로 다시 로그인 가능
   showNotice('로그아웃되었습니다', role === 'user'
-    ? '오늘도 어디물어를 이용해 주셔서 감사합니다.\n내일 다시 찾아 주시면 바다 소식 전해 드릴게요. 🎣'
-    : '이용해 주셔서 감사합니다.\n필요하실 때 언제든 다시 로그인해 주세요.');
+    ? '오늘도 어디물어를 이용해 주셔서 감사합니다.\n내일 다시 찾아 주시면 바다 소식 전해 드리겠습니다. 🎣'
+    : '이용해 주셔서 감사합니다.\n필요하실 때 언제든 다시 로그인해 주십시오.');
 };
 $('#btnPw').onclick = () => { $('#settings').close(); openPw(false); };
 $('#resetSession').onclick = () => { SID = crypto.randomUUID?.() ?? String(Date.now()); localStorage.setItem('gofishing.session', SID); chat.innerHTML = ''; slots = {}; renderChips(); $('#settings').close(); welcome(); };
@@ -443,13 +443,13 @@ $('#opinionText').addEventListener('input', () => { $('#opinionCount').textConte
 $('#opinionForm').addEventListener('submit', async e => {
   e.preventDefault();
   const text = $('#opinionText').value.trim(), m = $('#opinionMsg'), btn = $('#opinionSend');
-  if (!text) { m.textContent = '의견을 한 줄이라도 적어 주세요.'; return; }
+  if (!text) { m.textContent = '의견을 한 줄이라도 적어 주십시오.'; return; }
   btn.disabled = true; m.textContent = '';
   try {
     await api('/v1/opinions', { method: 'POST', body: JSON.stringify({ rating: opinionRating, text }) });
     $('#opinionText').value = ''; $('#opinionCount').textContent = '0/500'; opinionRating = 1; setOpinionRating(1);
-    resetOpinionMsg(); showTab('chat'); toast('소중한 의견 감사합니다! 꼼꼼히 읽고 더 나은 어디물어로 보답할게요. 🙏');
-  } catch (err) { m.textContent = err.message || '의견을 보내지 못했어요. 잠시 뒤 다시 시도해 주세요.'; }
+    resetOpinionMsg(); showTab('chat'); toast('소중한 의견 감사합니다! 꼼꼼히 읽고 더 나은 어디물어로 보답하겠습니다. 🙏');
+  } catch (err) { m.textContent = err.message || '의견을 보내지 못했습니다. 잠시 뒤 다시 시도해 주십시오.'; }
   finally { btn.disabled = false; }
 });
 
@@ -480,16 +480,16 @@ const WD = ['일', '월', '화', '수', '목', '금', '토'];
 const kst = iso => { const d = new Date(new Date(iso).getTime() + 9 * 3600e3); return { date: `${d.getUTCFullYear()}.${String(d.getUTCMonth() + 1).padStart(2, '0')}.${String(d.getUTCDate()).padStart(2, '0')}(${WD[d.getUTCDay()]})`, time: d.toISOString().slice(11, 16) }; };
 async function loadHistory() {
   const box = $('#history'); if (!state.auth) return;
-  box.innerHTML = '<p class="empty">대화 기록을 불러오는 중이에요…</p>';
+  box.innerHTML = '<p class="empty">대화 기록을 불러오는 중입니다…</p>';
   try {
     const { sessions } = await api('/v1/me/history', { timeoutMs: 15000 });
-    if (!sessions.length) { box.innerHTML = '<p class="empty">아직 저장된 대화가 없어요. 대화 탭에서 궁금한 바다를 물어보세요!</p>'; return; }
+    if (!sessions.length) { box.innerHTML = '<p class="empty">아직 저장된 대화가 없습니다. 대화 탭에서 궁금한 바다를 물어보십시오!</p>'; return; }
     box.innerHTML = sessions.map((s, i) => { const t = kst(s.startedAt), q = s.messages.filter(m => m.role === 'user').length;
       return `<details class="hist-sess"${i === 0 ? ' open' : ''}><summary><span><b>${esc(t.date)}</b> ${esc(t.time)} 로그인</span><span class="hist-n">질문 ${q}개</span></summary><div class="hist-msgs">${s.messages.map(m => m.role === 'user'
         ? `<div class="msg user">${esc(m.content)}</div><div class="hist-re"><span>${esc(kst(m.at).time)}</span><button type="button" data-ask="${esc(m.content)}">다시 묻기</button></div>`
-        : `<div class="msg bot">${md(m.content)}</div>`).join('')}</div></details>`; }).join('') + '<p class="hist-hint">대화는 서비스 개선과 운영을 위해 30일간 보관된 뒤 자동으로 지워져요.</p>';
+        : `<div class="msg bot">${md(m.content)}</div>`).join('')}</div></details>`; }).join('') + '<p class="hist-hint">대화는 서비스 개선과 운영을 위해 30일간 보관된 뒤 자동으로 지워집니다.</p>';
     box.querySelectorAll('[data-ask]').forEach(b => b.onclick = () => { showTab('chat'); send(b.dataset.ask); });
-  } catch (e) { box.innerHTML = `<p class="empty">대화 기록을 불러오지 못했어요. ${esc(e.message || '')}</p>`; }
+  } catch (e) { box.innerHTML = `<p class="empty">대화 기록을 불러오지 못했습니다. ${esc(e.message || '')}</p>`; }
 }
 $('#btnHistory').onclick = () => showTab('history');
 $('#btnHistory2').onclick = () => { $('#settings').close(); showTab('history'); };
@@ -517,13 +517,13 @@ async function showDailyTip() {
 }
 
 // ---- 출발지 주변 포인트 추천(첫 출발지 등록 때·말풍선의 '주변 더 보기') ----
-const GATE_TEXT = { PASS: '출조 무난', PASS_WITH_CAUTION: '주의', REVIEW_REQUIRED: '판단 보류', HARD_BLOCK: '쉬어 가세요' };
+const GATE_TEXT = { PASS: '출조 무난', PASS_WITH_CAUTION: '주의', REVIEW_REQUIRED: '판단 보류', HARD_BLOCK: '쉬어 가십시오' };
 const nearbyKey = () => 'gofishing.nearbyAt.' + (state.auth?.user?.id ?? '');
 const kstToday = () => new Date(Date.now() + 9 * 3600000).toISOString().slice(0, 10);
 /** 오늘 아직 안 보여 줬으면 주변 추천을 대화에 띄운다. 띄웠으면 true */
 async function showNearby(force = false) {
   if (!state.auth || aiLocked || (!force && localStorage.getItem(nearbyKey()) === kstToday())) return false;
-  const wait = bubble('bot typing-note', '📍 출발지 주변 포인트와 오늘 날씨를 살펴보는 중이에요…');
+  const wait = bubble('bot typing-note', '📍 출발지 주변 포인트와 오늘 날씨를 살펴보는 중입니다…');
   try {
     const r = await api('/v1/suggest/nearby', { timeoutMs: 30000 });
     wait.remove();
@@ -531,11 +531,11 @@ async function showNearby(force = false) {
     if (!r?.available) { if (r?.reason === 'no-points' && r.text) { bubble('bot', esc(r.text)); localStorage.setItem(nearbyKey(), kstToday()); return true; } return false; }
     localStorage.setItem(nearbyKey(), kstToday());
     const items = r.items.map(i => {
-      const line = [i.am ? `<span class="nb-slot">오전</span> ${esc(i.am)}` : '', i.pm ? `<span class="nb-slot">오후</span> ${esc(i.pm)}` : ''].filter(Boolean).join('<br>') || '<span class="sub">오늘 예보를 아직 받지 못했어요</span>';
+      const line = [i.am ? `<span class="nb-slot">오전</span> ${esc(i.am)}` : '', i.pm ? `<span class="nb-slot">오후</span> ${esc(i.pm)}` : ''].filter(Boolean).join('<br>') || '<span class="sub">오늘 예보를 아직 받지 못했습니다</span>';
       const click = i.gate !== 'HARD_BLOCK';
       return `<${click ? 'button type="button"' : 'div'} class="item nb-item" ${click ? `data-nb="${esc(i.id)}"` : ''}><div class="nb-head"><span class="rank">${i.rank}</span><b>${esc(i.name)}</b><span class="nb-dist">${i.distanceKm}km</span><span class="badge b-${esc(i.gate)}">${esc(GATE_TEXT[i.gate] ?? i.verdict)}</span></div><div class="nb-wx">${line}</div></${click ? 'button' : 'div'}>`;
     }).join('');
-    const card = node(`<h3>📍 ${esc(r.origin.label)} 주변 오늘의 포인트</h3><p class="nb-intro">${esc(r.text).replace(/\n/g, '<br>')}</p>${items}${r.source ? `<p class="src">출처: ${esc(r.source)} · 반경 ${r.radiusKm}km · 출입·낚시 허용은 현장 안내판을 꼭 확인해 주세요</p>` : ''}`, 'card top3 nearby');
+    const card = node(`<h3>📍 ${esc(r.origin.label)} 주변 오늘의 포인트</h3><p class="nb-intro">${esc(r.text).replace(/\n/g, '<br>')}</p>${items}${r.source ? `<p class="src">출처: ${esc(r.source)} · 반경 ${r.radiusKm}km · 출입·낚시 허용은 현장 안내판을 꼭 확인해 주십시오</p>` : ''}`, 'card top3 nearby');
     card.querySelectorAll('[data-nb]').forEach(b => b.onclick = () => { const a = r.actions.find(x => x.pointId === b.dataset.nb); if (a) send(a.message, { pointId: a.pointId, date: a.date }); });
     return true;
   } catch { wait.remove(); return false; }
@@ -566,13 +566,13 @@ $('#todayTipVoice').onclick = async () => {
     b.disabled = true; b.textContent = '불러오는 중…';
     try {
       const r = await fetch(state.api + '/v1/tts/' + todayTipData.speechId, { headers: { Authorization: 'Bearer ' + state.auth.token }, signal: AbortSignal.timeout(40000) });
-      if (!r.ok) { const j = await r.json().catch(() => ({})); throw new Error(j.error || '음성을 불러오지 못했어요'); }
+      if (!r.ok) { const j = await r.json().catch(() => ({})); throw new Error(j.error || '음성을 불러오지 못했습니다'); }
       todayAudioUrl = URL.createObjectURL(await r.blob()); todayAudio = new Audio(todayAudioUrl);
       todayAudio.onended = () => { b.textContent = '🔊 다시 듣기'; };
     } catch (e) { b.disabled = false; b.textContent = '🔊 듣기'; toast(e.message); return; }
     b.disabled = false;
   }
-  try { await todayAudio.play(); b.textContent = '⏹ 멈추기'; } catch { b.textContent = '🔊 듣기'; toast('소리를 재생하지 못했어요. 무음 모드인지 확인해 주세요.'); }
+  try { await todayAudio.play(); b.textContent = '⏹ 멈추기'; } catch { b.textContent = '🔊 듣기'; toast('소리를 재생하지 못했습니다. 무음 모드인지 확인해 주십시오.'); }
 };
 
 // 장기기억(내가 자주 찾은 포인트) 기반 이번 주말 출조 제안. 히스토리가 없으면 아무것도 보이지 않는다.
@@ -586,7 +586,7 @@ async function suggestWeekend() {
   } catch { /* 제안은 부가 기능: 실패해도 대화는 그대로 */ }
 }
 function welcome() {
-  bubble('bot', md('안녕하세요! **어디물어**예요 🎣\n출발지와 날짜, 가고 싶은 지역을 알려 주시면 공공데이터로 바다 상태를 확인하고 포인트·가는 길·주변 정보까지 정리해 드릴게요.'));
+  bubble('bot', md('안녕하십시오! **어디물어**입니다 🎣\n출발지와 날짜, 가고 싶은 지역을 알려 주시면 공공데이터로 바다 상태를 확인하고 포인트·가는 길·주변 정보까지 정리해 드리겠습니다.'));
   renderMessage({ type: 'actions', buttons: [
     { label: '오늘 부산 대표 포인트 알려줘', message: '오늘 부산 대표 포인트 알려줘' },
     { label: '이번주 토요일 부산 추천해줘', message: '이번주 토요일 부산 추천해줘' },
@@ -597,7 +597,7 @@ async function restore() {
     const r = await api('/v1/sessions' + (authed() ? '' : '?id=' + encodeURIComponent(SID)), { timeoutMs: 10000 });
     if (r.messages?.length) {
       chat.innerHTML = '';
-      bubble('bot', md('이번 세션의 대화를 이어서 보여 드려요.'));
+      bubble('bot', md('이번 세션의 대화를 이어서 보여 드립니다.'));
       r.messages.slice(-10).forEach(m => bubble(m.role === 'user' ? 'user' : 'bot', md(m.text)));
       slots = r.slots || {}; renderChips();
     }
@@ -630,11 +630,11 @@ function enterApp() {
   if (authed() && state.auth) {
     timer?.stop();
     timer = startTimer($('#timer'), {
-      onWarn: s => toast(`약 ${s}초 뒤 자동 로그아웃됩니다. 필요한 내용은 지금 확인해 주세요.`),
-      onExpire: () => { const min = sessionMinutes(); endSession(`${min}분 이용 시간이 끝나 로그아웃했어요.`, false, 'expired'); showSessionEnd(min); }
+      onWarn: s => toast(`약 ${s}초 뒤 자동 로그아웃됩니다. 필요한 내용은 지금 확인해 주십시오.`),
+      onExpire: () => { const min = sessionMinutes(); endSession(`${min}분 이용 시간이 끝나 로그아웃했습니다.`, false, 'expired'); showSessionEnd(min); }
     });
     const u = state.auth.user;
-    bubble('bot', md(`**${u.displayName}**님, 반가워요. 이번 로그인은 **${sessionMinutes()}분** 동안 이용할 수 있어요.`));
+    bubble('bot', md(`**${u.displayName}**님, 반가웁니다. 이번 로그인은 **${sessionMinutes()}분** 동안 이용할 수 있습니다.`));
     refreshUsage();
     suggestWeekend();
     // 하루 한 번 추천 말풍선(대화 기록 → 없으면 출발지 주변). 출발지가 없으면 등록 독려 말풍선이 함께 뜬다
@@ -661,7 +661,7 @@ function endSession(msg, ok = false, reason = 'logout') {
 }
 function showSessionEnd(min) {
   // 이용 시간 만료 안내창: 로그아웃은 이미 끝났고, 확인을 누르면 로그인 화면에 그대로 머문다
-  showNotice('오늘 이용 시간이 끝났습니다', `오늘 하루 이용 시간은 로그인 1회당 ${min}분입니다.\n이용해 주셔서 감사합니다. 내일 다시 찾아 주세요.`);
+  showNotice('오늘 이용 시간이 끝났습니다', `오늘 하루 이용 시간은 로그인 1회당 ${min}분입니다.\n이용해 주셔서 감사합니다. 내일 다시 찾아 주십시오.`);
 }
 function showNotice(title, msg) {
   const d = $('#sessionEndDialog'); if (!d || d.open) return;
@@ -683,9 +683,9 @@ function checkIdle() {
   const idle = Date.now() - lastActive;
   if (idle >= IDLE_MS) {
     idleWarned = false;
-    endSession('5분 동안 사용이 없어 자동 로그아웃했어요.', false, 'idle');
-    showNotice('자동 로그아웃되었습니다', '5분 동안 사용이 없어 안전을 위해 로그아웃했어요.\n다시 로그인해 주세요.');
-  } else if (idle >= IDLE_WARN_MS && !idleWarned) { idleWarned = true; toast('1분 동안 사용이 없으면 자동 로그아웃돼요. 화면을 터치하면 계속 이용할 수 있어요.'); }
+    endSession('5분 동안 사용이 없어 자동 로그아웃했습니다.', false, 'idle');
+    showNotice('자동 로그아웃되었습니다', '5분 동안 사용이 없어 안전을 위해 로그아웃했습니다.\n다시 로그인해 주십시오.');
+  } else if (idle >= IDLE_WARN_MS && !idleWarned) { idleWarned = true; toast('1분 동안 사용이 없으면 자동 로그아웃됩니다. 화면을 터치하면 계속 이용할 수 있습니다.'); }
 }
 setInterval(checkIdle, 5000);
 document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') checkIdle(); });
@@ -751,7 +751,7 @@ async function boot() {
     return;
   }
   // 서버에 연결되지 않으면 로그인 화면에서 안내(로그인 필요 서비스이므로 대화 화면을 먼저 열지 않음)
-  if (!h) return showLogin(state.api ? '서버에 연결할 수 없습니다. 관리자에게 운영 서버 상태 확인을 요청해 주세요.' : '서버 주소가 설정되지 않았습니다. 관리자에게 연결된 접속 주소를 요청해 주세요.');
+  if (!h) return showLogin(state.api ? '서버에 연결할 수 없습니다. 관리자에게 운영 서버 상태 확인을 요청해 주십시오.' : '서버 주소가 설정되지 않았습니다. 관리자에게 연결된 접속 주소를 요청해 주십시오.');
   // AUTH_MODE=off(로컬 개발 서버)일 때만 로그인 없이 바로 대화
   timer?.stop(); $('#loginView').hidden = true; $('#appView').hidden = false;
   chat.innerHTML = ''; welcome(); restore();
@@ -809,7 +809,7 @@ function nmapInstallDialog(web) {
   let d = document.getElementById('nmapDialog');
   if (!d) {
     d = document.createElement('dialog'); d.id = 'nmapDialog'; d.className = 'registration-dialog nmap-dialog';
-    d.innerHTML = `<h2>네이버지도 앱이 필요해요</h2><p>앱이 설치되어 있지 않아 열지 못했어요. 앱을 설치하면 출발지에서 포인트까지 바로 길안내를 받을 수 있어요. 설치 없이 웹 지도로 보셔도 됩니다.</p>
+    d.innerHTML = `<h2>네이버지도 앱이 필요합니다</h2><p>앱이 설치되어 있지 않아 열지 못했습니다. 앱을 설치하면 출발지에서 포인트까지 바로 길안내를 받을 수 있습니다. 설치 없이 웹 지도로 보셔도 됩니다.</p>
       <div class="nmap-btns"><a class="primary" target="_blank" rel="noopener" href="${isAndroid ? NMAP_STORE.android : NMAP_STORE.ios}">앱 설치하기</a><a class="web" target="_blank" rel="noopener">웹으로 길찾기</a><button type="button">닫기</button></div>`;
     d.querySelector('button').onclick = () => d.close();
     d.querySelectorAll('a').forEach(a => a.addEventListener('click', () => d.close()));
