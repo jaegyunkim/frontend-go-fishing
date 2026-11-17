@@ -7,7 +7,7 @@ const GATE = { PASS: '안전 양호', PASS_WITH_CAUTION: '조건부 주의', REV
 const badge = g => g ? `<span class="badge b-${esc(g)}">${esc(GATE[g] ?? g)}</span>` : '';
 
 // ---- 설정·인증(auth.js) ----
-import { state, setApi, api, health, login, logout, startTimer, syncExpiry, saveAuth, setOnAuthLost, setOnMustChange, loadAuthImage, remaining, sessionMinutes } from './auth.js?v=1.16.0';
+import { state, setApi, api, health, login, logout, startTimer, syncExpiry, saveAuth, setOnAuthLost, setOnMustChange, loadAuthImage, remaining, sessionMinutes } from './auth.js?v=1.16.1';
 let SID = localStorage.getItem('gofishing.session') || (crypto.randomUUID?.() ?? String(Date.now()) + Math.random().toString(16).slice(2));
 localStorage.setItem('gofishing.session', SID);
 let slots = {}, lastBriefing = null, timer = null, usageText = '', pickedOrigin = null;
@@ -416,13 +416,13 @@ async function openSettings() {
   const a = state.auth;
   $('#accountBox').hidden = !(authed() && a);
   $('#resetSession').hidden = authed();
-  if (a) { $('#accountInfo').textContent = `${a.user.displayName}(${a.user.loginId}) · ${({ admin: '관리자', tester: '테스터', user: '일반' })[a.user.role] ?? a.user.role} · 남은 시간 ${Math.floor(remaining() / 60)}분 ${remaining() % 60}초`; $('#adminLink').hidden = a.user.role !== 'admin'; }
+  if (a) { $('#accountInfo').textContent = `${a.user.displayName}(${a.user.loginId}) · ${({ admin: '관리자', tester: '내부 테스터', user: '베타 테스터' })[a.user.role] ?? a.user.role} · 남은 시간 ${Math.floor(remaining() / 60)}분 ${remaining() % 60}초`; $('#adminLink').hidden = a.user.role !== 'admin'; }
   $('#settings').showModal();
 }
 $('#btnSettings').onclick = openSettings;
 $('#btnLogout').onclick = () => {
   const role = state.auth?.user?.role; $('#settings').close(); endSession('로그아웃했습니다.', true);
-  // 일반 사용자는 로그인한 시각부터 24시간 뒤에 다시 이용할 수 있어 내일 방문을 안내, 관리자·테스터는 바로 다시 로그인 가능
+  // 베타 테스터는 로그인한 시각부터 24시간 뒤에 다시 이용할 수 있어 내일 방문을 안내, 관리자·내부 테스터는 바로 다시 로그인 가능
   showNotice('로그아웃되었습니다', role === 'user'
     ? '오늘도 어디물어를 이용해 주셔서 감사합니다.\n내일 다시 찾아 주시면 바다 소식 전해 드리겠습니다. 🎣'
     : '이용해 주셔서 감사합니다.\n필요하실 때 언제든 다시 로그인해 주십시오.');

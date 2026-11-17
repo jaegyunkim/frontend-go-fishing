@@ -1,6 +1,6 @@
-import { approvalMailto } from './approval-email.js?v=1.16.0';
+import { approvalMailto } from './approval-email.js?v=1.16.1';
 // 어디물어 관리자 화면: 계정·세션·사용량·대화 로그·로그인/작업 기록. 관리자 계정으로 로그인한 탭에서만 동작.
-import { state, api, health, startTimer, syncExpiry, setOnAuthLost, logout } from './auth.js?v=1.16.0';
+import { state, api, health, startTimer, syncExpiry, setOnAuthLost, logout } from './auth.js?v=1.16.1';
 const $ = s => document.querySelector(s);
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const dt = v => v ? new Date(v).toLocaleString('ko-KR', { timeZone: 'Asia/Seoul', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }) : '-';
@@ -82,7 +82,7 @@ async function renderLlm() {
   pick();
 }
 const noteTop = (t, bad) => note(t, bad);
-const ROLE_LABEL = { admin: '관리자', tester: '테스터', user: '일반' };
+const ROLE_LABEL = { admin: '관리자', tester: '내부 테스터', user: '베타 테스터' };
 const roleText = r => ROLE_LABEL[r] ?? r;
 const views = {
  async requests(){
@@ -92,7 +92,7 @@ const views = {
  view.querySelectorAll('[data-review]').forEach(b=>b.onclick=async()=>{if(!confirm(b.dataset.review==='approve'?'이 사용자를 승인하겠습니까?':'이 신청을 거절하겠습니까?'))return;b.disabled=true;try{const out=await api('/v1/admin/registrations/'+b.dataset.id+'/review',{method:'POST',body:JSON.stringify({action:b.dataset.review})});if(out.tempPassword)await showSecret(out.user.loginId+' 승인 완료',out.tempPassword,out.user.loginId);await views.requests();}catch(e){note(e.message,true);b.disabled=false;}});
  },
  async model(){const {llm,credits,ai}=await api('/v1/admin/model');
- view.innerHTML='<div class="card"><h2>서비스 상태</h2><p><span class="pill '+(ai.available?'ok':'bad')+'">'+(ai.available?'이용 가능':'이용 중지(크레딧 소진)')+'</span></p>'+(ai.available?'':'<p class="sub">사유: '+esc(ai.reason||'')+(ai.since?' · '+dt(ai.since)+'부터':'')+'</p><p class="sub">일반 사용자 화면은 모든 입력이 잠기고 안내 문구가 표시됩니다.</p>')+'<p class="sub">잔여 크레딧이 '+n(ai.threshold)+' 이하이거나 GPT가 크레딧 부족으로 응답을 거부하면 자동으로 이용을 멈춥니다.</p><div class="acts"><button id="aiRecheck">GPT 다시 확인·재개</button></div></div>'
+ view.innerHTML='<div class="card"><h2>서비스 상태</h2><p><span class="pill '+(ai.available?'ok':'bad')+'">'+(ai.available?'이용 가능':'이용 중지(크레딧 소진)')+'</span></p>'+(ai.available?'':'<p class="sub">사유: '+esc(ai.reason||'')+(ai.since?' · '+dt(ai.since)+'부터':'')+'</p><p class="sub">베타 테스터 화면은 모든 입력이 잠기고 안내 문구가 표시됩니다.</p>')+'<p class="sub">잔여 크레딧이 '+n(ai.threshold)+' 이하이거나 GPT가 크레딧 부족으로 응답을 거부하면 자동으로 이용을 멈춥니다.</p><div class="acts"><button id="aiRecheck">GPT 다시 확인·재개</button></div></div>'
   +'<div class="card" id="llmCard"><h2>AI 연결</h2><p class="sub">불러오는 중…</p></div>'
  +'<div class="card"><h2>MonoGPT 잔여 크레딧</h2><p>'+n(credits.remaining)+' / '+n(credits.total)+'</p><p class="sub">'+dt(credits.checkedAt)+' 확인 · '+esc(credits.source||'')+' · 실시간 아님</p><a href="https://monogpt.kr/apps/mono-router" target="_blank" rel="noopener noreferrer">MonoGPT에서 최신 잔액 확인</a><form id="creditForm" class="grid2" style="margin-top:10px"><label>잔여 크레딧<input name="remaining" type="number" min="0" required value="'+(credits.remaining??'')+'"></label><label>전체 크레딧<input name="total" type="number" min="1" required value="'+(credits.total??'')+'"></label><button>확인한 잔액 저장</button></form></div>';
  $('#creditForm').onsubmit=async ev=>{ev.preventDefault();try{const fd=Object.fromEntries(new FormData(ev.target));await api('/v1/admin/model/credit',{method:'POST',body:JSON.stringify(fd)});note('잔액을 저장했습니다');views.model();}catch(err){note(err.message,true);}};
@@ -111,9 +111,9 @@ const views = {
         <button data-a="toggle" class="${u.status === 'active' ? 'danger' : ''}">${u.status === 'active' ? '중지' : '재개'}</button><button data-a="chats">대화</button></div></td></tr>`).join('')}</table></div>`;
     view.querySelectorAll('[data-detail]').forEach(b => b.onclick = () => go(b.dataset.detail === 'opinions' ? 'opinions' : 'user_' + b.dataset.detail, { user: b.dataset.id, label: b.dataset.login }));
     $('#add').onclick = async () => {
-      const r = await dialog(`<h2>계정 발급</h2><label>아이디 (일반은 이메일, 관리자·테스터는 영문 아이디도 가능)<input name="loginId" required maxlength="254"></label><label>이름<input name="displayName" required maxlength="40"></label>
-        <label>역할<select name="role"><option value="user">일반 (한 기기만)</option><option value="tester">테스터 (동시 접속 허용)</option><option value="admin">관리자 (동시 접속 허용)</option></select></label><label>메모<input name="memo" maxlength="100"></label>
-        <p class="hint">한도 기본값: 일반 사용자: 세션 10분 고정·24시간에 1회 로그인, 세션당 질문 10·하루 질문 10·토큰 1,000. 정원: 일반 사용자 100명·하루 신청 100건·하루 로그인 100명(관리자·테스터 예외). 발급 후 '한도'에서 바꿀 수 있습니다.</p>`,
+      const r = await dialog(`<h2>계정 발급</h2><label>아이디 (베타 테스터는 이메일, 관리자·내부 테스터는 영문 아이디도 가능)<input name="loginId" required maxlength="254"></label><label>이름<input name="displayName" required maxlength="40"></label>
+        <label>역할<select name="role"><option value="user">일반 (한 기기만)</option><option value="tester">내부 테스터 (동시 접속 허용)</option><option value="admin">관리자 (동시 접속 허용)</option></select></label><label>메모<input name="memo" maxlength="100"></label>
+        <p class="hint">한도 기본값: 베타 테스터: 세션 10분 고정·24시간에 1회 로그인, 세션당 질문 10·하루 질문 10·토큰 1,000. 정원: 베타 테스터 100명·하루 신청 100건·하루 로그인 100명(관리자·내부 테스터 예외). 발급 후 '한도'에서 바꿀 수 있습니다.</p>`,
         fd => api('/v1/admin/users', { method: 'POST', body: JSON.stringify(Object.fromEntries(fd)) }).catch(e => ({ error: e.message })));
       if (r?.error) return note(r.error, true);
       if (r?.user?.tempPassword) await showSecret(`${r.user.loginId} 계정을 만들었습니다`, r.user.tempPassword);
@@ -128,12 +128,12 @@ const views = {
           const r = await dialog(`<h2>${esc(login)} 한도</h2><div class="grid2">
             <label>세션 시간(분)<input name="sessionMinutes" type="number" min="1" max="120" value="${L.sessionMinutes}" ${u.role === "admin" ? "" : "disabled"}></label><label>세션당 질문<input name="sessionMessages" type="number" min="1" value="${L.sessionMessages}"></label>
             <label>하루 질문<input name="dailyMessages" type="number" min="1" value="${L.dailyMessages}"></label><label>하루 로그인<input name="dailySessions" type="number" min="1" value="${L.dailySessions}" disabled></label>
-            <label>하루 AI 토큰<input name="dailyTokens" type="number" min="0" value="${L.dailyTokens}"></label></div><p class="hint">질문·토큰 한도는 저장 즉시 적용됩니다. 관리자 계정의 세션 시간은 이용 중인 세션에도 바로 반영됩니다(로그인 시각 기준). 일반 사용자는 10분·24시간 1회 고정입니다.</p>`,
+            <label>하루 AI 토큰<input name="dailyTokens" type="number" min="0" value="${L.dailyTokens}"></label></div><p class="hint">질문·토큰 한도는 저장 즉시 적용됩니다. 관리자 계정의 세션 시간은 이용 중인 세션에도 바로 반영됩니다(로그인 시각 기준). 베타 테스터는 10분·24시간 1회 고정입니다.</p>`,
           fd => patch(Object.fromEntries([...fd].map(([k, v]) => [k, Number(v)]))));
           if (r) { note(`${login} 한도를 저장했습니다 · 즉시 적용${r.adjustedSessions ? ` (이용 중인 세션 ${r.adjustedSessions}개 시간 변경)` : ''}`); if (String(id) === String(state.auth?.user?.id)) { const me = await api('/v1/auth/me'); syncExpiry(me.remainingSec); $('#who').textContent = `${me.user.displayName}(${me.user.loginId}) · 세션 ${me.limits.sessionMinutes}분`; } }
         } else if (b.dataset.a === 'role') {
           const r = await dialog(`<h2>${esc(login)} 권한</h2><label>역할<select name="role">${['user', 'tester', 'admin'].map(x => `<option value="${x}"${x === u.role ? ' selected' : ''}>${roleText(x)}</option>`).join('')}</select></label>
-            <p class="hint">일반: 한 기기에서만 로그인 · 테스터·관리자: 여러 기기 동시 접속 허용 · 관리자만 이 관리자 페이지를 쓸 수 있습니다.<br>권한을 바꾸면 이 계정의 이용 중인 세션은 종료되고, 다시 로그인할 때 새 권한이 적용됩니다.</p>`,
+            <p class="hint">베타 테스터: 한 기기에서만 로그인 · 내부 테스터·관리자: 여러 기기 동시 접속 허용 · 관리자만 이 관리자 페이지를 쓸 수 있습니다.<br>권한을 바꾸면 이 계정의 이용 중인 세션은 종료되고, 다시 로그인할 때 새 권한이 적용됩니다.</p>`,
             fd => patch({ role: fd.get('role') }).catch(e => ({ error: e.message })));
           if (r?.error) return note(r.error, true);
           if (r) note(`${login} 권한: ${roleText(r.user.role)}`);
@@ -208,7 +208,7 @@ const views = {
       <div class="rep-hours" aria-label="시간별 요청">${hours.map(h => `<i title="${h.i}시 ${h.n}건" style="height:${Math.max(2, h.n / hmax * 100)}%" class="${h.e ? 'err' : ''}"></i>`).join('')}</div><div class="rep-axis"><span>0시</span><span>6시</span><span>12시</span><span>18시</span><span>24시</span></div>
       ${t.topRoutes?.length ? `<div class="scroll"><table class="tbl"><tr><th>많이 쓴 경로</th><th class="num">요청</th><th class="num">평균</th><th class="num">최대</th><th class="num">5xx</th></tr>${t.topRoutes.map(x => `<tr><td>${esc(x.route)}</td><td class="num">${n(x.requests)}</td><td class="num">${x.avgMs}ms</td><td class="num">${x.maxMs}ms</td><td class="num">${n(x.errors5xx)}</td></tr>`).join('')}</table></div>` : ''}</div>
     <div class="card"><h3>사용자·서비스</h3>${kv([['로그인', `성공 ${n(u.loginOk)} · 실패 ${n(u.loginFail)} · 이용자 ${n(u.activeUsers)}명`], ['신청·승인', `신청 ${n(u.registrations)} · 승인 ${n(u.approvals)} · 거절 ${n(u.rejections)}`], ['질문·AI', `질문 ${n(u.questions)} · AI 호출 ${n(u.llmCalls)} · 토큰 ${n(u.tokens)} · 한도 거절 ${n(u.blockedByLimit)}`], ['답변 시간', `평균 ${u.answer?.avgMs ?? '-'}ms · 95% ${u.answer?.p95Ms ?? '-'}ms (${n(u.answer?.count)}건)`], ['의견', `${n(u.opinions)}건${u.avgRating != null ? ` · 평균 ${u.avgRating}점` : ''}`],
-      ['정원', `오늘 신청 ${u.capacity.registers.used}/${u.capacity.registers.max} · 일반 사용자 ${u.capacity.users.used}/${u.capacity.users.max} · 오늘 로그인 ${u.capacity.logins.used}/${u.capacity.logins.max}`]])}</div>
+      ['정원', `오늘 신청 ${u.capacity.registers.used}/${u.capacity.registers.max} · 베타 테스터 ${u.capacity.users.used}/${u.capacity.users.max} · 오늘 로그인 ${u.capacity.logins.used}/${u.capacity.logins.max}`]])}</div>
     <div class="card"><h3>외부 API 사용량</h3>${m.external.length ? `<div class="scroll"><table class="tbl"><tr><th>제공기관</th><th class="num">호출</th><th class="num">하루 한도</th><th>사용률</th><th class="num">오류</th></tr>${m.external.map(e => `<tr><td>${esc(e.provider)}</td><td class="num">${n(e.calls)}</td><td class="num">${e.quota ? n(e.quota) : '-'}</td><td>${e.usage != null ? `<div class="ubar"><i style="width:${Math.min(100, e.usage * 100).toFixed(1)}%"${e.usage >= 0.8 ? ' class="over"' : ''}></i></div><span class="sub">${pctTxt(e.usage)}</span>` : '-'}</td><td class="num">${n(e.errors)}</td></tr>`).join('')}</table></div><p class="sub">로그인 사용자 요청에서 실제로 호출한 수(캐시 적중 제외)</p>` : '<p class="sub">호출 기록 없음</p>'}</div>
     <div class="card"><h3>오류 로그</h3>${kv([['건수', `오류 ${n(m.errors.error)} · 경고 ${n(m.errors.warn)} · 정보 ${n(m.errors.info)}`]])}${m.errors.top.length ? `<ul class="qlist">${m.errors.top.map(e => `<li><span class="sub">${n(e.n)}회 · 마지막 ${dt(e.last)}</span><div>${esc(e.title)}</div></li>`).join('')}</ul>` : '<p class="sub">오류·경고 없음</p>'}</div>
     <div class="card"><h3>자원·백업 <span class="sub">(${dt(res.sampledAt)} 측정)</span></h3>${kv([['서버 프로세스', `가동 ${res.process.uptimeH}시간 · 메모리 ${res.process.rssMB}MB · Node ${esc(res.process.node)}`], ['호스트', `CPU ${res.host.cpus}개 · 부하 ${res.host.load.join(' / ')} · 메모리 ${res.host.memTotalGB}GB`],
@@ -256,7 +256,7 @@ const views = {
     ${actions.map(a => `<tr><td>${dt(a.at)}</td><td>${esc(a.admin ?? 'CLI')}</td><td>${esc(a.action)}</td><td>${esc(a.target ?? '')}</td><td class="sub">${esc(JSON.stringify(a.detail ?? {}))}</td></tr>`).join('')}</table></div>`;
   }
 };
-const capBar = c => c ? `<div class="capbar">${[['오늘 신청', c.registers], ['일반 사용자', c.users], ['오늘 로그인', c.logins]].map(([l, v]) => `<div class="${v.used >= v.max ? 'full' : v.used >= v.max * 0.8 ? 'near' : ''}"><span>${l}</span><b>${n(v.used)} / ${n(v.max)}</b><i><em style="width:${Math.min(100, v.max ? v.used / v.max * 100 : 100).toFixed(1)}%"></em></i></div>`).join('')}</div><p class="sub">정원에 닿으면 새 신청·승인·로그인을 막습니다(관리자·테스터 예외).</p>` : '';
+const capBar = c => c ? `<div class="capbar">${[['오늘 신청', c.registers], ['베타 테스터', c.users], ['오늘 로그인', c.logins]].map(([l, v]) => `<div class="${v.used >= v.max ? 'full' : v.used >= v.max * 0.8 ? 'near' : ''}"><span>${l}</span><b>${n(v.used)} / ${n(v.max)}</b><i><em style="width:${Math.min(100, v.max ? v.used / v.max * 100 : 100).toFixed(1)}%"></em></i></div>`).join('')}</div><p class="sub">정원에 닿으면 새 신청·승인·로그인을 막습니다(관리자·내부 테스터 예외).</p>` : '';
 const backBar = title => `<div class="tool"><div class="acts"><button id="backUsers">← 사용자</button></div><h2>${title}</h2></div>`;
 function bindBack() { const b = $('#backUsers'); if (b) b.onclick = () => go('users'); }
 async function go(v, opt) {
