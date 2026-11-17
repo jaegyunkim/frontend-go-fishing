@@ -1,4 +1,4 @@
-import {api} from './auth.js?v=1.16.15';
+import {api} from './auth.js?v=1.16.16';
 const form=document.querySelector('#requestForm');
 const result=document.querySelector('#result');
 const button=document.querySelector('#registerSubmit');
@@ -6,6 +6,26 @@ const dialog=document.querySelector('#registrationSuccess');
 function showMessage(title,text){document.querySelector('#successTitle').textContent=title;document.querySelector('#successDescription').textContent=text;dialog.showModal();}
 const successText='관리자가 확인한 뒤, 신청하신 이메일로 임시 비밀번호를 안내해 드리겠습니다. 조금만 기다려 주십시오.';
 let submitting=false;
+// 이메일 중복 확인: 입력을 마치면(칸을 벗어나거나 0.6초 멈추면) 이미 신청·가입했는지 미리 알려 준다
+const emailInput=document.querySelector('[name="loginId"]'),dup=document.querySelector('#dupCheck');
+let dupBlocked=false,dupTimer=null,dupSeq=0;
+function setDup(text,kind){dup.textContent=text;dup.hidden=!text;dup.className='dup-check '+(kind||'');dupBlocked=kind==='block';button.disabled=dupBlocked||submitting;}
+async function checkDup(){
+ const v=emailInput.value.trim();const seq=++dupSeq;
+ if(!v||!emailInput.checkValidity()){setDup('');return;}
+ try{
+  const r=await api('/v1/auth/register/status?loginId='+encodeURIComponent(v),{noAuth:true});
+  if(seq!==dupSeq)return;
+  const when=r.requestedDate?r.requestedDate+'에 ':'';
+  if(r.status==='pending')setDup(when+'이미 이용 신청을 하셨습니다. 관리자 승인을 기다려 주십시오. 승인되면 신청하신 이메일로 임시 비밀번호를 안내해 드립니다.','block');
+  else if(r.status==='registered'||r.status==='approved')setDup('이미 가입된 이메일입니다. 로그인 화면에서 이용해 주십시오. 비밀번호를 모르시면 관리자에게 문의해 주십시오.','block');
+  else if(r.status==='rejected')setDup('이전 신청이 반려되었습니다. 다시 신청하실 수 있습니다.','info');
+  else if(r.status==='none')setDup('신청할 수 있는 이메일입니다.','ok');
+  else setDup('');
+ }catch{if(seq===dupSeq)setDup('');} // 확인에 실패해도 신청은 막지 않음(제출 때 서버가 다시 확인)
+}
+emailInput.addEventListener('input',()=>{clearTimeout(dupTimer);setDup('');dupTimer=setTimeout(checkDup,600);});
+emailInput.addEventListener('blur',()=>{clearTimeout(dupTimer);checkDup();});
 function feedback(message,error=false){
  result.textContent=message;
  result.hidden=!message;
@@ -14,7 +34,7 @@ function feedback(message,error=false){
 }
 form.addEventListener('submit',async e=>{
  e.preventDefault();
- if(submitting||!form.reportValidity())return;
+ if(submitting||dupBlocked||!form.reportValidity())return;
  submitting=true;button.disabled=true;button.textContent='신청 중…';form.setAttribute('aria-busy','true');
  feedback('신청 내용을 보내고 있습니다. 잠시만 기다려 주십시오.');
  try{
@@ -39,6 +59,6 @@ form.addEventListener('submit',async e=>{
   // 어떤 결과든 안내창으로 알려 준다(작은 글씨만으로는 놓치기 쉬움)
   showMessage(title,text);
  }finally{
-  submitting=false;button.disabled=false;button.textContent='가입 신청하기';form.setAttribute('aria-busy','false');
+  submitting=false;button.disabled=dupBlocked;button.textContent='가입 신청하기';form.setAttribute('aria-busy','false');
  }
 });
