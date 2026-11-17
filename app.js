@@ -7,7 +7,7 @@ const GATE = { PASS: '안전 양호', PASS_WITH_CAUTION: '조건부 주의', REV
 const badge = g => g ? `<span class="badge b-${esc(g)}">${esc(GATE[g] ?? g)}</span>` : '';
 
 // ---- 설정·인증(auth.js) ----
-import { state, setApi, api, health, login, logout, startTimer, syncExpiry, saveAuth, setOnAuthLost, setOnMustChange, loadAuthImage, remaining, sessionMinutes } from './auth.js?v=1.13.3';
+import { state, setApi, api, health, login, logout, startTimer, syncExpiry, saveAuth, setOnAuthLost, setOnMustChange, loadAuthImage, remaining, sessionMinutes } from './auth.js?v=1.13.4';
 let SID = localStorage.getItem('gofishing.session') || (crypto.randomUUID?.() ?? String(Date.now()) + Math.random().toString(16).slice(2));
 localStorage.setItem('gofishing.session', SID);
 let slots = {}, lastBriefing = null, timer = null, usageText = '';
@@ -360,7 +360,7 @@ function renderBriefing(b) {
       <dt>특징·주의</dt><dd>${esc(b.point.cautions)}</dd><dt>허용 여부</dt><dd>${esc(b.point.restriction_status)} — ${esc(b.point.restriction_note)}</dd>${b.point.walk_note ? `<dt>도보</dt><dd>${esc(b.point.walk_note)}</dd>` : ''}
       <dt>차량 목적지</dt><dd>${esc(b.point.access?.label ?? '미정')}</dd></dl></div>
     <div class="card sec map"><h4>■ 지도 (네이버)</h4><img alt="포인트 지도" data-auth-src="${esc(b.map.staticUrl)}"><div class="sub">P 낚시 자리 · C 차량 목적지 · S 출발지(약 100m 단위)</div></div>
-    <div class="card sec"><h4>■ 가는 길 ${b.origin ? '(' + esc(b.origin.coarse) + ' 출발)' : ''}</h4>${routes}${traffic ? `<div style="margin-top:8px" class="sub"><b style="color:#e6edf7">실시간 돌발(ITS)</b></div>${traffic}` : ''}</div>
+    <div class="card sec"><h4>■ 가는 길 ${b.origin ? '(' + esc(b.origin.coarse) + ' 출발)' : ''}</h4>${routes}${traffic ? `<div style="margin-top:8px" class="sub"><b class="sec-label">실시간 돌발(ITS)</b></div>${traffic}` : ''}</div>
     <div class="card sec"><h4>■ 주변 정보</h4>${nearby}</div>
     <div class="card sec"><h4>■ 가장 가까운 응급실</h4>${er}</div>
     <div class="card sec"><h4>■ 안전 체크</h4><ul class="list check">${b.checklist.map(c => `<li>${esc(c)}</li>`).join('')}</ul></div>
