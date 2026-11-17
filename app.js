@@ -661,12 +661,12 @@ function showNotice(title, msg) {
 function toast(text) { const t = $('#toast'); t.textContent = text; t.hidden = !text; if (text) setTimeout(() => { if (t.textContent === text) t.hidden = true; }, 15000); }
 setOnAuthLost(msg => endSession(msg, false, 'lost'));
 
-// 무응답 자동 로그아웃: 로그인 상태에서 5분간 터치·클릭·키 입력·스크롤이 없으면 로그아웃(4분에 1분 전 경고).
+// 무응답 자동 로그아웃: 로그인 상태에서 5분간 입력(키·글자)·스크롤(화면·목록)·터치·클릭이 없으면 로그아웃(4분에 1분 전 경고).
 // 답변을 기다리는 동안(조회 중 표시)은 무응답으로 세지 않는다. 백그라운드 탭은 타이머가 늦어지므로 다시 보일 때 바로 확인.
 const IDLE_MS = 5 * 60 * 1000, IDLE_WARN_MS = 4 * 60 * 1000;
 let lastActive = Date.now(), idleWarned = false;
 const markActive = () => { lastActive = Date.now(); if (idleWarned) { idleWarned = false; toast(''); } };
-['pointerdown', 'keydown', 'wheel', 'touchstart', 'scroll'].forEach(ev => window.addEventListener(ev, markActive, { passive: true, capture: true }));
+['pointerdown', 'touchstart', 'touchmove', 'keydown', 'input', 'wheel', 'scroll'].forEach(ev => window.addEventListener(ev, markActive, { passive: true, capture: true }));
 function checkIdle() {
   if (!(authed() && state.auth)) { lastActive = Date.now(); idleWarned = false; return; }
   if (document.querySelector('#chat .typing')) { lastActive = Date.now(); return; }
