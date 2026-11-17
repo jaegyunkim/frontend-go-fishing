@@ -323,7 +323,7 @@ button.op-star.on{color:#f59e0b}
 .has-tip::before{content:"";position:absolute;top:calc(100% + 4px);left:50%;transform:translate(-50%,-4px);border:5px solid transparent;border-bottom-color:#0b2534;border-top:0;opacity:0;pointer-events:none;transition:opacity .15s,transform .15s;z-index:30}
 .has-tip:hover::after,.has-tip:hover::before,.has-tip:focus-visible::after,.has-tip:focus-visible::before{opacity:1;transform:translate(-50%,0)}
 @media (prefers-reduced-motion:reduce){.has-tip::after,.has-tip::before{transition:none}}
-/* 입력칸 지우기(ⓧ) v1.13.2 */
+/* 입력칸 지우기(ⓧ) v1.13.3 */
 .clearable{position:relative;display:block}
 .clearable input{width:100%;box-sizing:border-box;padding-right:44px}
 .clear-btn{position:absolute;right:6px;top:50%;transform:translateY(-50%);width:34px;height:34px;display:grid;place-items:center;border:0;background:transparent;border-radius:50%;cursor:pointer;color:#94a3b8}
@@ -343,3 +343,9 @@ button.op-star.on{color:#f59e0b}
 .warn-list{list-style:none;margin:6px 0 0;padding:0;font-size:12px;color:var(--sub)}
 .warn-list li{position:relative;padding:2px 0 2px 16px;line-height:1.45}
 .warn-list li::before{content:"⚠︎";position:absolute;left:0}
+/* 브리핑 주변 정보: 카테고리(볼드) 아래 목록(노멀) */
+.nb-cat{margin-top:14px}.nb-cat:first-child{margin-top:4px}
+.nb-cat-head{display:flex;align-items:baseline;gap:8px;padding-bottom:4px;border-bottom:1.5px solid var(--line,rgba(0,0,0,.15))}
+.nb-cat-head b{font-size:14px;font-weight:700;color:var(--ink)}
+.nb-cat-r{font-size:11.5px;color:var(--sub)}
+.nb-cat .list li{font-weight:400}

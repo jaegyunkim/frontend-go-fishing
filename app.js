@@ -7,7 +7,7 @@ const GATE = { PASS: '안전 양호', PASS_WITH_CAUTION: '조건부 주의', REV
 const badge = g => g ? `<span class="badge b-${esc(g)}">${esc(GATE[g] ?? g)}</span>` : '';
 
 // ---- 설정·인증(auth.js) ----
-import { state, setApi, api, health, login, logout, startTimer, syncExpiry, saveAuth, setOnAuthLost, setOnMustChange, loadAuthImage, remaining, sessionMinutes } from './auth.js?v=1.13.2';
+import { state, setApi, api, health, login, logout, startTimer, syncExpiry, saveAuth, setOnAuthLost, setOnMustChange, loadAuthImage, remaining, sessionMinutes } from './auth.js?v=1.13.3';
 let SID = localStorage.getItem('gofishing.session') || (crypto.randomUUID?.() ?? String(Date.now()) + Math.random().toString(16).slice(2));
 localStorage.setItem('gofishing.session', SID);
 let slots = {}, lastBriefing = null, timer = null, usageText = '';
@@ -342,7 +342,7 @@ function renderBriefing(b) {
       <div class="links"><a href="${esc(b.routes.links.naverWeb)}" target="_blank" rel="noopener">네이버지도 길찾기</a><a href="${esc(b.routes.links.naverApp)}">네이버지도 앱</a></div>`
     : '<div class="sub">출발지를 알려 주시면 고속도로·일반도로 경로와 통행료·유류비를 계산합니다.</div>';
   const traffic = b.traffic ? (b.traffic.events.length ? list(b.traffic.events.slice(0, 5), e => `<li><span>${esc(e.type)}·${esc(e.detail)} · ${esc(e.road)} ${esc(e.start ?? '')}</span><span class="m">${esc(e.message)}</span></li>`, 'stack') : '<div class="sub">경로 주변 돌발상황 없음</div>') + `<div class="sub">${esc(b.traffic.note ?? '')}</div>` : '';
-  const nearby = b.nearby.map(n => `<div style="margin-top:8px"><div class="sub"><b style="color:#e6edf7">${esc(n.title)}</b> ${n.radiusM ? `· 반경 ${n.radiusM / 1000}km${n.widened ? '(확장 검색)' : ''}` : ''}</div>
+  const nearby = b.nearby.map(n => `<div class="nb-cat"><div class="nb-cat-head"><b>${esc(n.title)}</b>${n.radiusM ? `<span class="nb-cat-r">반경 ${n.radiusM / 1000}km${n.widened ? ' (확장 검색)' : ''}</span>` : ''}</div>
       ${n.status !== 'ok' ? `<div class="sub st-error">${esc(n.message ?? n.status)}</div>` : list(n.items.slice(0, 3), i => `<li><a href="${esc(i.url ?? '#')}" target="_blank" rel="noopener">${esc(i.name)}</a><span class="m">${i.price ? won(i.price) + ' · ' : ''}${i.distanceM != null ? (i.distanceM >= 1000 ? (i.distanceM / 1000).toFixed(1) + 'km' : i.distanceM + 'm') : ''}${i.phone ? ' · ' + esc(i.phone) : ''}</span></li>`)}</div>`).join('');
   const er = b.emergency?.name ? `<b>${esc(b.emergency.name)}</b> · ${b.emergency.distanceKm}km${b.emergency.phone ? ` · <a href="tel:${esc(b.emergency.phone)}">${esc(b.emergency.phone)}</a>` : ''}<div class="sub">${esc(b.emergency.note)}</div>` : `<div class="sub">${esc(b.emergency?.message ?? '')}</div>`;
   const srcs = b.sources.map(x => `<span class="st-${esc(x.status)}">● ${esc(x.provider)}(${esc(x.status)})</span>`).join('');
