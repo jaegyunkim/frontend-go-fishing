@@ -9,7 +9,7 @@
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" href="assets/icon.svg" type="image/svg+xml">
   <link rel="apple-touch-icon" href="assets/icon-192.png">
-  <link rel="stylesheet" href="style.css?v=1.16.2">
+  <link rel="stylesheet" href="style.css?v=1.16.3">
 </head>
 <body>
   <!-- 로그인 화면 -->
@@ -45,6 +45,7 @@
         <span id="timer" class="timer" hidden title="남은 이용 시간">10:00</span>
         <button id="btnHistory" class="icon-btn has-tip" aria-label="내 대화 기록" data-tip="내 대화 기록"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v4h4"/><path d="M12 7.5V12l3 2"/></svg></button>
         <button id="btnSettings" class="icon-btn" aria-label="설정"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg></button>
+        <button id="btnLogout" class="icon-btn has-tip tip-end" aria-label="로그아웃" data-tip="로그아웃"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="M16 17l5-5-5-5"/><path d="M21 12H9"/></svg></button>
       </div>
     </header>
     <div id="aiLock" class="ai-lock" role="alert" hidden><h2>잠시 이용이 어렵습니다</h2><p id="aiLockMsg"></p><div class="ai-lock-actions"><a id="aiLockAdmin" class="ai-lock-btn primary" href="admin.html" hidden>관리자 페이지로 이동</a><button type="button" id="aiLockLogout" class="ai-lock-btn">로그아웃</button></div></div>
@@ -144,7 +145,6 @@
         <p id="usageInfo" class="hint"></p>
         <button type="button" id="btnHistory2" class="ghost">내 대화 기록 보기</button>
         <div class="row"><button type="button" id="btnPw" class="ghost">비밀번호 변경</button><a id="adminLink" class="btn ghost" href="admin.html" hidden>관리자 화면</a></div>
-        <button type="button" id="btnLogout" class="danger">로그아웃</button>
       </div>
       <button type="button" id="resetSession" class="ghost small">새 대화 시작(세션 초기화)</button>
     </form>
@@ -160,7 +160,7 @@
       <div class="row"><button type="submit">변경</button><button type="button" id="pwCancel" class="ghost">취소</button></div>
     </form>
   </dialog>
-  <script src="config.js?v=1.16.2"></script><script src="telemetry.js?v=1.16.2"></script>
-  <script src="app.js?v=1.16.2" type="module"></script>
+  <script src="config.js?v=1.16.3"></script><script src="telemetry.js?v=1.16.3"></script>
+  <script src="app.js?v=1.16.3" type="module"></script>
 </body>
 </html>

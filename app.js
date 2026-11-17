@@ -7,7 +7,7 @@ const GATE = { PASS: '안전 양호', PASS_WITH_CAUTION: '조건부 주의', REV
 const badge = g => g ? `<span class="badge b-${esc(g)}">${esc(GATE[g] ?? g)}</span>` : '';
 
 // ---- 설정·인증(auth.js) ----
-import { state, setApi, api, health, login, logout, startTimer, syncExpiry, saveAuth, setOnAuthLost, setOnMustChange, loadAuthImage, remaining, sessionMinutes } from './auth.js?v=1.16.2';
+import { state, setApi, api, health, login, logout, startTimer, syncExpiry, saveAuth, setOnAuthLost, setOnMustChange, loadAuthImage, remaining, sessionMinutes } from './auth.js?v=1.16.3';
 let SID = localStorage.getItem('gofishing.session') || (crypto.randomUUID?.() ?? String(Date.now()) + Math.random().toString(16).slice(2));
 localStorage.setItem('gofishing.session', SID);
 let slots = {}, lastBriefing = null, timer = null, usageText = '', pickedOrigin = null;
@@ -421,7 +421,10 @@ async function openSettings() {
 }
 $('#btnSettings').onclick = openSettings;
 $('#btnLogout').onclick = () => {
-  const role = state.auth?.user?.role; $('#settings').close(); endSession('로그아웃했습니다.', true);
+  const role = state.auth?.user?.role;
+  // 베타 테스터는 로그아웃하면 24시간 뒤에야 다시 로그인할 수 있어, 상단 버튼을 잘못 누르지 않도록 한 번 확인
+  if (role === 'user' && !confirm('로그아웃하시겠습니까?\n로그아웃하면 24시간이 지난 뒤 다시 이용할 수 있습니다.')) return;
+  if ($('#settings').open) $('#settings').close(); endSession('로그아웃했습니다.', true);
   // 베타 테스터는 로그인한 시각부터 24시간 뒤에 다시 이용할 수 있어 내일 방문을 안내, 관리자·내부 테스터는 바로 다시 로그인 가능
   showNotice('로그아웃되었습니다', role === 'user'
     ? '오늘도 어디물어를 이용해 주셔서 감사합니다.\n내일 다시 찾아 주시면 바다 소식 전해 드리겠습니다. 🎣'
@@ -753,7 +756,7 @@ async function boot() {
   // 서버에 연결되지 않으면 로그인 화면에서 안내(로그인 필요 서비스이므로 대화 화면을 먼저 열지 않음)
   if (!h) return showLogin(state.api ? '서버에 연결할 수 없습니다. 관리자에게 운영 서버 상태 확인을 요청해 주십시오.' : '서버 주소가 설정되지 않았습니다. 관리자에게 연결된 접속 주소를 요청해 주십시오.');
   // AUTH_MODE=off(로컬 개발 서버)일 때만 로그인 없이 바로 대화
-  timer?.stop(); $('#loginView').hidden = true; $('#appView').hidden = false;
+  timer?.stop(); $('#loginView').hidden = true; $('#appView').hidden = false; $('#btnLogout').hidden = true; // 로그인 없는 개발 모드
   chat.innerHTML = ''; welcome(); restore();
   api('/v1/auth/me', { timeoutMs: 10000 }).then(me => applyAiLock(me.ai)).catch(() => {});
 }
