@@ -1,6 +1,6 @@
-import { approvalMailto } from './approval-email.js?v=1.16.10';
+import { approvalMailto } from './approval-email.js?v=1.16.11';
 // 어디물어 관리자 화면: 계정·세션·사용량·대화 로그·로그인/작업 기록. 관리자 계정으로 로그인한 탭에서만 동작.
-import { state, api, health, startTimer, syncExpiry, setOnAuthLost, logout } from './auth.js?v=1.16.10';
+import { state, api, health, startTimer, syncExpiry, setOnAuthLost, logout } from './auth.js?v=1.16.11';
 const $ = s => document.querySelector(s);
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const dt = v => v ? new Date(v).toLocaleString('ko-KR', { timeZone: 'Asia/Seoul', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }) : '-';
@@ -238,7 +238,7 @@ const views = {
     view.innerHTML = `${backBar(`로그인 위치 기록 · ${esc(user.loginId)}`)}<p class="sub">최근 30일 로그인 · 위치는 사용자가 허용한 경우만 약 100m 단위로 저장하고 30일 뒤 지웁니다</p>
     ${logins.length ? `<div class="scroll"><table class="tbl"><tr><th>로그인</th><th>기기</th><th>위치 동의</th><th>위경도</th><th>지도</th></tr>
     ${logins.map(l => `<tr><td>${dt(l.at)}${l.endedAt ? `<br><span class="sub">종료 ${dt(l.endedAt)}${l.endReason ? ' · ' + esc(l.endReason) : ''}</span>` : ''}</td><td>${esc(l.device?.platform)}<br><span class="sub">${esc(l.device?.browser)}</span></td><td>${ST[l.locationStatus] ?? esc(l.locationStatus)}</td>
-      <td>${l.location ? `${l.location.lat.toFixed(3)}, ${l.location.lon.toFixed(3)}${l.location.accuracyM ? `<br><span class="sub">오차 약 ${n(l.location.accuracyM)}m</span>` : ''}` : '-'}</td>
+      <td>${l.location ? `${l.location.lat.toFixed(3)}, ${l.location.lon.toFixed(3)}${l.location.address ? ` (${esc(l.location.address)} 부근)` : ''}${l.location.accuracyM ? `<br><span class="sub">오차 약 ${n(l.location.accuracyM)}m</span>` : ''}` : '-'}</td>
       <td>${l.location ? `<a href="https://map.kakao.com/link/map/${encodeURIComponent(user.loginId + ' 로그인')},${l.location.lat},${l.location.lon}" target="_blank" rel="noopener noreferrer">카카오맵</a>` : '-'}</td></tr>`).join('')}</table></div>` : '<div class="card"><p class="sub">최근 30일 로그인 기록이 없습니다.</p></div>'}`;
     bindBack();
   },
