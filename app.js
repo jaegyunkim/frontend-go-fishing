@@ -7,7 +7,7 @@ const GATE = { PASS: '안전 양호', PASS_WITH_CAUTION: '조건부 주의', REV
 const badge = g => g ? `<span class="badge b-${esc(g)}">${esc(GATE[g] ?? g)}</span>` : '';
 
 // ---- 설정·인증(auth.js) ----
-import { state, setApi, api, health, login, logout, startTimer, syncExpiry, saveAuth, setOnAuthLost, setOnMustChange, loadAuthImage, remaining, sessionMinutes } from './auth.js?v=1.13.1';
+import { state, setApi, api, health, login, logout, startTimer, syncExpiry, saveAuth, setOnAuthLost, setOnMustChange, loadAuthImage, remaining, sessionMinutes } from './auth.js?v=1.13.2';
 let SID = localStorage.getItem('gofishing.session') || (crypto.randomUUID?.() ?? String(Date.now()) + Math.random().toString(16).slice(2));
 localStorage.setItem('gofishing.session', SID);
 let slots = {}, lastBriefing = null, timer = null, usageText = '';
@@ -94,8 +94,8 @@ function renderMessage(m) {
         <div class="sub">${esc(i.point.district)} · ${esc(i.point.type)}${i.travel ? ` · 🚗 ${i.travel.minutes}분 ${i.travel.km}km${i.travel.toll ? ' · 통행료 ' + won(i.travel.toll) : ''}` : ''}</div>
         ${i.score.total != null ? `<div class="bar"><i style="width:${Math.min(100, i.score.total)}%"></i></div><div class="sub">추천점수 ${i.score.total} (${esc(i.score.weights)})</div>` : ''}
         <div class="reason">${esc(i.score.reason)}</div>
-        ${i.safety.reasons.length ? `<div class="sub">⚠︎ ${esc(i.safety.reasons.map(r => r.text).join(' / '))}</div>` : ''}</div>`).join('');
-      const blocked = m.data.blocked?.length ? `<div class="sub" style="margin-top:8px">제외: ${esc(m.data.blocked.map(b => `${b.name}(${b.reason})`).join(', '))}</div>` : '';
+        ${i.safety.reasons.length ? `<ul class="warn-list">${i.safety.reasons.map(r => `<li>${esc(r.text)}</li>`).join('')}</ul>` : ''}</div>`).join('');
+      const blocked = m.data.blocked?.length ? blockedList(m.data.blocked) : '';
       const el = node(`<h3>${esc(m.data.date)} 추천 TOP ${m.data.items.length}</h3><div class="sub">${esc(m.data.tier?.badge ?? '')}</div><div class="top3">${items}</div>${blocked}`);
       el.querySelectorAll('.item').forEach(p => p.onclick = () => send(p.dataset.msg));
       break;
@@ -714,3 +714,19 @@ async function boot() {
 
 renderChips(); boot();
 if ('serviceWorker' in navigator && location.protocol === 'https:') navigator.serviceWorker.register('sw.js').catch(() => {});
+
+// 제외 지점: 사유(파고/풍속 등)별로 묶어 접이식 목록으로 표시. 예) "[파고] 최대 3.3m (차단 기준 2m 이상)"
+function blockedList(list) {
+  const groups = new Map();
+  for (const b of list) {
+    // 백엔드 v1.3.29+ 는 metric({label,value,unit,limit})을 보냄. 구버전은 사유 문구를 해석
+    const m = b.metric;
+    const mt = m ? null : /^\[(.+?)\]\s*최대\s*([\d.]+\s*[a-zA-Z/]+)\s*\(차단 기준\s*(.+?)\)/.exec(b.reason ?? '');
+    const key = m ? `${m.label} 차단 기준 ${m.limit}${m.unit} 이상` : mt ? `${mt[1]} 차단 기준 ${mt[3]}` : '기타';
+    if (!groups.has(key)) groups.set(key, []);
+    groups.get(key).push({ name: String(b.name ?? '').replace(/\s*\(지수 해역\)$/, ''), val: m ? `${m.value}${m.unit}` : mt ? mt[2].replace(/\s+/g, '') : (b.reason ?? '') });
+  }
+  const rows = [...groups].map(([k, items]) => `<div class="blk-group"><div class="blk-head">${esc(k)}</div><ul class="blk-list">${
+    items.map(i => `<li><span>${esc(i.name)}</span><b>${esc(i.val)}</b></li>`).join('')}</ul></div>`).join('');
+  return `<details class="blocked"><summary>🚫 안전 기준으로 제외된 지점 ${list.length}곳</summary>${rows}</details>`;
+}
