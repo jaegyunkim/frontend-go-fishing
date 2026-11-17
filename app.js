@@ -7,7 +7,7 @@ const GATE = { PASS: '안전 양호', PASS_WITH_CAUTION: '조건부 주의', REV
 const badge = g => g ? `<span class="badge b-${esc(g)}">${esc(GATE[g] ?? g)}</span>` : '';
 
 // ---- 설정·인증(auth.js) ----
-import { state, setApi, api, health, login, logout, startTimer, syncExpiry, saveAuth, setOnAuthLost, setOnMustChange, loadAuthImage, remaining, sessionMinutes } from './auth.js?v=1.14.1';
+import { state, setApi, api, health, login, logout, startTimer, syncExpiry, saveAuth, setOnAuthLost, setOnMustChange, loadAuthImage, remaining, sessionMinutes } from './auth.js?v=1.14.2';
 let SID = localStorage.getItem('gofishing.session') || (crypto.randomUUID?.() ?? String(Date.now()) + Math.random().toString(16).slice(2));
 localStorage.setItem('gofishing.session', SID);
 let slots = {}, lastBriefing = null, timer = null, usageText = '';
@@ -34,7 +34,15 @@ document.querySelectorAll('.tabs button').forEach(b => b.addEventListener('click
 
 // ---- 대화 ----
 const chat = $('#chat');
-const scroll = () => { const t = $('#tab-chat'); t.scrollTop = t.scrollHeight; };
+// 답변이 오면 맨 아래로 내리지 않고, 방금 보낸 질문이 화면 맨 위에 오도록 고정한다(답변을 처음부터 읽게).
+// qAnchor 가 있으면 이후 추가되는 답변·지연 결과(웹 검색 등)도 화면을 끌어내리지 않는다.
+let qAnchor = null;
+const scroll = () => { if (qAnchor) return; const t = $('#tab-chat'); t.scrollTop = t.scrollHeight; };
+function pinQuestion(el) {
+  const t = $('#tab-chat'); if (!el || !t) return;
+  const top = el.getBoundingClientRect().top - t.getBoundingClientRect().top + t.scrollTop - 8;
+  t.scrollTo({ top: Math.max(0, top), behavior: 'smooth' });
+}
 function bubble(role, html) { const d = document.createElement('div'); d.className = 'msg ' + role; d.innerHTML = html; chat.appendChild(d); scroll(); return d; }
 function node(html, cls = 'card') { const d = document.createElement('div'); d.className = cls; d.innerHTML = html; chat.appendChild(d); scroll(); return d; }
 
@@ -273,7 +281,7 @@ async function send(text, extra = {}) {
   if (aiLocked) return;
   text = String(text || '').trim(); if (!text) return;
   showTab('chat');
-  bubble('user', esc(text));
+  qAnchor = null; const qEl = bubble('user', esc(text));
   const t = document.createElement('div'); t.className = 'typing'; t.textContent = '어디물어가 공공데이터를 조회하고 있어요…'; chat.appendChild(t); scroll();
   try {
     const r = await api('/v1/chat', { method: 'POST', body: JSON.stringify({ ...(authed() ? { message: text, client: 'pages', ...(activeOrigin() ? { originLabel: activeOrigin().coarse } : {}) } : { sessionId: SID, message: text, client: 'pages' }), ...extra }) });
@@ -283,7 +291,8 @@ async function send(text, extra = {}) {
     if (r.usage) renderUsage(r.usage);
     if (r.ai) applyAiLock(r.ai);
     slots = r.slots || slots; renderChips();
-    r.messages.forEach(renderMessage);
+    qAnchor = qEl; r.messages.forEach(renderMessage);
+    requestAnimationFrame(() => pinQuestion(qEl));
   } catch (e) {
     t.remove();
     if (e.status === 401) return;                       // 자동 로그아웃 처리됨
