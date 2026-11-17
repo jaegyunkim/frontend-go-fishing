@@ -7,9 +7,11 @@ const GATE = { PASS: '안전 양호', PASS_WITH_CAUTION: '조건부 주의', REV
 const badge = g => g ? `<span class="badge b-${esc(g)}">${esc(GATE[g] ?? g)}</span>` : '';
 
 // ---- 설정·인증(auth.js) ----
-import { state, setApi, api, health, login, logout, startTimer, syncExpiry, saveAuth, setOnAuthLost, setOnMustChange, loadAuthImage, remaining, sessionMinutes } from './auth.js?v=1.16.4';
+import { state, setApi, api, health, login, logout, startTimer, syncExpiry, saveAuth, setOnAuthLost, setOnMustChange, loadAuthImage, remaining, sessionMinutes } from './auth.js?v=1.16.5';
 let SID = localStorage.getItem('gofishing.session') || (crypto.randomUUID?.() ?? String(Date.now()) + Math.random().toString(16).slice(2));
 localStorage.setItem('gofishing.session', SID);
+const SAVED_ID_KEY = 'gofishing.savedLoginId'; // 아이디 저장(이메일만, 비밀번호는 저장하지 않음)
+$('#rememberId').addEventListener('change', e => { if (!e.target.checked) localStorage.removeItem(SAVED_ID_KEY); });
 let slots = {}, lastBriefing = null, timer = null, usageText = '', pickedOrigin = null;
 const authed = () => state.authMode === 'required';
 
@@ -625,7 +627,11 @@ function showLogin(msg = '', ok = false) {
   $('#appView').hidden = true; $('#loginView').hidden = false;
   $('#sessionMinutesNote').textContent = state.sessionMinutes;
   const m = $('#loginMsg'); m.textContent = msg; m.className = 'login-msg' + (ok ? ' ok' : '');
-  setTimeout(() => $('#loginId').focus(), 50);
+  // 아이디 저장: 저장된 이메일이 있으면 채우고 비밀번호 칸으로 바로 이동
+  const saved = localStorage.getItem(SAVED_ID_KEY);
+  $('#rememberId').checked = !!saved;
+  if (saved && !$('#loginId').value) { $('#loginId').value = saved; $('#loginId').dispatchEvent(new Event('input')); }
+  setTimeout(() => (saved ? $('#loginPw') : $('#loginId')).focus(), 50);
 }
 function enterApp() {
   $('#loginView').hidden = true; $('#appView').hidden = false;
@@ -701,6 +707,7 @@ $('#loginForm').addEventListener('submit', async e => {
   try {
     const pwTyped = $('#loginPw').value;
     const r = await login($('#loginId').value.trim(), pwTyped);
+    if ($('#rememberId').checked) localStorage.setItem(SAVED_ID_KEY, $('#loginId').value.trim()); else localStorage.removeItem(SAVED_ID_KEY);
     $('#loginPw').value = ''; $('#loginPw').dispatchEvent(new Event('input'));
     loginPwMemo = r.user.mustChangePassword ? pwTyped : '';
     if (r.user.mustChangePassword) openPw(true); else enterApp();

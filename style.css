@@ -323,7 +323,7 @@ button.op-star.on{color:#f59e0b}
 .has-tip::before{content:"";position:absolute;top:calc(100% + 4px);left:50%;transform:translate(-50%,-4px);border:5px solid transparent;border-bottom-color:#0b2534;border-top:0;opacity:0;pointer-events:none;transition:opacity .15s,transform .15s;z-index:30}
 .has-tip:hover::after,.has-tip:hover::before,.has-tip:focus-visible::after,.has-tip:focus-visible::before{opacity:1;transform:translate(-50%,0)}
 @media (prefers-reduced-motion:reduce){.has-tip::after,.has-tip::before{transition:none}}
-/* 입력칸 지우기(ⓧ) v1.16.4 */
+/* 입력칸 지우기(ⓧ) v1.16.5 */
 .clearable{position:relative;display:block}
 .clearable input{width:100%;box-sizing:border-box;padding-right:44px}
 .clear-btn{position:absolute;right:6px;top:50%;transform:translateY(-50%);width:34px;height:34px;display:grid;place-items:center;border:0;background:transparent;border-radius:50%;cursor:pointer;color:#94a3b8}
@@ -376,3 +376,4 @@ button.op-star.on{color:#f59e0b}
 .has-tip.tip-end::after{left:auto;right:0;transform:translateY(-4px)}.has-tip.tip-end:hover::after,.has-tip.tip-end:focus-visible::after{transform:translateY(0)}
 /* 설정: 내 대화 기록 보기 · 비밀번호 변경 나란히(같은 너비) */
 .acct-actions{display:flex;gap:8px}.acct-actions>button{flex:1 1 0;width:auto;margin:0;white-space:nowrap}
+.remember-id{display:flex;align-items:center;gap:8px;margin:8px 2px 4px;font-size:13.5px;color:var(--sub);cursor:pointer;user-select:none}.remember-id input{width:18px;height:18px;margin:0;accent-color:#0e8fb0}
