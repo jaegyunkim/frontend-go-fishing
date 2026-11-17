@@ -7,7 +7,7 @@ const GATE = { PASS: '안전 양호', PASS_WITH_CAUTION: '조건부 주의', REV
 const badge = g => g ? `<span class="badge b-${esc(g)}">${esc(GATE[g] ?? g)}</span>` : '';
 
 // ---- 설정·인증(auth.js) ----
-import { state, setApi, api, health, login, logout, startTimer, syncExpiry, saveAuth, setOnAuthLost, setOnMustChange, loadAuthImage, remaining, sessionMinutes } from './auth.js?v=1.16.8';
+import { state, setApi, api, health, login, logout, startTimer, syncExpiry, saveAuth, setOnAuthLost, setOnMustChange, loadAuthImage, remaining, sessionMinutes } from './auth.js?v=1.16.9';
 let SID = localStorage.getItem('gofishing.session') || (crypto.randomUUID?.() ?? String(Date.now()) + Math.random().toString(16).slice(2));
 localStorage.setItem('gofishing.session', SID);
 const SAVED_ID_KEY = 'gofishing.savedLoginId'; // 아이디 저장(이메일만, 비밀번호는 저장하지 않음)
@@ -422,15 +422,17 @@ async function openSettings() {
   $('#settings').showModal();
 }
 $('#btnSettings').onclick = openSettings;
+// 로그아웃: 확인 팝업 먼저(확인 = 로그아웃 후 로그인 화면, 취소 = 로그인된 메인 화면 그대로)
 $('#btnLogout').onclick = () => {
-  const role = state.auth?.user?.role;
-  // 베타 테스터는 로그아웃하면 24시간 뒤에야 다시 로그인할 수 있어, 상단 버튼을 잘못 누르지 않도록 한 번 확인
-  if (role === 'user' && !confirm('로그아웃하시겠습니까?\n로그아웃하면 24시간이 지난 뒤 다시 이용할 수 있습니다.')) return;
-  if ($('#settings').open) $('#settings').close(); endSession('로그아웃했습니다.', true);
-  // 베타 테스터는 로그인한 시각부터 24시간 뒤에 다시 이용할 수 있어 내일 방문을 안내, 관리자·내부 테스터는 바로 다시 로그인 가능
-  showNotice('로그아웃되었습니다', role === 'user'
-    ? '오늘도 어디물어를 이용해 주셔서 감사합니다.\n내일 다시 찾아 주시면 바다 소식 전해 드리겠습니다. 🎣'
-    : '이용해 주셔서 감사합니다.\n필요하실 때 언제든 다시 로그인해 주십시오.');
+  const role = state.auth?.user?.role, d = $('#logoutDialog');
+  if ($('#settings').open) $('#settings').close();
+  // 베타 테스터는 로그인한 시각부터 24시간 뒤에 다시 이용할 수 있어 미리 안내, 관리자·내부 테스터는 바로 다시 로그인 가능
+  $('#logoutMsg').textContent = role === 'user'
+    ? '오늘도 어디물어를 이용해 주셔서 감사합니다.\n로그아웃하면 24시간이 지난 뒤 다시 이용할 수 있습니다.'
+    : '이용해 주셔서 감사합니다.\n필요하실 때 언제든 다시 로그인해 주십시오.';
+  d.returnValue = 'cancel';
+  d.onclose = () => { if (d.returnValue === 'ok') endSession('로그아웃했습니다.', true); else markActive?.(); };
+  d.showModal();
 };
 $('#btnPw').onclick = () => { $('#settings').close(); openPw(false); };
 $('#resetSession').onclick = () => { SID = crypto.randomUUID?.() ?? String(Date.now()); localStorage.setItem('gofishing.session', SID); chat.innerHTML = ''; slots = {}; renderChips(); $('#settings').close(); welcome(); };

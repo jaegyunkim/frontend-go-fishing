@@ -9,7 +9,7 @@
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" href="assets/icon.svg" type="image/svg+xml">
   <link rel="apple-touch-icon" href="assets/icon-192.png">
-  <link rel="stylesheet" href="style.css?v=1.16.8">
+  <link rel="stylesheet" href="style.css?v=1.16.9">
 </head>
 <body>
   <!-- 로그인 화면 -->
@@ -115,6 +115,13 @@
       <button type="submit" autofocus>확인</button>
     </form>
   </dialog>
+  <dialog id="logoutDialog" class="registration-dialog" aria-labelledby="logoutTitle" aria-describedby="logoutMsg">
+    <form method="dialog">
+      <h2 id="logoutTitle">로그아웃하시겠습니까?</h2>
+      <p id="logoutMsg" style="white-space:pre-line"></p>
+      <div class="dlg-actions"><button type="submit" value="cancel" class="dlg-cancel">취소</button><button type="submit" value="ok" autofocus>확인</button></div>
+    </form>
+  </dialog>
   <dialog id="sessionEndDialog" class="registration-dialog" aria-labelledby="sessionEndTitle" aria-describedby="sessionEndMsg">
     <form method="dialog">
       <h2 id="sessionEndTitle">오늘 이용 시간이 끝났습니다</h2>
@@ -160,7 +167,7 @@
       <div class="row"><button type="submit">변경</button><button type="button" id="pwCancel" class="ghost">취소</button></div>
     </form>
   </dialog>
-  <script src="config.js?v=1.16.8"></script><script src="telemetry.js?v=1.16.8"></script>
-  <script src="app.js?v=1.16.8" type="module"></script>
+  <script src="config.js?v=1.16.9"></script><script src="telemetry.js?v=1.16.9"></script>
+  <script src="app.js?v=1.16.9" type="module"></script>
 </body>
 </html>
