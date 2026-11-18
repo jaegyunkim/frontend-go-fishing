@@ -1,6 +1,6 @@
-import { approvalMailto } from './approval-email.js?v=1.17.4';
+import { approvalMailto } from './approval-email.js?v=1.17.5';
 // 어디물어 관리자 화면: 계정·세션·사용량·대화 로그·로그인/작업 기록. 관리자 계정으로 로그인한 탭에서만 동작.
-import { state, api, health, startTimer, syncExpiry, setOnAuthLost, logout } from './auth.js?v=1.17.4';
+import { state, api, health, startTimer, syncExpiry, setOnAuthLost, logout } from './auth.js?v=1.17.5';
 const $ = s => document.querySelector(s);
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const dt = v => v ? new Date(v).toLocaleString('ko-KR', { timeZone: 'Asia/Seoul', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }) : '-';
@@ -184,6 +184,20 @@ const views = {
     const { logins } = await api('/v1/admin/logins');
     view.innerHTML = `<div class="tool"><h2>로그인 기록(최근 200)</h2></div><div class="scroll"><table class="tbl"><tr><th>시각</th><th>아이디</th><th>결과</th><th>기기</th></tr>
     ${logins.map(l => `<tr><td>${dt(l.at)}</td><td>${esc(l.login_id)}</td><td><span class="pill ${l.success ? 'ok' : 'bad'}">${l.success ? '성공' : '실패'}</span> <span class="sub">${esc(l.reason ?? '')}</span></td><td class="sub">${esc((l.user_agent ?? '').slice(0, 60))}</td></tr>`).join('')}</table></div>`;
+  },
+  async skills() {
+    const r = await api('/v1/admin/skills');
+    const ul = a => `<ul class="sk-ul">${(a ?? []).map(x => `<li>${esc(x)}</li>`).join('') || '<li class="sub">없음</li>'}</ul>`;
+    view.innerHTML = `<div class="tool"><h2>에이전트 스킬 ${r.skills.length}개 <span class="sub">v${esc(r.version)}</span></h2></div>
+    <p class="sub">${esc(r.framework)}. 원본은 백엔드 <code>skills/registry.json</code>, 대화마다 의도에 맞는 스킬 id가 기록됩니다.</p>
+    <details class="card"><summary><b>공통 원칙</b></summary>${ul(r.principles)}</details>
+    ${r.skills.map(s => `<details class="card sk"><summary><b>${esc(s.name)}</b> <code>${esc(s.id)}</code><div class="sub">${esc(s.goal)}</div><div class="sk-tags">${s.intents.map(i => `<span class="pill ok">${esc(i)}</span>`).join('')}</div></summary>
+      <h4>1. API 명세</h4><div class="scroll"><table class="tbl"><tr><th>호출</th><th>입력</th><th>출력</th></tr>${s.endpoints.map(e => `<tr><td><code>${esc(e.method)} ${esc(e.path)}</code></td><td class="sub">${esc(e.input)}</td><td class="sub">${esc(e.output)}</td></tr>`).join('')}</table></div>
+      <p class="sub">제공기관: ${s.providers.map(esc).join(' · ')}</p>
+      <h4>2. 의도</h4>${ul(s.examples.map(x => '"' + x + '"'))}
+      <h4>3. 문맥</h4><p class="sub">필수</p>${ul(s.context.required)}<p class="sub">선택</p>${ul(s.context.optional)}${s.context.memory?.length ? `<p class="sub">기억·상태</p>${ul(s.context.memory)}` : ''}
+      <h4>4. 실행 조건</h4>${ul(s.conditions)}<p class="sub">실패 시 대체</p>${ul(s.fallbacks)}
+      <h4>참고한 외부 MCP</h4>${ul(s.references)}</details>`).join('')}`;
   },
   async reports() {
     const { reports } = await api('/v1/admin/reports?limit=90');
