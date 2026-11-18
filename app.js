@@ -7,7 +7,7 @@ const GATE = { PASS: '안전 양호', PASS_WITH_CAUTION: '조건부 주의', REV
 const badge = g => g ? `<span class="badge b-${esc(g)}">${esc(GATE[g] ?? g)}</span>` : '';
 
 // ---- 설정·인증(auth.js) ----
-import { state, setApi, api, health, login, logout, startTimer, syncExpiry, saveAuth, setOnAuthLost, setOnMustChange, loadAuthImage, remaining, sessionMinutes } from './auth.js?v=1.17.0';
+import { state, setApi, api, health, login, logout, startTimer, syncExpiry, saveAuth, setOnAuthLost, setOnMustChange, loadAuthImage, remaining, sessionMinutes } from './auth.js?v=1.17.1';
 let SID = localStorage.getItem('gofishing.session') || (crypto.randomUUID?.() ?? String(Date.now()) + Math.random().toString(16).slice(2));
 localStorage.setItem('gofishing.session', SID);
 const SAVED_ID_KEY = 'gofishing.savedLoginId'; // 아이디 저장(이메일만, 비밀번호는 저장하지 않음)
@@ -15,12 +15,14 @@ $('#rememberId').addEventListener('change', e => { if (!e.target.checked) localS
 let slots = {}, lastBriefing = null, timer = null, usageText = '', pickedOrigin = null;
 const authed = () => state.authMode === 'required';
 
+// 상단 안내: 로그인한 계정의 이용 시간(관리자가 계정별로 바꿀 수 있음), 로그인 전에는 서버 기본값
+const sessionNotice = () => `원활한 운영을 위해 로그인 후 ${state.auth ? sessionMinutes() : state.sessionMinutes}분이 지나면 자동 로그아웃돼요.`;
 function setStatus(text, cls = '') { const el = $('#status'); el.textContent = text; el.className = 'status ' + cls; }
 async function checkServer() {
   if (!state.api) { setStatus('백엔드 미연결 · ⚙︎ 설정에서 서버 주소를 입력하세요', 'bad'); return null; }
   const h = await health();
   if (h.error) { setStatus(`서버 연결 실패 (${state.api}) · ${h.error}`, 'bad'); return null; }
-  setStatus(authed() ? `원활한 운영을 위해 로그인 세션 ${state.sessionMinutes}분 후 자동 로그아웃돼요. 양해 부탁드려요.` : `서버 연결됨 v${h.version} · 로그인 없음(개발 모드)`, 'ok');
+  setStatus(authed() ? sessionNotice() : `서버 연결됨 v${h.version} · 로그인 없음(개발 모드)`, 'ok');
   return h;
 }
 
@@ -289,10 +291,14 @@ $('#originForm').addEventListener('submit', async e => {
   $('#postcodeOpen').click();
 });
 
+// 답변을 기다리는 동안 새 질문은 받지 않는다(답변이 섞이거나 질문 한도가 두 번 차감되는 것 방지)
+let sending = false;
 async function send(text, extra = {}) {
   if (aiLocked) return;
+  if (sending) { toast('앞 질문의 답변을 준비하고 있어요. 잠시만 기다려 주세요.'); return; }
   text = String(text || '').trim(); if (!text) return;
   showTab('chat');
+  sending = true; const sendBtn = $('#composer button[type=submit]'); if (sendBtn) sendBtn.disabled = true;
   qAnchor = null; const qEl = bubble('user', esc(text));
   const t = document.createElement('div'); t.className = 'typing'; t.textContent = '어디물어가 공공데이터를 조회하고 있어요…'; chat.appendChild(t); scroll();
   try {
@@ -311,7 +317,9 @@ async function send(text, extra = {}) {
     if (e.code === 'AI_CREDIT_EXHAUSTED') { applyAiLock({ available: false, message: e.message }); return; }
     if (e.status === 429) { bubble('bot', md(`⏳ ${e.message}`)); if (e.usage) renderUsage({ today: { messages: e.usage.messages, tokens: e.usage.tokens } }); return; }
     if (e.status === 403) { bubble('bot', md(e.message)); return; }
-    bubble('bot', md(`서버에 연결하지 못했어요. (${e.message})\n⚙︎ 설정에서 백엔드 주소를 확인해 주세요.`));
+    bubble('bot', md(`서버에 연결하지 못했어요. 잠시 후 다시 시도해 주세요. (${e.message})`));
+  } finally {
+    sending = false; const sb = $('#composer button[type=submit]'); if (sb && !aiLocked) sb.disabled = false;
   }
 }
 $('#composer').addEventListener('submit', e => { e.preventDefault(); const v = $('#msg').value; $('#msg').value = ''; send(v); });
@@ -639,6 +647,7 @@ function enterApp() {
   $('#loginView').hidden = true; $('#appView').hidden = false;
   chat.innerHTML = ''; slots = {}; renderChips();
   if (authed() && state.auth) {
+    setStatus(sessionNotice(), 'ok');
     timer?.stop();
     timer = startTimer($('#timer'), {
       onWarn: s => toast(`약 ${s}초 뒤 자동 로그아웃돼요. 필요한 내용은 지금 확인해 주세요.`),

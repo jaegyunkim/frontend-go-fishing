@@ -1,4 +1,4 @@
-import {api} from './auth.js?v=1.17.0';
+import {api} from './auth.js?v=1.17.1';
 const form=document.querySelector('#requestForm');
 const result=document.querySelector('#result');
 const button=document.querySelector('#registerSubmit');
@@ -61,6 +61,6 @@ form.addEventListener('submit',async e=>{
   // 어떤 결과든 안내창으로 알려 준다(작은 글씨만으로는 놓치기 쉬움)
   showMessage(title,text);
  }finally{
-  submitting=false;button.disabled=dupBlocked;button.textContent='가입 신청하기';form.setAttribute('aria-busy','false');
+  submitting=false;button.disabled=dupBlocked;button.textContent='이용 신청하기';form.setAttribute('aria-busy','false');
  }
 });

@@ -323,7 +323,7 @@ button.op-star.on{color:#f59e0b}
 .has-tip::before{content:"";position:absolute;top:calc(100% + 4px);left:50%;transform:translate(-50%,-4px);border:5px solid transparent;border-bottom-color:#0b2534;border-top:0;opacity:0;pointer-events:none;transition:opacity .15s,transform .15s;z-index:30}
 .has-tip:hover::after,.has-tip:hover::before,.has-tip:focus-visible::after,.has-tip:focus-visible::before{opacity:1;transform:translate(-50%,0)}
 @media (prefers-reduced-motion:reduce){.has-tip::after,.has-tip::before{transition:none}}
-/* 입력칸 지우기(ⓧ) v1.17.0 */
+/* 입력칸 지우기(ⓧ) v1.17.1 */
 .clearable{position:relative;display:block}
 .clearable input{width:100%;box-sizing:border-box;padding-right:44px}
 .clear-btn{position:absolute;right:6px;top:50%;transform:translateY(-50%);width:34px;height:34px;display:grid;place-items:center;border:0;background:transparent;border-radius:50%;cursor:pointer;color:#94a3b8}
@@ -403,3 +403,5 @@ button.op-star.on{color:#f59e0b}
 .dup-check.ok{background:#e9f7ee;border:1px solid #9fd8b4;color:#2f7a4c}
 .dup-check.info{background:#eef6ff;border:1px solid #b9d7f5;color:#1f4f7a}
 #registerSubmit:disabled{opacity:.5;cursor:not-allowed}
+/* 비활성 버튼 공통: 회색·누를 수 없음(모든 화면 통일) */
+button:disabled,.btn[aria-disabled="true"]{background:#d5dbe1 !important;background-image:none !important;border-color:#c3cad2 !important;color:#7b8794 !important;box-shadow:none !important;opacity:1 !important;cursor:not-allowed;pointer-events:none}
