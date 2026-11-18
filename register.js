@@ -1,4 +1,4 @@
-import {api} from './auth.js?v=1.17.1';
+import {api} from './auth.js?v=1.17.2';
 const form=document.querySelector('#requestForm');
 const result=document.querySelector('#result');
 const button=document.querySelector('#registerSubmit');
@@ -10,9 +10,10 @@ let submitting=false;
 const emailInput=document.querySelector('[name="loginId"]'),dup=document.querySelector('#dupCheck');
 let dupBlocked=false,dupTimer=null,dupSeq=0;
 function setDup(text,kind){dup.textContent=text;dup.hidden=!text;dup.className='dup-check '+(kind||'');dupBlocked=kind==='block';button.disabled=dupBlocked||submitting;}
-async function checkDup(){
+async function checkDup(onBlur=false){
  const v=emailInput.value.trim();const seq=++dupSeq;
- if(!v||!emailInput.checkValidity()){setDup('');return;}
+ if(!v){setDup('');return;}
+ if(!emailInput.checkValidity()){setDup(onBlur?'이메일 형식으로 입력해 주세요. 예) test@gmail.com':'','info');return;}
  try{
   const r=await api('/v1/auth/register/status?loginId='+encodeURIComponent(v),{noAuth:true});
   if(seq!==dupSeq)return;
@@ -27,7 +28,7 @@ async function checkDup(){
  }catch{if(seq===dupSeq)setDup('');} // 확인에 실패해도 신청은 막지 않음(제출 때 서버가 다시 확인)
 }
 emailInput.addEventListener('input',()=>{clearTimeout(dupTimer);setDup('');dupTimer=setTimeout(checkDup,600);});
-emailInput.addEventListener('blur',()=>{clearTimeout(dupTimer);checkDup();});
+emailInput.addEventListener('blur',()=>{clearTimeout(dupTimer);checkDup(true);});
 function feedback(message,error=false){
  result.textContent=message;
  result.hidden=!message;

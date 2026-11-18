@@ -114,3 +114,4 @@ table th,table td{border-color:var(--line)}
 .rep-hours i{display:block;background:var(--grad,linear-gradient(180deg,#06b6d4,#2563eb));border-radius:2px 2px 0 0}.rep-hours i.err{background:#e11d48}
 .rep-axis{display:flex;justify-content:space-between;font-size:10.5px;color:var(--sub);margin-bottom:8px}
 button:disabled{background:#e2e8f0 !important;background-image:none !important;border-color:#cbd5e1 !important;color:#94a3b8 !important;box-shadow:none !important;opacity:1 !important;cursor:not-allowed}
+body{word-break:keep-all;overflow-wrap:anywhere}
