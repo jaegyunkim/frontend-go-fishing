@@ -1,19 +1,33 @@
 // 관리자 '접속현황' 화면: 메인(로그인)·이용 신청 페이지 방문자 지표와 인라인 SVG 차트(외부 라이브러리 없음).
 // 순수 함수만 둔다(DOM·API 없음) → node 테스트에서 그대로 검사한다.
+// 섹션: 시간별 → 일간 → 요일별 → 주간별 → 월간 → 시즌별 → 연간(짧은 단위→긴 단위). 한 번에 한 섹션만 보이게 탭으로 나눈다.
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 export const num = v => v == null ? '-' : Number(v).toLocaleString('ko-KR', { maximumFractionDigits: 1 });
 export const pct = v => v == null ? '-' : (Math.round(v * 1000) / 10).toLocaleString('ko-KR') + '%';
 const WD = ['일', '월', '화', '수', '목', '금', '토'];
-export const md = d => `${Number(d.slice(5, 7))}.${Number(d.slice(8, 10))}`;
+/** 'MM.DD' */
+export const md = d => `${d.slice(5, 7)}.${d.slice(8, 10)}`;
+/** 'YYYY.MM.DD' */
+export const dot = d => String(d ?? '').replaceAll('-', '.');
+const DAY = 86400000;
+export const diffDays = (a, b) => Math.round((Date.parse(b + 'T00:00:00Z') - Date.parse(a + 'T00:00:00Z')) / DAY);
 const dayLabel = d => `${md(d)}(${WD[new Date(d + 'T00:00:00Z').getUTCDay()]})`;
 const range = (a, b) => a === b ? dayLabel(a) : `${dayLabel(a)}~${dayLabel(b)}`;
 const SERIES = [{ key: 'main', name: '메인(로그인)', color: '#2a78d6' }, { key: 'register', name: '이용 신청', color: '#eb6834' }];
+/** 섹션 목록(탭 순서) */
+export const SECTIONS = [['hourly', '시간별'], ['daily', '일간'], ['weekday', '요일별'], ['weekly', '주간별'], ['monthly', '월간'], ['seasons', '시즌별'], ['yearly', '연간']];
 
 /** 증감 표시: ▲ 12.5% / ▼ 3% / 같아요 / 비교 불가 문구 */
 export function changeText(v, none = '비교할 데이터가 아직 없어요') {
   if (v == null) return `<span class="vz-chg none">${esc(none)}</span>`;
   if (v === 0) return '<span class="vz-chg">변화 없어요</span>';
   return `<span class="vz-chg">${v > 0 ? '▲' : '▼'} ${pct(Math.abs(v))}</span>`;
+}
+/** 하루 평균 기준 증감률(두 기간 모두 집계된 날이 있고 비교 기간이 0보다 클 때만) */
+export function avgChange(cur, curDays, prev, prevDays) {
+  if (!curDays || !prevDays) return null;
+  const a = cur / curDays, b = prev / prevDays;
+  return b > 0 ? Math.round((a - b) / b * 1000) / 1000 : null;
 }
 /** 축 눈금: 정수 단위의 보기 좋은 간격(최대 5칸) */
 export function niceScale(max) {
@@ -25,77 +39,208 @@ export function niceScale(max) {
 /** 세로축 눈금 글자 폭에 맞춘 왼쪽 여백 */
 const axisW = top => Math.round(12 + 6.2 * num(top).length);
 const legend = () => `<div class="vz-legend">${SERIES.map(s => `<span><i style="background:${s.color}"></i>${s.name}</span>`).join('')}</div>`;
-const readout = hint => `<p class="vz-read" aria-live="polite">${esc(hint)}</p>`;
+const readout = hint => `<p class="vz-read" aria-live="polite" data-hint="${esc(hint)}">${esc(hint)}</p>`;
 const barPath = (x, y, w, h) => { const r = Math.min(4, w / 2, h); return `M${x},${y + h}V${y + r}Q${x},${y} ${x + r},${y}H${x + w - r}Q${x + w},${y} ${x + w},${y + r}V${y + h}Z`; };
+/** 가로축 이름표 간격: 글자 폭이 칸보다 넓으면 건너뛴다. anchor='end'면 마지막(최근) 칸을 늘 표시 */
+export function labelEvery(labels, gw, every) {
+  return every ?? Math.max(1, Math.ceil((Math.max(0, ...labels.map(l => String(l).length)) * 6.4 + 6) / gw));
+}
 
-/** 일간 꺾은선: 메인·신청 방문자 + 메인 7일 이동평균(점선). 수집 전 날짜는 선을 그리지 않는다. */
-export function lineChart(daily, width = 360, height = 200) {
+/** 일간 꺾은선: 메인·신청 방문자 + 메인 7일 이동평균(점선). 수집 전 날짜는 선을 그리지 않고 옅게 칠한다. 오늘(진행 중)은 속이 빈 점. */
+export function lineChart(daily, width = 360, height = 200, { today = null } = {}) {
   const vals = daily.flatMap(d => [d.main, d.register, d.ma7Main ?? 0]); const { top, ticks } = niceScale(Math.max(0, ...vals));
   const L = axisW(top), R = 8 + 6.5 * num(top).length, T = 12, B = 24, W = width, H = height, n = daily.length, pw = W - L - R, ph = H - T - B;
   const x = i => L + (n > 1 ? i * pw / (n - 1) : pw / 2), y = v => T + ph - v / top * ph;
   const path = get => { let s = '', pen = false; daily.forEach((d, i) => { const v = get(d); if (!d.covered || v == null) { pen = false; return; } s += `${pen ? 'L' : 'M'}${x(i).toFixed(1)},${y(v).toFixed(1)}`; pen = true; }); return s; };
   const grid = ticks.map(t => `<line x1="${L}" x2="${W - R}" y1="${y(t)}" y2="${y(t)}" class="vz-grid"/><text x="${L - 6}" y="${y(t) + 3.5}" text-anchor="end" class="vz-ax">${num(t)}</text>`).join('');
   const marks = [0, Math.floor((n - 1) / 2), n - 1].filter((v, i, a) => a.indexOf(v) === i).map(i => `<text x="${x(i)}" y="${H - 6}" text-anchor="${i === 0 ? 'start' : i === n - 1 ? 'end' : 'middle'}" class="vz-ax">${md(daily[i].day)}</text>`).join('');
-  const last = [...daily].reverse().find(d => d.covered), li = daily.lastIndexOf(last);
-  const ends = last ? SERIES.map(s => ({ s, v: last[s.key] })).sort((a, b) => b.v - a.v).map((e, k, arr) => { let yy = y(e.v) + 4; if (k === 1 && Math.abs(yy - (y(arr[0].v) + 4)) < 12) yy = y(arr[0].v) + 16; return `<circle cx="${x(li)}" cy="${y(e.v)}" r="3.5" fill="${e.s.color}" stroke="#fff" stroke-width="2"/><text x="${x(li) + 7}" y="${yy}" class="vz-end">${num(e.v)}</text>`; }).join('') : '';
   const step = n > 1 ? pw / (n - 1) : pw;
-  const hits = daily.map((d, i) => { const tip = d.covered ? `${dayLabel(d.day)} · 메인 ${num(d.main)}명 · 신청 ${num(d.register)}명${d.ma7Main != null ? ` · 메인 7일 평균 ${num(d.ma7Main)}명` : ''}` : `${dayLabel(d.day)} · 집계 전이에요`; return `<rect x="${(x(i) - step / 2).toFixed(1)}" y="${T}" width="${step.toFixed(1)}" height="${ph}" class="vz-hit" data-tip="${esc(tip)}"><title>${esc(tip)}</title></rect>`; }).join('');
-  return `<svg class="vz-svg" viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" role="img" aria-label="최근 ${n}일 하루 방문자 꺾은선 차트">${grid}${marks}
+  // 수집 시작 전 구간: 옅은 배경 + '집계 전'
+  const fi = daily.findIndex(d => d.covered), pre = fi === -1 ? n : fi;
+  const preW = pre ? Math.min(pw, (n > 1 ? x(pre - 1) + step / 2 : W - R) - L) : 0;
+  const preBox = pre ? `<rect x="${L}" y="${T}" width="${preW.toFixed(1)}" height="${ph}" class="vz-pre"/>${preW >= 44 ? `<text x="${(L + preW / 2).toFixed(1)}" y="${T + ph / 2}" text-anchor="middle" class="vz-ax dim">집계 전</text>` : ''}` : '';
+  const last = [...daily].reverse().find(d => d.covered), li = daily.lastIndexOf(last), open = last && today && last.day === today;
+  const ends = last ? SERIES.map(s => ({ s, v: last[s.key] })).sort((a, b) => b.v - a.v).map((e, k, arr) => { let yy = y(e.v) + 4; if (k === 1 && Math.abs(yy - (y(arr[0].v) + 4)) < 12) yy = y(arr[0].v) + 16; return `<circle cx="${x(li)}" cy="${y(e.v)}" r="3.5" fill="${open ? '#fff' : e.s.color}" stroke="${open ? e.s.color : '#fff'}" stroke-width="2"/><text x="${x(li) + 7}" y="${yy}" class="vz-end">${num(e.v)}</text>`; }).join('') : '';
+  const hits = daily.map((d, i) => { const now = today && d.day === today ? '(오늘, 진행 중)' : ''; const tip = d.covered ? `${dayLabel(d.day)}${now} · 메인 ${num(d.main)}명 · 신청 ${num(d.register)}명${d.ma7Main != null ? ` · 메인 7일 평균 ${num(d.ma7Main)}명` : ''}` : `${dayLabel(d.day)} · 집계 전이에요`; return `<rect x="${(x(i) - step / 2).toFixed(1)}" y="${T}" width="${step.toFixed(1)}" height="${ph}" class="vz-hit" data-tip="${esc(tip)}"><title>${esc(tip)}</title></rect>`; }).join('');
+  return `<svg class="vz-svg" viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" role="img" aria-label="최근 ${n}일 하루 방문자 꺾은선 차트">${preBox}${grid}${marks}
     <path d="${path(d => d.ma7Main)}" fill="none" stroke="#2a78d6" stroke-opacity=".45" stroke-width="2" stroke-dasharray="4 3"/>
     ${SERIES.map(s => `<path d="${path(d => d[s.key])}" fill="none" stroke="${s.color}" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>`).join('')}${ends}${hits}</svg>`;
 }
-/** 묶음 막대: groups=[{label, values:[메인, 신청](null=집계 없음), tip}] */
-export function barChart(groups, width = 360, height = 190, { aria = '막대 차트' } = {}) {
+/**
+ * 묶음 막대: groups=[{label, values:[메인, 신청](null=집계 없음), tip, partial(진행 중·일부 집계 → 옅게), future(아직 오지 않음 → '-' 없음)}]
+ * opts.every: 이름표 간격(없으면 글자 폭으로 계산), opts.anchor: 'end'(최근 칸 기준) | 'start'
+ */
+export function barChart(groups, width = 360, height = 190, { aria = '막대 차트', every, anchor = 'end' } = {}) {
   const { top, ticks } = niceScale(Math.max(0, ...groups.flatMap(g => g.values.map(v => v ?? 0))));
   const L = axisW(top), R = 6, T = 12, B = 24, W = width, H = height, pw = W - L - R, ph = H - T - B, n = groups.length, gw = pw / n;
   const y = v => T + ph - v / top * ph, k = SERIES.length, bw = Math.max(3, Math.min(18, (gw * 0.72 - 2 * (k - 1)) / k));
   const grid = ticks.map(t => `<line x1="${L}" x2="${W - R}" y1="${y(t)}" y2="${y(t)}" class="vz-grid"/><text x="${L - 6}" y="${y(t) + 3.5}" text-anchor="end" class="vz-ax">${num(t)}</text>`).join('');
-  const every = gw >= 24 ? 1 : 2;
+  const ev = labelEvery(groups.map(g => g.label), gw, every);
   const body = groups.map((g, i) => {
-    const cx = L + gw * i + gw / 2, x0 = cx - (bw * k + 2 * (k - 1)) / 2;
-    const bars = g.values.map((v, j) => v == null || v <= 0 ? '' : `<path d="${barPath(x0 + j * (bw + 2), y(v), bw, T + ph - y(v))}" fill="${SERIES[j].color}"/>`).join('');
-    const none = g.values.every(v => v == null) ? `<text x="${cx}" y="${T + ph - 4}" text-anchor="middle" class="vz-ax">-</text>` : '';
-    const lab = i % every === 0 || i === n - 1 ? `<text x="${cx}" y="${H - 6}" text-anchor="middle" class="vz-ax${g.values.every(v => v == null) ? ' dim' : ''}">${esc(g.label)}</text>` : '';
+    const cx = L + gw * i + gw / 2, x0 = cx - (bw * k + 2 * (k - 1)) / 2, empty = g.values.every(v => v == null);
+    const bars = g.values.map((v, j) => v == null || v <= 0 ? '' : `<path d="${barPath(x0 + j * (bw + 2), y(v), bw, T + ph - y(v))}" fill="${SERIES[j].color}"${g.partial ? ' fill-opacity=".45"' : ''}/>`).join('');
+    const none = empty && !g.future ? `<text x="${cx}" y="${T + ph - 4}" text-anchor="middle" class="vz-ax">-</text>` : '';
+    const show = (anchor === 'end' ? n - 1 - i : i) % ev === 0;
+    const lab = show ? `<text x="${cx}" y="${H - 6}" text-anchor="middle" class="vz-ax${empty ? ' dim' : ''}">${esc(g.label)}</text>` : '';
     return `${bars}${none}${lab}<rect x="${(L + gw * i).toFixed(1)}" y="${T}" width="${gw.toFixed(1)}" height="${ph}" class="vz-hit" data-tip="${esc(g.tip)}"><title>${esc(g.tip)}</title></rect>`;
   }).join('');
   return `<svg class="vz-svg" viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" role="img" aria-label="${esc(aria)}">${grid}<line x1="${L}" x2="${W - R}" y1="${T + ph}" y2="${T + ph}" class="vz-base"/>${body}</svg>`;
 }
-const pair = (a, b) => `<b>${num(a)}</b><span class="vz-sep">·</span><b>${num(b)}</b>`;
-const kpi = (title, main, register, sub) => `<div class="vz-kpi"><span class="vz-kt">${title}</span><div class="vz-kv"><span><i style="background:#2a78d6"></i>메인 <b>${num(main)}</b>명</span><span><i style="background:#eb6834"></i>신청 <b>${num(register)}</b>명</span></div><div class="vz-ks">${sub}</div></div>`;
 
-/** 화면 전체 HTML. v=GET /v1/admin/visits 의 visits, days=일간 기간, width=차트 폭(px) */
-export function visitsHtml(v, days = 30, width = 360) {
-  const k = v.kpi, cw = Math.round(Math.max(300, Math.min(900, width)));
-  const started = v.firstDay ? `${v.firstDay.replaceAll('-', '.')}부터 집계했어요` : '아직 집계된 방문이 없어요';
+// ---------- 공통 조각 ----------
+const pair = (a, b) => `<b>${num(a)}</b><span class="vz-sep">·</span><b>${num(b)}</b>`;
+const val = v => v == null ? '<b>-</b>' : `<b>${num(v)}</b>명`;
+const kpi = (title, main, register, sub) => `<div class="vz-kpi"><span class="vz-kt">${title}</span><div class="vz-kv"><span><i style="background:#2a78d6"></i>메인 ${val(main)}</span><span><i style="background:#eb6834"></i>신청 ${val(register)}</span></div><div class="vz-ks">${sub}</div></div>`;
+const chg2 = (a, b, none) => `메인 ${changeText(a, none)} · 신청 ${changeText(b, none)}`;
+const pill = t => ` <span class="pill">${t}</span>`;
+/** 기간 상태: 수집 전 / 진행 중 / 일부만 집계 */
+function periodState({ days, elapsed, ongoing }) {
+  if (!days) return '<span class="sub">집계 전이에요</span>';
+  const part = days < elapsed ? `집계 ${num(days)}/${num(elapsed)}일` : `${num(days)}일`;
+  return `${ongoing ? '<span class="pill">진행 중</span> ' : ''}<span class="sub">${part}</span>`;
+}
+const tipTail = ({ days, elapsed, ongoing }) => ` · ${ongoing ? '진행 중, ' : ''}집계 ${num(days)}${days < elapsed || ongoing ? `/${num(elapsed)}` : ''}일`;
+/** 하루 평균 / 합계 두 차트를 탭처럼 바꿔 보는 버튼 + 판 */
+function modes(sec, ui, list, def) {
+  const cur = list.some(([k]) => k === ui.modes?.[sec]) ? ui.modes[sec] : def;
+  return {
+    seg: `<div class="vz-seg" role="group" aria-label="차트 보기 방식">${list.map(([k, name]) => `<button type="button" data-vmode="${k}" aria-pressed="${k === cur}"${k === cur ? ' class="on"' : ''}>${name}</button>`).join('')}</div>`,
+    panes: list.map(([k, , chart]) => `<div class="vz-wrap" data-vpane="${k}"${k === cur ? '' : ' hidden'}>${chart}</div>`).join('')
+  };
+}
+const table = (head, rows, open = false) => `<details class="vz-more"${open ? ' open' : ''}><summary>표로 보기</summary><div class="vz-scroll"><table class="vz-tbl"><tr>${head.map(h => `<th${h.startsWith('#') ? ' class="num"' : ''}>${h.replace(/^#/, '')}</th>`).join('')}</tr>${rows.join('')}</table></div></details>`;
+const td = (v, cls = '') => `<td${cls ? ` class="${cls}"` : ''}>${v}</td>`;
+const legacy = '<p class="sub vz-note">서버가 아직 이 지표를 보내지 않아요. 백엔드를 v1.3.47 이상으로 올리면 보여요.</p>';
+function card(sec, ui, title, basis, body) {
+  const on = (ui.sec ?? 'daily') === sec;
+  return `<section class="card vz-card" id="vz-${sec}" data-vsec-pane="${sec}" role="tabpanel" aria-labelledby="vzt-${sec}"${on ? '' : ' hidden'}><h3>${title}${basis ? ` <span class="sub">${basis}</span>` : ''}</h3>${body}</section>`;
+}
+
+// ---------- 섹션 ----------
+function hourlySec(v, ui, cw) {
+  const h = v.hourly;
+  if (!h) return card('hourly', ui, '시간별 방문자', '', legacy);
+  const nh = h.nowHour ?? 23, hc = h.coveredDays ?? 0, cut = nh; // 비교: 다 지난 시간(0시~지금 시 직전)만
+  const tSum = k => h.today.reduce((a, x) => a + (x[k] ?? 0), 0);
+  const upTo = (arr, k) => arr.filter(x => x.hour < cut).reduce((a, x) => a + (x[k] ?? 0), 0);
+  const cmp = k => (hc && cut > 0 ? (b => b > 0 ? Math.round((upTo(h.today, k) - b) / b * 1000) / 1000 : null)(upTo(h.avg, k)) : null);
+  const pk = k => h.peak?.[k] ? `${h.peak[k].hour}시(하루 평균 ${num(h.peak[k].avg)}명)` : '-';
+  const strip = `<div class="vz-kpis vz-sum">
+    ${kpi('오늘 지금까지', tSum('main'), tSum('register'), `${nh}시 기준 · ${cut > 0 ? `평소 0~${cut}시 전보다 ${chg2(cmp('main'), cmp('register'), '비교 전')}` : '0시대라 아직 비교 전이에요'}`)}
+    <div class="vz-kpi"><span class="vz-kt">가장 많이 여는 시간</span><div class="vz-ks vz-peak"><span><i style="background:#2a78d6"></i>메인 <b>${pk('main')}</b></span><span><i style="background:#eb6834"></i>신청 <b>${pk('register')}</b></span></div><div class="vz-ks">${hc ? `어제까지 ${num(hc)}일 기준이에요` : '어제까지 집계된 날이 아직 없어요'}</div></div></div>`;
+  const avgG = h.avg.map(x => ({ label: `${x.hour}시`, values: hc ? [x.main, x.register] : [null, null], tip: hc ? `${x.hour}시대 · 하루 평균 메인 ${num(x.main)}명 · 신청 ${num(x.register)}명(${num(hc)}일 기준)` : `${x.hour}시대 · 집계 전이에요` }));
+  const todG = h.today.map(x => x.hour > nh ? { label: `${x.hour}시`, values: [null, null], future: true, tip: `${x.hour}시대 · 아직이에요` }
+    : { label: `${x.hour}시`, values: [x.main, x.register], partial: x.hour === nh, tip: `오늘 ${x.hour}시대${x.hour === nh ? '(진행 중)' : ''} · 메인 ${num(x.main)}명 · 신청 ${num(x.register)}명` });
+  const m = modes('hourly', ui, [
+    ['avg', `최근 ${num(h.days)}일 평균`, barChart(avgG, cw, 180, { aria: '시간대별 하루 평균 방문자 막대 차트', every: 3, anchor: 'start' })],
+    ['today', '오늘', barChart(todG, cw, 180, { aria: '오늘 시간대별 방문자 막대 차트', every: 3, anchor: 'start' })]], hc ? 'avg' : 'today');
+  const rows = h.avg.map((x, i) => { const t = h.today[i], fut = t.hour > nh; return `<tr>${td(`${x.hour}시${t.hour === nh ? pill('지금') : ''}`)}${td(hc ? pair(x.main, x.register) : '-', 'num')}${td(fut ? '<span class="sub">아직이에요</span>' : pair(t.main, t.register), 'num')}</tr>`; });
+  return card('hourly', ui, '시간별 방문자', `어제까지 최근 ${num(h.days)}일 중 집계 ${num(hc)}일 · 오늘 ${nh}시 기준`, `${strip}${legend()}${m.seg}
+    <p class="sub vz-note">방문자는 그날 처음 연 시각에 1번만 세요(같은 날 다시 열어도 다른 시간대에 또 세지 않아요). 옅은 막대는 지금 진행 중인 시간이에요.</p>
+    ${m.panes}${readout('막대를 누르면 그 시간 수치를 보여 드려요.')}
+    ${table(['시간', '#하루 평균(메인·신청)', '#오늘(메인·신청)'], rows)}`);
+}
+function dailySec(v, ui, cw, days) {
+  const d = v.daily, today = v.today, past = d.filter(x => x.covered && x.day !== today), pd = past.length;
+  const s = k => past.reduce((a, x) => a + x[k], 0);
+  const yd = d.length >= 2 ? d[d.length - 2] : null, wk = d.length >= 9 ? d[d.length - 9] : null;
+  const ok = yd?.covered && wk?.covered;
+  const strip = `<div class="vz-kpis vz-sum">
+    ${kpi(`어제${yd ? ` ${dayLabel(yd.day)}` : ''}`, yd?.covered ? yd.main : null, yd?.covered ? yd.register : null, `지난주 같은 요일${wk ? `(${md(wk.day)})` : ''}보다 ${chg2(ok ? avgChange(yd.main, 1, wk.main, 1) : null, ok ? avgChange(yd.register, 1, wk.register, 1) : null, '비교 전')}`)}
+    ${kpi(`하루 평균(어제까지 ${num(pd)}일)`, pd ? Math.round(s('main') / pd * 10) / 10 : null, pd ? Math.round(s('register') / pd * 10) / 10 : null, pd ? `합계 메인 ${num(s('main'))}명 · 신청 ${num(s('register'))}명 · 오늘은 진행 중이라 빼요` : '어제까지 집계된 날이 아직 없어요')}</div>`;
+  const rows = [...d].reverse().map(x => `<tr>${td(`${dayLabel(x.day)}${x.day === today ? pill('진행 중') : ''}`)}${td(x.covered ? num(x.main) : '<span class="sub">집계 전</span>', 'num')}${td(x.covered ? num(x.register) : '-', 'num')}${td(num(x.ma7Main), 'num')}</tr>`);
+  return card('daily', ui, '일간 방문자', `최근 ${num(days)}일 · 집계 ${num(d.filter(x => x.covered).length)}일`, `${strip}${legend()}
+    <p class="sub vz-note">점선은 메인 화면 7일 이동평균이에요(7일이 모두 집계된 날부터). 속이 빈 점은 오늘이라 아직 진행 중이에요.</p>
+    <div class="vz-wrap">${lineChart(d, cw, 200, { today })}</div>${readout('차트를 누르면 그날 수치를 보여 드려요.')}
+    ${table(['날짜', '#메인', '#신청', '#메인 7일 평균'], rows)}`);
+}
+function weekdaySec(v, ui, cw) {
+  const wk = v.weekday, order = [1, 2, 3, 4, 5, 6, 0], rows = order.map(i => wk.rows[i]);
+  const grp = ids => { const r = wk.rows.filter(x => ids.includes(x.weekday) && x.days), dd = r.reduce((a, x) => a + x.days, 0); return { days: dd, main: dd ? Math.round(r.reduce((a, x) => a + x.avgMain * x.days, 0) / dd * 10) / 10 : null, register: dd ? Math.round(r.reduce((a, x) => a + x.avgRegister * x.days, 0) / dd * 10) / 10 : null }; };
+  const wd = grp([1, 2, 3, 4, 5]), we = grp([0, 6]);
+  const best = wk.rows.filter(x => x.days).sort((a, b) => b.avgMain - a.avgMain)[0];
+  const has = wk.rows.some(r => r.days);
+  const strip = `<div class="vz-kpis vz-sum">
+    ${kpi('주중(월~금) 하루 평균', wd.main, wd.register, wd.days ? `${num(wd.days)}일 기준이에요` : '집계 전이에요')}
+    ${kpi('주말(토·일) 하루 평균', we.main, we.register, we.days ? `${num(we.days)}일 기준 · 주중보다 ${chg2(avgChange(we.main ?? 0, 1, wd.main ?? 0, 1), avgChange(we.register ?? 0, 1, wd.register ?? 0, 1), '비교 전')}` : '집계 전이에요')}</div>`;
+  const basis = wk.start ? `${dot(wk.start)}~${dot(wk.end)} · 최근 ${num(wk.weeks)}주(어제까지)` : '최근 12주(어제까지)';
+  return card('weekday', ui, '요일별 하루 평균', basis, `${strip}${legend()}
+    <div class="vz-wrap">${barChart(rows.map(r => ({ label: WD[r.weekday], values: r.days ? [r.avgMain, r.avgRegister] : [null, null], tip: r.days ? `${WD[r.weekday]}요일 · 하루 평균 메인 ${num(r.avgMain)}명 · 신청 ${num(r.avgRegister)}명(${num(r.days)}일 기준)` : `${WD[r.weekday]}요일 · 집계 전이에요` })), cw, 170, { aria: '요일별 하루 평균 방문자 막대 차트' })}</div>${readout('막대를 누르면 요일 수치를 보여 드려요.')}
+    <p class="sub vz-note">${has ? `요일마다 집계된 날이 ${num(Math.min(...wk.rows.map(r => r.days)))}~${num(Math.max(...wk.rows.map(r => r.days)))}일이에요. 4주 이상 쌓이면 패턴을 믿을 만해요.${best ? ` 메인 화면은 ${WD[best.weekday]}요일에 가장 많이 열어요.` : ''}` : '어제까지 집계된 날이 아직 없어요.'} 요일 패턴은 기간끼리 비교하는 대신 주중과 주말을 견줘요.</p>
+    ${table(['요일', '#하루 평균(메인·신청)', '#집계 일수'], rows.map(r => `<tr>${td(`${WD[r.weekday]}요일`)}${td(r.days ? pair(r.avgMain, r.avgRegister) : '<span class="sub">집계 전</span>', 'num')}${td(`${num(r.days)}일`, 'num')}</tr>`))}`);
+}
+/** 주간·월간·시즌·연간 공통: 하루 평균/합계 차트 + 표. P=[{label, long, start, end, days, elapsed, ongoing, main, register, avgMain, avgRegister, changeMain, changeRegister}] */
+function periodCharts(sec, ui, cw, P, aria, opts = {}) {
+  const g = mode => P.map(p => ({ label: p.label, partial: p.days > 0 && (p.ongoing || p.days < p.elapsed), values: p.days ? (mode === 'avg' ? [p.avgMain, p.avgRegister] : [p.main, p.register]) : [null, null],
+    tip: p.days ? `${p.long} · ${mode === 'avg' ? '하루 평균' : '합계'} 메인 ${num(mode === 'avg' ? p.avgMain : p.main)}명 · 신청 ${num(mode === 'avg' ? p.avgRegister : p.register)}명${tipTail(p)}` : `${p.long} · 집계 전이에요` }));
+  return modes(sec, ui, [['avg', '하루 평균', barChart(g('avg'), cw, 190, { aria: `${aria} 하루 평균 막대 차트`, ...opts })], ['sum', '합계', barChart(g('sum'), cw, 190, { aria: `${aria} 합계 막대 차트`, ...opts })]], 'avg');
+}
+const periodRows = (P, cmpName) => [...P].reverse().map(p => `<tr>${td(`<b>${esc(p.long)}</b><br><span class="sub">${dot(p.start)}~${dot(p.end)}</span>`)}${td(periodState(p))}${td(p.days ? pair(p.main, p.register) : '-', 'num')}${td(p.days ? pair(p.avgMain, p.avgRegister) : '-', 'num')}${td(p.days && (p.changeMain != null || p.changeRegister != null) ? `메인 ${changeText(p.changeMain)}<br>신청 ${changeText(p.changeRegister)}` : `<span class="sub">${esc(cmpName)} 데이터가 아직 없어요</span>`)}</tr>`);
+const PHEAD = cmp => ['기간', '집계', '#합계(메인·신청)', '#하루 평균(메인·신청)', `${cmp} 대비`];
+const NOTE_PART = '옅은 막대는 진행 중이거나 수집 시작 전 날이 섞여 일부만 집계된 기간이에요. 길이가 다른 기간도 견줄 수 있게 전기 대비는 하루 평균으로 계산해요.';
+const curPrev = (P, title, cmp) => {
+  const cur = P[P.length - 1], prev = P[P.length - 2];
+  const one = (p, t) => p ? kpi(`${t} 하루 평균`, p.days ? p.avgMain : null, p.days ? p.avgRegister : null, p.days ? `${esc(p.long)} · 집계 ${num(p.days)}일${p.ongoing ? '(진행 중)' : ''} · ${cmp}보다 ${chg2(p.changeMain, p.changeRegister, '비교 전')}` : `${esc(p.long)} · 집계 전이에요`) : '';
+  return `<div class="vz-kpis vz-sum">${one(cur, title[0])}${one(prev, title[1])}</div>`;
+};
+function weeklySec(v, ui, cw) {
+  if (!v.weekly) return card('weekly', ui, '주간별 방문자', '', legacy);
+  const P = v.weekly.map(w => ({ ...w, label: md(w.start), long: `${w.isoYear}년 ${w.isoWeek}주(${md(w.start)}~${md(w.fullEnd)})`, elapsed: diffDays(w.start, w.end) + 1 }));
+  const m = periodCharts('weekly', ui, cw, P, `최근 ${P.length}주`);
+  return card('weekly', ui, '주간별 방문자', `최근 ${num(P.length)}주 · 월~일(ISO 주)`, `${curPrev(P, ['이번 주', '지난주'], '전주')}${legend()}${m.seg}<p class="sub vz-note">${NOTE_PART}</p>${m.panes}${readout('막대를 누르면 그 주 수치를 보여 드려요.')}${table(PHEAD('전주'), periodRows(P, '전주'))}`);
+}
+function monthlySec(v, ui, cw) {
+  const cm = v.today.slice(0, 7);
+  const P = v.monthly.map((m, i, a) => { const p = a[i - 1]; const start = `${m.month}-01`, ongoing = m.month === cm, end = ongoing ? v.today : `${m.month}-${String(m.monthDays).padStart(2, '0')}`;
+    return { ...m, label: `${Number(m.month.slice(5))}월`, long: `${m.month.slice(0, 4)}년 ${Number(m.month.slice(5))}월`, start, end, ongoing, elapsed: diffDays(start, end) + 1,
+      changeMain: p ? avgChange(m.main, m.days, p.main, p.days) : null, changeRegister: p ? avgChange(m.register, m.days, p.register, p.days) : null }; });
+  const m = periodCharts('monthly', ui, cw, P, '최근 12개월 월별');
+  return card('monthly', ui, '월간 방문자', '최근 12개월', `${curPrev(P, ['이번 달', '지난달'], '전월')}${legend()}${m.seg}<p class="sub vz-note">${NOTE_PART} 위 '이번 달' 카드(1일~어제를 지난달 같은 날짜와 비교)와는 기준이 달라요.</p>${m.panes}${readout('막대를 누르면 그달 수치를 보여 드려요.')}${table(PHEAD('전월'), periodRows(P, '전월'))}`);
+}
+function seasonSec(v, ui, cw) {
+  const sl = s => s.key === 'recent3' ? s.label : `${s.label}(${s.months})`;
+  const P = v.seasons.map(s => ({ ...s, label: s.key === 'recent3' ? '최근3개월' : s.label.replace(/^\d{4}(~\d{2})? /, ''), long: sl(s), elapsed: s.totalDays ?? diffDays(s.start, s.end) + 1,
+    changeMain: s.days && s.prev?.days ? s.changeMain : null, changeRegister: s.days && s.prev?.days ? s.changeRegister : null }));
+  const m = periodCharts('seasons', ui, cw, P, '시즌별', { every: 1 });
+  const cur = P.find(p => p.key !== 'recent3' && p.ongoing), r3 = P.find(p => p.key === 'recent3');
+  const one = (p, t) => p ? kpi(t, p.days ? p.avgMain : null, p.days ? p.avgRegister : null, p.days ? `${esc(p.long)} 하루 평균 · 집계 ${num(p.days)}일 · 1년 전 같은 기간보다 ${chg2(p.changeMain, p.changeRegister, '비교 전')}` : `${esc(p.long)} · 집계 전이에요`) : '';
+  // 시즌 표는 시즌 순서 그대로(최근 3개월 → 봄·여름·가을·겨울)
+  const rows = P.map(p => `<tr>${td(`<b>${esc(p.long)}</b><br><span class="sub">${dot(p.start)}~${dot(p.end)}</span>`)}${td(periodState({ ...p, ongoing: p.ongoing && p.key !== 'recent3' }))}${td(p.days ? pair(p.main, p.register) : '-', 'num')}${td(p.days ? pair(p.avgMain, p.avgRegister) : '-', 'num')}${td(p.days && p.prev?.days ? `메인 ${changeText(p.changeMain)}<br>신청 ${changeText(p.changeRegister)}` : '<span class="sub">1년 전 데이터가 아직 없어요</span>')}</tr>`);
+  return card('seasons', ui, '시즌별 방문자', '봄 3~5월 · 여름 6~8월 · 가을 9~11월 · 겨울 12~2월', `<div class="vz-kpis vz-sum">${one(cur, '이번 시즌')}${one(r3, '최근 3개월')}</div>${legend()}${m.seg}
+    <p class="sub vz-note">시즌마다 길이와 집계 일수가 달라서 하루 평균으로 비교해요. 진행 중인 시즌은 오늘까지, 1년 전도 같은 기간끼리 비교해요. 옅은 막대는 진행 중이거나 일부만 집계된 시즌이에요.</p>
+    ${m.panes}${readout('막대를 누르면 시즌 수치를 보여 드려요.')}${table(PHEAD('1년 전 같은 기간'), rows, true)}`);
+}
+function yearlySec(v, ui, cw) {
+  if (!v.yearly) return card('yearly', ui, '연간 방문자', '', legacy);
+  const P = v.yearly.map(y => ({ ...y, label: `${y.year}년`, long: `${y.year}년`, elapsed: diffDays(y.start, y.end) + 1 }));
+  const m = periodCharts('yearly', ui, cw, P, '연도별', { every: 1 });
+  return card('yearly', ui, '연간 방문자', `보관 ${num(v.policy?.dailyYears ?? 5)}년 안 · 1월~12월`, `${curPrev(P, ['올해', '작년'], '전년 같은 기간')}${legend()}${m.seg}
+    <p class="sub vz-note">전년 대비는 1월 1일부터 같은 날짜까지의 하루 평균끼리 비교해요. 옅은 막대는 진행 중이거나 일부만 집계된 해예요.</p>
+    ${m.panes}${readout('막대를 누르면 그해 수치를 보여 드려요.')}${table(PHEAD('전년 같은 기간'), periodRows(P, '전년 같은 기간'), true)}`);
+}
+
+/** 화면 전체 HTML. v=GET /v1/admin/visits 의 visits, days=일간 기간, width=차트 폭(px), ui={sec, modes:{섹션: 보기}} */
+export function visitsHtml(v, days = 30, width = 360, ui = {}) {
+  const k = v.kpi, cw = Math.round(Math.max(300, Math.min(900, width))), sec = SECTIONS.some(([s]) => s === ui.sec) ? ui.sec : 'daily', u = { ...ui, sec, modes: ui.modes ?? {} };
+  const started = v.firstDay ? `${dot(v.firstDay)}부터 집계했어요` : '아직 집계된 방문이 없어요';
   const head = `<div class="tool"><h2>접속현황</h2><div class="acts">${[14, 30, 90].map(d => `<button data-vdays="${d}" class="${d === days ? 'on' : ''}" aria-pressed="${d === days}">${d}일</button>`).join('')}<button id="vRefresh">새로 고침</button></div></div>
-    <p class="sub">메인(로그인) 화면과 이용 신청 화면을 연 방문자 수예요. 같은 IP는 하루에 페이지마다 1명으로 세요. ${esc(started)}.</p>`;
+    <p class="sub">메인(로그인) 화면과 이용 신청 화면을 연 방문자 수예요. 같은 IP는 하루에 페이지마다 1명으로 세요. ${esc(started)}. 기간 버튼은 시간별·일간에 적용돼요.</p>`;
   const cards = `<div class="vz-kpis">
     ${kpi('오늘', k.today.main, k.today.register, k.today.internal ? `관리자·내부 테스터 ${num(k.today.internal)}명은 빼고 셌어요` : '한국 시간 0시부터 지금까지예요')}
     ${kpi('최근 7일', k.last7.main, k.last7.register, `${esc(range(k.last7.start, k.last7.end))} · 직전 7일보다 메인 ${changeText(k.last7.changeMain, '비교 전')} · 신청 ${changeText(k.last7.changeRegister, '비교 전')}`)}
     ${kpi('이번 달', k.month.main, k.month.register, `지난달 같은 기간(1일~어제)보다 메인 ${changeText(k.month.changeMain, '비교 전')} · 신청 ${changeText(k.month.changeRegister, '비교 전')}`)}
     <div class="vz-kpi"><span class="vz-kt">신청 화면 이동률(30일)</span><div class="vz-kv"><b class="vz-big">${pct(k.funnel30.rate)}</b></div><div class="vz-ks">메인 방문자 ${num(k.funnel30.main)}명 중 같은 날 신청 화면도 연 분 ${num(k.funnel30.both)}명 · 신청 화면으로 바로 온 분 ${num(k.funnel30.directRegister)}명</div></div>
   </div>`;
-  const dailyCard = `<div class="card vz-card"><h3>일간 방문자 <span class="sub">최근 ${days}일</span></h3>${legend()}<p class="sub vz-note">점선은 메인 화면 7일 이동평균이에요(7일이 모두 집계된 날부터).</p>
-    <div class="vz-wrap">${lineChart(v.daily, cw)}</div>${readout('차트를 누르면 그날 수치를 보여 드려요.')}
-    <details class="vz-more"><summary>표로 보기</summary><div class="scroll"><table class="tbl"><tr><th>날짜</th><th class="num">메인</th><th class="num">신청</th><th class="num">메인 7일 평균</th></tr>${[...v.daily].reverse().map(d => `<tr><td>${dayLabel(d.day)}</td><td class="num">${d.covered ? num(d.main) : '-'}</td><td class="num">${d.covered ? num(d.register) : '-'}</td><td class="num">${num(d.ma7Main)}</td></tr>`).join('')}</table></div></details></div>`;
-  const ml = m => `${m.month.slice(0, 4)}년 ${Number(m.month.slice(5))}월`;
-  const monthCard = `<div class="card vz-card"><h3>월간 방문자 <span class="sub">최근 12개월</span></h3>${legend()}
-    <div class="vz-wrap">${barChart(v.monthly.map(m => ({ label: `${Number(m.month.slice(5))}월`, values: m.days ? [m.main, m.register] : [null, null], tip: m.days ? `${ml(m)} · 메인 ${num(m.main)}명 · 신청 ${num(m.register)}명 · 집계 ${m.days}/${m.monthDays}일` : `${ml(m)} · 집계 전이에요` })), cw, 190, { aria: '최근 12개월 월별 방문자 막대 차트' })}</div>${readout('막대를 누르면 그달 수치를 보여 드려요.')}
-    <details class="vz-more"><summary>표로 보기</summary><div class="scroll"><table class="tbl"><tr><th>월</th><th class="num">메인</th><th class="num">신청</th><th class="num">하루 평균(메인·신청)</th><th class="num">집계 일수</th></tr>${[...v.monthly].reverse().map(m => `<tr><td>${ml(m)}${m.partial && m.days ? ' <span class="sub">(일부)</span>' : ''}</td><td class="num">${m.days ? num(m.main) : '-'}</td><td class="num">${m.days ? num(m.register) : '-'}</td><td class="num">${m.days ? pair(m.avgMain, m.avgRegister) : '-'}</td><td class="num">${m.days}/${m.monthDays}일</td></tr>`).join('')}</table></div></details></div>`;
-  const sl = s => s.key === 'recent3' ? s.label : `${s.label}(${s.months})`;
-  const seasonCard = `<div class="card vz-card"><h3>시즌별 방문자 <span class="sub">하루 평균</span></h3>${legend()}<p class="sub vz-note">시즌마다 길이와 집계 일수가 달라서 하루 평균으로 비교해요. 진행 중인 시즌은 오늘까지, 1년 전도 같은 기간끼리 비교해요.</p>
-    <div class="vz-wrap">${barChart(v.seasons.map(s => ({ label: s.key === 'recent3' ? '최근3개월' : s.label.replace(/^\d{4}(~\d{2})? /, ''), values: s.days ? [s.avgMain, s.avgRegister] : [null, null], tip: s.days ? `${sl(s)} · 하루 평균 메인 ${num(s.avgMain)}명 · 신청 ${num(s.avgRegister)}명` : `${sl(s)} · 집계 전이에요` })), cw, 190, { aria: '시즌별 하루 평균 방문자 막대 차트' })}</div>${readout('막대를 누르면 시즌 수치를 보여 드려요.')}
-    <div class="scroll"><table class="tbl"><tr><th>시즌</th><th>기간</th><th class="num">합계(메인·신청)</th><th class="num">하루 평균(메인·신청)</th><th>1년 전 같은 기간 대비</th></tr>${v.seasons.map(s => `<tr><td><b>${esc(sl(s))}</b>${s.ongoing && s.key !== 'recent3' ? ' <span class="pill">진행 중</span>' : ''}</td><td class="sub">${s.start.replaceAll('-', '.')}~${s.end.replaceAll('-', '.')}<br>집계 ${s.days}/${s.totalDays}일</td>
-      <td class="num">${s.days ? pair(s.main, s.register) : '<span class="sub">집계 전이에요</span>'}</td><td class="num">${s.days ? pair(s.avgMain, s.avgRegister) : '-'}</td><td>${s.days && s.prev.days ? `메인 ${changeText(s.changeMain)} · 신청 ${changeText(s.changeRegister)}` : '<span class="sub">1년 전 데이터가 아직 없어요</span>'}</td></tr>`).join('')}</table></div></div>`;
-  const order = [1, 2, 3, 4, 5, 6, 0], wk = v.weekday;
-  const wdCard = `<div class="card vz-card"><h3>요일별 하루 평균 <span class="sub">최근 12주(어제까지)</span></h3>${legend()}
-    <div class="vz-wrap">${barChart(order.map(i => wk.rows[i]).map(r => ({ label: WD[r.weekday], values: r.days ? [r.avgMain, r.avgRegister] : [null, null], tip: r.days ? `${WD[r.weekday]}요일 · 하루 평균 메인 ${num(r.avgMain)}명 · 신청 ${num(r.avgRegister)}명(${r.days}일 기준)` : `${WD[r.weekday]}요일 · 집계 전이에요` })), cw, 170, { aria: '요일별 하루 평균 방문자 막대 차트' })}</div>${readout('막대를 누르면 요일 수치를 보여 드려요.')}
-    <p class="sub vz-note">${wk.rows.some(r => r.days) ? `요일마다 집계된 날이 ${Math.min(...wk.rows.map(r => r.days))}~${Math.max(...wk.rows.map(r => r.days))}일이에요. 4주 이상 쌓이면 패턴을 믿을 만해요.` : '어제까지 집계된 날이 아직 없어요.'}</p></div>`;
-  const foot = `<div class="card"><h3>집계 기준</h3><ul class="sk-ul">
+  const tabs = `<div class="vz-tabs" role="tablist" aria-label="접속현황 기간 단위">${SECTIONS.map(([s, name]) => `<button type="button" role="tab" id="vzt-${s}" data-vsec="${s}" aria-controls="vz-${s}" aria-selected="${s === sec}"${s === sec ? ' class="on"' : ''}>${name}</button>`).join('')}</div>`;
+  const body = [hourlySec(v, u, cw), dailySec(v, u, cw, days), weekdaySec(v, u, cw), weeklySec(v, u, cw), monthlySec(v, u, cw), seasonSec(v, u, cw), yearlySec(v, u, cw)].join('');
+  const foot = `<details class="card vz-foot"><summary><h3>집계 기준</h3></summary><ul class="sk-ul">
     <li>방문자는 하루(한국 시간 0시~24시) 동안 같은 IP에서 같은 화면을 여러 번 열어도 1명으로 세요. 같은 와이파이·통신사 IP를 함께 쓰는 여러 분은 1명으로 셀 수 있어요.</li>
+    <li>시간별은 그날 처음 연 시각에 1명으로 세요. 그래서 시간별을 모두 더하면 그날 방문자 수와 같아요.</li>
+    <li>주간은 월요일~일요일(ISO 주)이고, 해가 바뀌는 주는 목요일이 속한 해의 주로 세요.</li>
     <li>관리자·내부 테스터 접속과 검색 로봇 같은 자동 요청은 빼고 세요. 최근 30일 동안 뺀 내부 방문은 ${num(k.last30.internal)}명이에요.</li>
-    <li>월간·시즌 합계는 날마다 센 방문자를 더한 값이에요. 같은 분이 여러 날 오면 날마다 1명씩 세요.</li>
+    <li>주간·월간·시즌·연간 합계는 날마다 센 방문자를 더한 값이에요. 같은 분이 여러 날 오면 날마다 1명씩 세요.</li>
+    <li>진행 중인 기간은 오늘까지, 수집을 시작하기 전 날은 0명이 아니라 '집계 전'으로 보여 드리고 하루 평균에서도 빼요.</li>
     <li>최근 30일 조회 수(새로 고침 포함)는 메인 ${num(k.last30.hitsMain)}회, 신청 ${num(k.last30.hitsRegister)}회예요.</li>
-    <li>IP는 원문 없이 해시로만 ${v.policy.rawDays}일 보관하고, 그 뒤에는 날짜별 숫자만 ${v.policy.dailyYears}년 보관해요.</li></ul></div>`;
-  return head + cards + dailyCard + monthCard + seasonCard + wdCard + foot;
+    <li>IP는 원문 없이 해시로만 ${num(v.policy.rawDays)}일 보관하고, 그 뒤에는 날짜·시간별 숫자만 ${num(v.policy.dailyYears)}년 보관해요.</li></ul></details>`;
+  return head + cards + tabs + body + foot;
 }
