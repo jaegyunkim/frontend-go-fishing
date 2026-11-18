@@ -33,7 +33,7 @@ let onMustChange = () => {};
 export function setOnMustChange(fn) { onMustChange = fn; }
 
 export async function api(path, opts = {}) {
-  if (!state.api) throw Object.assign(new Error('백엔드 주소가 설정되지 않았습니다'), { status: 0 });
+  if (!state.api) throw Object.assign(new Error('백엔드 주소가 설정되지 않았어요'), { status: 0 });
   const headers = { 'Content-Type': 'application/json', ...(opts.headers || {}) };
   if (state.auth?.token && !opts.noAuth) headers.Authorization = `Bearer ${state.auth.token}`;
   const requestBase = state.api;
@@ -43,7 +43,7 @@ export async function api(path, opts = {}) {
   catch (e) {
     telemetry('api_network', e?.name === 'TimeoutError' ? 'API request timed out' : 'API network request failed', requestBase);
     const local = /\/\/(localhost|127\.0\.0\.1)/.test(state.api) && location.protocol === 'https:';
-    throw Object.assign(new Error(e.name === 'TimeoutError' ? (local ? '로컬 서버 응답 없음 — 브라우저의 “로컬 네트워크 접근 허용” 팝업을 확인하거나 HTTPS 공개 주소를 쓰십시오' : '응답 시간 초과') : '네트워크 오류'), { status: 0 });
+    throw Object.assign(new Error(e.name === 'TimeoutError' ? (local ? '로컬 서버 응답 없음 — 브라우저의 “로컬 네트워크 접근 허용” 팝업을 확인하거나 HTTPS 공개 주소를 쓰세요' : '응답 시간 초과') : '네트워크 오류'), { status: 0 });
   }
   if (r.status >= 500) telemetry('api_5xx', `HTTP ${r.status}`, requestBase);
   const j = await r.json().catch(() => { telemetry('api_json', 'API response JSON parsing failed', requestBase); return {}; });
@@ -61,7 +61,7 @@ export async function loadAuthImage(img, path) {
     const r = await fetch(state.api + path, { headers: state.auth?.token ? { Authorization: `Bearer ${state.auth.token}` } : {} });
     if (!r.ok) throw new Error(String(r.status));
     img.src = URL.createObjectURL(await r.blob());
-  } catch { img.alt = '지도를 불러오지 못했습니다'; }
+  } catch { img.alt = '지도를 불러오지 못했어요'; }
 }
 async function probe() {
   const h = await api('/healthz', { timeoutMs: 8000, noAuth: true });

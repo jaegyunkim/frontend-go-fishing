@@ -17,7 +17,7 @@ function setup(email='tester+mail@example.test',navigateError=false){
 test('메일 수신자·친절한 제목·접속 주소·임시 비밀번호·변경 안내',()=>{
  const url=new URL(approvalMailto(' tester+mail@example.test ','test-only&?#한글'));
  assert.equal(decodeURIComponent(url.pathname),'tester+mail@example.test');
- assert.equal(url.searchParams.get('subject'),'바다낚시 출조 AI 에이전트, 가입이 승인되었습니다!');
+ assert.equal(url.searchParams.get('subject'),'바다낚시 출조 AI 에이전트, 가입이 승인되었어요!');
  const body=url.searchParams.get('body');assert.ok(body.includes('https://jaegyunkim.github.io/frontend-go-fishing/'));assert.ok(body.includes('임시 비밀번호: test-only&?#한글'));assert.ok(body.includes('비밀번호를 꼭 변경'));assert.deepEqual([...url.searchParams.keys()],['subject','body']);
 });
 test('수신자 헤더·추가 수신자 주입 거부',()=>{

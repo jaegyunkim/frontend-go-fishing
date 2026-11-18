@@ -1,6 +1,6 @@
-import { approvalMailto } from './approval-email.js?v=1.16.19';
+import { approvalMailto } from './approval-email.js?v=1.17.0';
 // 어디물어 관리자 화면: 계정·세션·사용량·대화 로그·로그인/작업 기록. 관리자 계정으로 로그인한 탭에서만 동작.
-import { state, api, health, startTimer, syncExpiry, setOnAuthLost, logout } from './auth.js?v=1.16.19';
+import { state, api, health, startTimer, syncExpiry, setOnAuthLost, logout } from './auth.js?v=1.17.0';
 const $ = s => document.querySelector(s);
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const dt = v => v ? new Date(v).toLocaleString('ko-KR', { timeZone: 'Asia/Seoul', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }) : '-';
@@ -9,7 +9,7 @@ const view = $('#view');
 let current = 'users';
 
 function note(text, bad = false) { const m = $('#msg'); m.textContent = text; m.hidden = !text; m.style.color = bad ? 'var(--bad)' : ''; if (text) setTimeout(() => { if (m.textContent === text) m.hidden = true; }, 8000); }
-function gone(msg) { $('#userPageLink').hidden = true; view.innerHTML = `<div class="card"><h3>관리자 로그인이 필요합니다</h3><p class="sub">${esc(msg)}</p><p><a class="link-btn" href="./">채팅 화면에서 관리자 계정으로 로그인 →</a></p></div>`; $('#timer').hidden = true; }
+function gone(msg) { $('#userPageLink').hidden = true; view.innerHTML = `<div class="card"><h3>관리자 로그인이 필요해요</h3><p class="sub">${esc(msg)}</p><p><a class="link-btn" href="./">채팅 화면에서 관리자 계정으로 로그인 →</a></p></div>`; $('#timer').hidden = true; }
 setOnAuthLost(msg => { logout(); gone(msg); });
 
 const dialog = (html, onSubmit) => new Promise(resolve => {
@@ -18,15 +18,15 @@ const dialog = (html, onSubmit) => new Promise(resolve => {
   $('#dlg').showModal();
 });
 const showSecret = async (title, pw, approvalEmail = null) => {
- const pending=dialog('<h2>'+esc(title)+'</h2><p class="hint">임시 비밀번호는 이 창에서만 확인할 수 있습니다. 신청자에게 안전하게 전달해 주십시오. 첫 로그인에 비밀번호를 변경해야 합니다.</p><p class="access-url"><span>모바일 접속 주소</span><a id="accessUrl" target="_blank" rel="noopener noreferrer"></a></p><input id="issuedSecret" type="password" readonly autocomplete="off"><div class="row secret-actions"><button id="revealSecret" type="button">비밀번호 보기</button>'+(approvalEmail?'<button id="sendApprovalEmail" type="button" class="ghost">메일 보내기</button></div><p id="approvalMailStatus" class="hint" role="status">기기의 기본 메일 앱에 받는 사람·제목·내용을 채웁니다. 메일 앱에서 확인 후 직접 보내 주십시오. 메일 앱이 설정되어 있어야 합니다.</p>':'</div>'));
+ const pending=dialog('<h2>'+esc(title)+'</h2><p class="hint">임시 비밀번호는 이 창에서만 확인할 수 있어요. 신청자에게 안전하게 전달해 주세요. 첫 로그인에 비밀번호를 변경해야 해요.</p><p class="access-url"><span>모바일 접속 주소</span><a id="accessUrl" target="_blank" rel="noopener noreferrer"></a></p><input id="issuedSecret" type="password" readonly autocomplete="off"><div class="row secret-actions"><button id="revealSecret" type="button">비밀번호 보기</button>'+(approvalEmail?'<button id="sendApprovalEmail" type="button" class="ghost">메일 보내기</button></div><p id="approvalMailStatus" class="hint" role="status">기기의 기본 메일 앱에 받는 사람·제목·내용을 채워요. 메일 앱에서 확인 후 직접 보내 주세요. 메일 앱이 설정되어 있어야 해요.</p>':'</div>'));
  const accessUrl=window.GOFISHING_PUBLIC_URL||new URL('./',location.href).href; $('#accessUrl').href=accessUrl; $('#accessUrl').textContent=accessUrl; $('#issuedSecret').value=pw; $('#revealSecret').onclick=()=>{const x=$('#issuedSecret');x.type=x.type==='password'?'text':'password';$('#revealSecret').textContent=x.type==='password'?'비밀번호 보기':'비밀번호 숨기기';};
  if (approvalEmail) $('#sendApprovalEmail').onclick = () => {
    try {
      const mailto = approvalMailto(approvalEmail, pw);
      window.location.href = mailto;
-     $('#approvalMailStatus').textContent = '메일 앱에서 받는 사람과 내용을 확인한 뒤 직접 보내 주십시오. 앱이 열리지 않으면 기기의 기본 메일 앱 설정을 확인해 주십시오.';
+     $('#approvalMailStatus').textContent = '메일 앱에서 받는 사람과 내용을 확인한 뒤 직접 보내 주세요. 앱이 열리지 않으면 기기의 기본 메일 앱 설정을 확인해 주세요.';
    } catch {
-     $('#approvalMailStatus').textContent = '메일 앱을 열지 못했습니다. 신청자 이메일과 기기의 기본 메일 앱 설정을 확인해 주십시오.';
+     $('#approvalMailStatus').textContent = '메일 앱을 열지 못했어요. 신청자 이메일과 기기의 기본 메일 앱 설정을 확인해 주세요.';
    }
  };
  await pending;$('#dlgForm').replaceChildren();
@@ -51,7 +51,7 @@ async function renderLlm() {
     + '<p class="sub" id="llmModelNote"></p>'
     + '<div class="llm-row"><button type="button" id="llmLoad" class="ghost-btn">모델 목록 불러오기</button></div>'
     + '<button type="submit" id="llmSave">연결 테스트 후 저장</button>'
-    + '<p class="sub">저장 전에 실제 호출로 연결을 확인하고, 실패하면 저장하지 않습니다. 키는 서버에만 보관되고 화면에는 끝 4자리만 보입니다. 엔드포인트 주소를 다른 곳으로 바꿀 때는 키를 다시 입력해야 합니다.</p>'
+    + '<p class="sub">저장 전에 실제 호출로 연결을 확인하고, 실패하면 저장하지 않아요. 키는 서버에만 보관되고 화면에는 끝 4자리만 보여요. 엔드포인트 주소를 다른 곳으로 바꿀 때는 키를 다시 입력해야 해요.</p>'
     + '</form>';
   const f = $('#llmForm'), sel = f.provider, ep = f.endpoint, key = f.apiKey, model = f.model, note = $('#llmModelNote');
   const fillModels = (list, keep) => { model.innerHTML = list.map(m => '<option' + (m === keep ? ' selected' : '') + '>' + esc(m) + '</option>').join(''); if (keep && !list.includes(keep)) model.insertAdjacentHTML('afterbegin', '<option selected>' + esc(keep) + '</option>'); };
@@ -75,7 +75,7 @@ async function renderLlm() {
     e.preventDefault(); const b = $('#llmSave'); b.disabled = true; b.textContent = '연결 테스트 중…';
     try { const r = await api('/v1/admin/llm', { method: 'POST', body: JSON.stringify({ provider: sel.value, endpoint: ep.value, apiKey: key.value || undefined, model: model.value }) });
       key.value = ''; note.textContent = '';
-      noteTop('저장했습니다 · ' + r.config.providers[sel.value].label + ' · ' + r.test.model + ' (테스트 ' + r.test.ms + 'ms)');
+      noteTop('저장했어요 · ' + r.config.providers[sel.value].label + ' · ' + r.test.model + ' (테스트 ' + r.test.ms + 'ms)');
       renderLlm();
     } catch (err) { noteTop(err.message, true); b.disabled = false; b.textContent = '연결 테스트 후 저장'; }
   };
@@ -87,23 +87,23 @@ const roleText = r => ROLE_LABEL[r] ?? r;
 const views = {
  async requests(){
  const {requests,capacity}=await api('/v1/admin/registrations');
- view.innerHTML='<div class="tool"><h2>가입 신청 · 승인</h2></div>'+capBar(capacity)+'<p class="sub">승인 즉시 랜덤 임시 비밀번호가 발급됩니다. 승인 완료 창의 메일 보내기로 신청자에게 안내해 주십시오. 메일 앱에서 직접 발송해야 합니다.</p><div class="requestCards">'+requests.map(r=>'<article class="card"><h3>'+esc(r.login_id)+' · '+esc(r.display_name)+'</h3><p class="sub">'+dt(r.created_at)+' · '+esc({pending:'승인 대기',approved:'승인 완료',rejected:'거절'}[r.status])+'</p>'+(r.reapply_count?'<p><span class="pill warn">재신청 '+n(r.reapply_count)+'회</span> <span class="sub">'+(r.last_rejected_at?dt(r.last_rejected_at)+'에 거절했던 신청':'이전에 거절했던 신청')+'</span></p>':'')+(r.status==='pending'?'<div class="acts"><button data-review="approve" data-id="'+r.id+'">승인·비밀번호 발급</button><button data-review="reject" data-id="'+r.id+'">거절</button></div>':'')+'</article>').join('')+'</div>';
- if(!requests.length)view.innerHTML+='<p>접수된 신청이 없습니다.</p>';
- view.querySelectorAll('[data-review]').forEach(b=>b.onclick=async()=>{if(!confirm(b.dataset.review==='approve'?'이 사용자를 승인하겠습니까?':'이 신청을 거절하겠습니까?'))return;b.disabled=true;try{const out=await api('/v1/admin/registrations/'+b.dataset.id+'/review',{method:'POST',body:JSON.stringify({action:b.dataset.review})});if(out.tempPassword)await showSecret(out.user.loginId+' 승인 완료',out.tempPassword,out.user.loginId);await views.requests();}catch(e){note(e.message,true);b.disabled=false;}});
+ view.innerHTML='<div class="tool"><h2>가입 신청 · 승인</h2></div>'+capBar(capacity)+'<p class="sub">승인 즉시 랜덤 임시 비밀번호가 발급돼요. 승인 완료 창의 메일 보내기로 신청자에게 안내해 주세요. 메일 앱에서 직접 발송해야 해요.</p><div class="requestCards">'+requests.map(r=>'<article class="card"><h3>'+esc(r.login_id)+' · '+esc(r.display_name)+'</h3><p class="sub">'+dt(r.created_at)+' · '+esc({pending:'승인 대기',approved:'승인 완료',rejected:'거절'}[r.status])+'</p>'+(r.reapply_count?'<p><span class="pill warn">재신청 '+n(r.reapply_count)+'회</span> <span class="sub">'+(r.last_rejected_at?dt(r.last_rejected_at)+'에 거절했던 신청':'이전에 거절했던 신청')+'</span></p>':'')+(r.status==='pending'?'<div class="acts"><button data-review="approve" data-id="'+r.id+'">승인·비밀번호 발급</button><button data-review="reject" data-id="'+r.id+'">거절</button></div>':'')+'</article>').join('')+'</div>';
+ if(!requests.length)view.innerHTML+='<p>접수된 신청이 없어요.</p>';
+ view.querySelectorAll('[data-review]').forEach(b=>b.onclick=async()=>{if(!confirm(b.dataset.review==='approve'?'이 사용자를 승인할까요?':'이 신청을 거절할까요?'))return;b.disabled=true;try{const out=await api('/v1/admin/registrations/'+b.dataset.id+'/review',{method:'POST',body:JSON.stringify({action:b.dataset.review})});if(out.tempPassword)await showSecret(out.user.loginId+' 승인 완료',out.tempPassword,out.user.loginId);await views.requests();}catch(e){note(e.message,true);b.disabled=false;}});
  },
  async model(){const {llm,credits,ai}=await api('/v1/admin/model');
- view.innerHTML='<div class="card"><h2>서비스 상태</h2><p><span class="pill '+(ai.available?'ok':'bad')+'">'+(ai.available?'이용 가능':'이용 중지(크레딧 소진)')+'</span></p>'+(ai.available?'':'<p class="sub">사유: '+esc(ai.reason||'')+(ai.since?' · '+dt(ai.since)+'부터':'')+'</p><p class="sub">베타 테스터 화면은 모든 입력이 잠기고 안내 문구가 표시됩니다.</p>')+'<p class="sub">잔여 크레딧이 '+n(ai.threshold)+' 이하이거나 GPT가 크레딧 부족으로 응답을 거부하면 자동으로 이용을 멈춥니다.</p><div class="acts"><button id="aiRecheck">GPT 다시 확인·재개</button></div></div>'
+ view.innerHTML='<div class="card"><h2>서비스 상태</h2><p><span class="pill '+(ai.available?'ok':'bad')+'">'+(ai.available?'이용 가능':'이용 중지(크레딧 소진)')+'</span></p>'+(ai.available?'':'<p class="sub">사유: '+esc(ai.reason||'')+(ai.since?' · '+dt(ai.since)+'부터':'')+'</p><p class="sub">베타 테스터 화면은 모든 입력이 잠기고 안내 문구가 표시돼요.</p>')+'<p class="sub">잔여 크레딧이 '+n(ai.threshold)+' 이하이거나 GPT가 크레딧 부족으로 응답을 거부하면 자동으로 이용을 멈춰요.</p><div class="acts"><button id="aiRecheck">GPT 다시 확인·재개</button></div></div>'
   +'<div class="card" id="llmCard"><h2>AI 연결</h2><p class="sub">불러오는 중…</p></div>'
  +'<div class="card"><h2>MonoGPT 잔여 크레딧</h2><p>'+n(credits.remaining)+' / '+n(credits.total)+'</p><p class="sub">'+dt(credits.checkedAt)+' 확인 · '+esc(credits.source||'')+' · 실시간 아님</p><a href="https://monogpt.kr/apps/mono-router" target="_blank" rel="noopener noreferrer">MonoGPT에서 최신 잔액 확인</a><form id="creditForm" class="grid2" style="margin-top:10px"><label>잔여 크레딧<input name="remaining" type="number" min="0" required value="'+(credits.remaining??'')+'"></label><label>전체 크레딧<input name="total" type="number" min="1" required value="'+(credits.total??'')+'"></label><button>확인한 잔액 저장</button></form></div>';
- $('#creditForm').onsubmit=async ev=>{ev.preventDefault();try{const fd=Object.fromEntries(new FormData(ev.target));await api('/v1/admin/model/credit',{method:'POST',body:JSON.stringify(fd)});note('잔액을 저장했습니다');views.model();}catch(err){note(err.message,true);}};
- $('#aiRecheck').onclick=async()=>{const b=$('#aiRecheck');b.disabled=true;b.textContent='확인 중…';try{const r=await api('/v1/admin/model/recheck',{method:'POST',body:'{}'});note(r.ai.available?'GPT 호출 정상 · 서비스 이용 가능':'아직 이용할 수 없습니다: '+(r.ai.reason||r.call.reason||r.call.status),!r.ai.available);views.model();}catch(err){note(err.message,true);b.disabled=false;b.textContent='GPT 다시 확인·재개';}};
+ $('#creditForm').onsubmit=async ev=>{ev.preventDefault();try{const fd=Object.fromEntries(new FormData(ev.target));await api('/v1/admin/model/credit',{method:'POST',body:JSON.stringify(fd)});note('잔액을 저장했어요');views.model();}catch(err){note(err.message,true);}};
+ $('#aiRecheck').onclick=async()=>{const b=$('#aiRecheck');b.disabled=true;b.textContent='확인 중…';try{const r=await api('/v1/admin/model/recheck',{method:'POST',body:'{}'});note(r.ai.available?'GPT 호출 정상 · 서비스 이용 가능':'아직 이용할 수 없어요: '+(r.ai.reason||r.call.reason||r.call.status),!r.ai.available);views.model();}catch(err){note(err.message,true);b.disabled=false;b.textContent='GPT 다시 확인·재개';}};
  renderLlm();
  },
   async users() {
     const [{ users }, { capacity }] = await Promise.all([api('/v1/admin/users'), api('/v1/admin/capacity')]);
     view.innerHTML = `<div class="tool"><h2>사용자 ${users.length}명</h2><div class="acts"><button id="add">+ 계정 발급</button></div></div>${capBar(capacity)}
     <div class="scroll"><table class="tbl"><tr><th>아이디·이름</th><th>역할·상태</th><th class="num">오늘 질문</th><th class="num">오늘 토큰</th><th class="num">로그인</th><th>세션 한도</th><th>기기·최근 로그인</th><th>작업</th></tr>
-    ${users.map(u => `<tr><td><b>${esc(u.loginId)}</b><br><span class="sub">${esc(u.displayName)}${u.memo ? ' · ' + esc(u.memo) : ''}</span><br><button class="mini-btn" data-detail="opinions" data-id="${u.id}" data-login="${esc(u.loginId)}"${u.opinionCount ? '' : ' disabled title="보낸 의견이 없습니다"'}>의견 ${n(u.opinionCount)}</button></td>
+    ${users.map(u => `<tr><td><b>${esc(u.loginId)}</b><br><span class="sub">${esc(u.displayName)}${u.memo ? ' · ' + esc(u.memo) : ''}</span><br><button class="mini-btn" data-detail="opinions" data-id="${u.id}" data-login="${esc(u.loginId)}"${u.opinionCount ? '' : ' disabled title="보낸 의견이 없어요"'}>의견 ${n(u.opinionCount)}</button></td>
       <td>${roleText(u.role)} <span class="sub">${u.role === 'user' ? '· 1기기' : '· 동시 접속 허용'}</span><br><span class="pill ${u.status === 'active' ? 'ok' : 'bad'}">${u.status === 'active' ? '사용' : '중지'}</span>${u.lockedUntil && new Date(u.lockedUntil) > new Date() ? ' <span class="pill warn">잠김</span>' : ''}${u.activeSessions ? ' <span class="pill ok">접속 중</span>' : ''}${u.mustChangePassword ? ' <span class="pill warn">비번 변경 대기</span>' : ''}</td>
       <td class="num">${n(u.today.messages)}/${n(u.limits.dailyMessages)}${u.today.blocked ? `<br><span class="sub">거절 ${u.today.blocked}</span>` : ''}<br><button class="mini-btn" data-detail="questions" data-id="${u.id}" data-login="${esc(u.loginId)}">질문</button></td><td class="num">${n(u.today.tokens)}/${n(u.limits.dailyTokens)}<br><button class="mini-btn" data-detail="usage" data-id="${u.id}" data-login="${esc(u.loginId)}">토큰</button></td>
       <td class="num">${n(u.today.sessions)}<br><span class="sub">${u.role === "user" ? "24시간 1회" : "제한 없음"}</span></td><td>${u.limits.sessionMinutes}분 · 질문 ${u.limits.sessionMessages}</td><td>${esc(devPlat(u.device))}<br>${esc(devBrowser(u.device))}<br>${dt(u.lastLoginAt)}${u.nextLoginAt?`<br><span class="sub">재이용 ${dt(u.nextLoginAt)}</span>`:""}<br><button class="mini-btn" data-detail="logins" data-id="${u.id}" data-login="${esc(u.loginId)}">위치</button></td>
@@ -113,10 +113,10 @@ const views = {
     $('#add').onclick = async () => {
       const r = await dialog(`<h2>계정 발급</h2><label>아이디 (베타 테스터는 이메일, 관리자·내부 테스터는 영문 아이디도 가능)<input name="loginId" required maxlength="254"></label><label>이름<input name="displayName" required maxlength="40"></label>
         <label>역할<select name="role"><option value="user">일반 (한 기기만)</option><option value="tester">내부 테스터 (동시 접속 허용)</option><option value="admin">관리자 (동시 접속 허용)</option></select></label><label>메모<input name="memo" maxlength="100"></label>
-        <p class="hint">한도 기본값: 베타 테스터: 세션 10분 고정·24시간에 1회 로그인, 세션당 질문 10·하루 질문 10·토큰 1,000. 정원: 베타 테스터 100명·하루 신청 100건·하루 로그인 100명(관리자·내부 테스터 예외). 발급 후 '한도'에서 바꿀 수 있습니다.</p>`,
+        <p class="hint">한도 기본값: 베타 테스터: 세션 10분 고정·24시간에 1회 로그인, 세션당 질문 10·하루 질문 10·토큰 1,000. 정원: 베타 테스터 100명·하루 신청 100건·하루 로그인 100명(관리자·내부 테스터 예외). 발급 후 '한도'에서 바꿀 수 있어요.</p>`,
         fd => api('/v1/admin/users', { method: 'POST', body: JSON.stringify(Object.fromEntries(fd)) }).catch(e => ({ error: e.message })));
       if (r?.error) return note(r.error, true);
-      if (r?.user?.tempPassword) await showSecret(`${r.user.loginId} 계정을 만들었습니다`, r.user.tempPassword);
+      if (r?.user?.tempPassword) await showSecret(`${r.user.loginId} 계정을 만들었어요`, r.user.tempPassword);
       views.users();
     };
     view.querySelectorAll('.acts[data-id] button').forEach(b => b.onclick = async () => {
@@ -128,22 +128,22 @@ const views = {
           const r = await dialog(`<h2>${esc(login)} 한도</h2><div class="grid2">
             <label>세션 시간(분)<input name="sessionMinutes" type="number" min="1" max="120" value="${L.sessionMinutes}" ${u.role === "admin" ? "" : "disabled"}></label><label>세션당 질문<input name="sessionMessages" type="number" min="1" value="${L.sessionMessages}"></label>
             <label>하루 질문<input name="dailyMessages" type="number" min="1" value="${L.dailyMessages}"></label><label>하루 로그인<input name="dailySessions" type="number" min="1" value="${L.dailySessions}" disabled></label>
-            <label>하루 AI 토큰<input name="dailyTokens" type="number" min="0" value="${L.dailyTokens}"></label></div><p class="hint">질문·토큰 한도는 저장 즉시 적용됩니다. 관리자 계정의 세션 시간은 이용 중인 세션에도 바로 반영됩니다(로그인 시각 기준). 베타 테스터는 10분·24시간 1회 고정입니다.</p>`,
+            <label>하루 AI 토큰<input name="dailyTokens" type="number" min="0" value="${L.dailyTokens}"></label></div><p class="hint">질문·토큰 한도는 저장 즉시 적용돼요. 관리자 계정의 세션 시간은 이용 중인 세션에도 바로 반영돼요(로그인 시각 기준). 베타 테스터는 10분·24시간 1회 고정이에요.</p>`,
           fd => patch(Object.fromEntries([...fd].map(([k, v]) => [k, Number(v)]))));
-          if (r) { note(`${login} 한도를 저장했습니다 · 즉시 적용${r.adjustedSessions ? ` (이용 중인 세션 ${r.adjustedSessions}개 시간 변경)` : ''}`); if (String(id) === String(state.auth?.user?.id)) { const me = await api('/v1/auth/me'); syncExpiry(me.remainingSec); $('#who').textContent = `${me.user.displayName}(${me.user.loginId}) · 세션 ${me.limits.sessionMinutes}분`; } }
+          if (r) { note(`${login} 한도를 저장했어요 · 즉시 적용${r.adjustedSessions ? ` (이용 중인 세션 ${r.adjustedSessions}개 시간 변경)` : ''}`); if (String(id) === String(state.auth?.user?.id)) { const me = await api('/v1/auth/me'); syncExpiry(me.remainingSec); $('#who').textContent = `${me.user.displayName}(${me.user.loginId}) · 세션 ${me.limits.sessionMinutes}분`; } }
         } else if (b.dataset.a === 'role') {
           const r = await dialog(`<h2>${esc(login)} 권한</h2><label>역할<select name="role">${['user', 'tester', 'admin'].map(x => `<option value="${x}"${x === u.role ? ' selected' : ''}>${roleText(x)}</option>`).join('')}</select></label>
-            <p class="hint">베타 테스터: 한 기기에서만 로그인 · 내부 테스터·관리자: 여러 기기 동시 접속 허용 · 관리자만 이 관리자 페이지를 쓸 수 있습니다.<br>권한을 바꾸면 이 계정의 이용 중인 세션은 종료되고, 다시 로그인할 때 새 권한이 적용됩니다.</p>`,
+            <p class="hint">베타 테스터: 한 기기에서만 로그인 · 내부 테스터·관리자: 여러 기기 동시 접속 허용 · 관리자만 이 관리자 페이지를 쓸 수 있어요.<br>권한을 바꾸면 이 계정의 이용 중인 세션은 종료되고, 다시 로그인할 때 새 권한이 적용돼요.</p>`,
             fd => patch({ role: fd.get('role') }).catch(e => ({ error: e.message })));
           if (r?.error) return note(r.error, true);
           if (r) note(`${login} 권한: ${roleText(r.user.role)}`);
         } else if (b.dataset.a === 'reset') {
-          if (!confirm(`${login} 비밀번호를 초기화하겠습니까? 접속 중인 세션도 종료됩니다.`)) return;
-          const r = await patch({ resetPassword: true, unlock: true }); await showSecret(`${login} 비밀번호를 초기화했습니다`, r.tempPassword);
-        } else if (b.dataset.a === 'unlock') { await patch({ unlock: true }); note('잠금을 풀었습니다'); }
+          if (!confirm(`${login} 비밀번호를 초기화할까요? 접속 중인 세션도 종료돼요.`)) return;
+          const r = await patch({ resetPassword: true, unlock: true }); await showSecret(`${login} 비밀번호를 초기화했어요`, r.tempPassword);
+        } else if (b.dataset.a === 'unlock') { await patch({ unlock: true }); note('잠금을 풀었어요'); }
         else if (b.dataset.a === 'toggle') {
           const off = u.status === 'active';
-          if (off && !confirm(`${login} 계정을 중지하겠습니까? 접속 중인 세션도 즉시 종료됩니다.`)) return;
+          if (off && !confirm(`${login} 계정을 중지할까요? 접속 중인 세션도 즉시 종료돼요.`)) return;
           await patch({ status: off ? 'disabled' : 'active' }); note(`${login}: ${off ? '중지' : '재개'}`);
         } else if (b.dataset.a === 'chats') return go('chats', { user: id, label: login });
         views.users();
@@ -162,7 +162,7 @@ const views = {
         <td class="num">${n(s.llm_calls)} · ${n(s.tokens_in + s.tokens_out)}</td><td class="sub">${apis}</td>
         <td><div class="acts"><button data-chat="${s.id}" data-label="${esc(s.login_id)}">대화</button>${s.active ? `<button class="danger" data-revoke="${s.id}">강제 종료</button>` : ''}</div></td></tr>`; }).join('')}</table></div>`;
     $('#tg').onclick = () => views.sessions({ all: !opt.all }); $('#rf').onclick = () => views.sessions(opt);
-    view.querySelectorAll('[data-revoke]').forEach(b => b.onclick = async () => { if (!confirm('이 세션을 강제 종료하겠습니까?')) return; await api(`/v1/admin/sessions/${b.dataset.revoke}/revoke`, { method: 'POST', body: '{}' }); note('세션을 종료했습니다'); views.sessions(opt); });
+    view.querySelectorAll('[data-revoke]').forEach(b => b.onclick = async () => { if (!confirm('이 세션을 강제 종료할까요?')) return; await api(`/v1/admin/sessions/${b.dataset.revoke}/revoke`, { method: 'POST', body: '{}' }); note('세션을 종료했어요'); views.sessions(opt); });
     view.querySelectorAll('[data-chat]').forEach(b => b.onclick = () => go('chats', { session: b.dataset.chat, label: b.dataset.label }));
   },
   async usage() {
@@ -174,7 +174,7 @@ const views = {
       <td class="num">${n(r.tokens_in)}/${n(r.tokens_out)}</td><td class="num">${n(r.blocked)}</td><td class="sub">${Object.entries(r.api_calls || {}).map(([k, v]) => `${esc(k)} ${v}`).join(', ') || '-'}</td></tr>`).join('')}</table></div>`;
   },
   async chats(opt = {}) {
-    if (!opt.session && !opt.user) { view.innerHTML = '<div class="card"><p class="sub">세션 탭이나 사용자 탭에서 "대화"를 눌러 열람할 대화를 고르십시오.</p></div>'; return; }
+    if (!opt.session && !opt.user) { view.innerHTML = '<div class="card"><p class="sub">세션 탭이나 사용자 탭에서 "대화"를 눌러 열람할 대화를 고르세요.</p></div>'; return; }
     const qs = opt.session ? `session=${opt.session}` : `user=${opt.user}`;
     const { messages } = await api(`/v1/admin/chats?${qs}&limit=300`);
     view.innerHTML = `<div class="tool"><h2>대화 로그 · ${esc(opt.label ?? '')}</h2><span class="sub">${messages.length}건 · 주소 번지는 저장 시 가려짐 · 보관 30일</span></div>
@@ -189,9 +189,9 @@ const views = {
     const { reports } = await api('/v1/admin/reports?limit=90');
     const ST = { ok: '<span class="pill ok">정상</span>', warn: '<span class="pill warn">주의</span>', critical: '<span class="pill bad">위험</span>' };
     view.innerHTML = `<div class="tool"><h2>서버 운영 리포트</h2><div class="acts"><button id="genReport">오늘 리포트 지금 만들기</button></div></div>
-    <p class="sub">매일 00:10(한국 시간)에 전날 리포트를 자동으로 만들고 Slack 로그 채널에 요약을 보냅니다. 수동 생성은 오늘 0시부터 지금까지를 집계합니다. 리포트는 2년, 시간별 지표는 180일 보관합니다.</p>
+    <p class="sub">매일 00:10(한국 시간)에 전날 리포트를 자동으로 만들고 Slack 로그 채널에 요약을 보내요. 수동 생성은 오늘 0시부터 지금까지를 집계해요. 리포트는 2년, 시간별 지표는 180일 보관해요.</p>
     ${reports.length ? `<div class="rep-list">${reports.map(r => `<button class="rep-item" data-date="${esc(r.date)}"><div class="rep-top"><b>${esc(r.date)}</b>${ST[r.status] ?? esc(r.status)}${r.alert_count ? `<span class="sub">경보 ${r.alert_count}</span>` : ''}<span class="sub">${r.trigger === 'auto' ? '자동' : '수동'} · ${dt(r.generated_at)}</span></div>
-      <div class="rep-nums"><span>요청 <b>${n(r.requests)}</b></span><span>로그인 <b>${n(r.users)}</b>명</span><span>질문 <b>${n(r.questions)}</b></span></div></button>`).join('')}</div>` : '<div class="card"><p class="sub">아직 만들어진 리포트가 없습니다. 위 버튼으로 오늘 리포트를 만들어 보십시오.</p></div>'}`;
+      <div class="rep-nums"><span>요청 <b>${n(r.requests)}</b></span><span>로그인 <b>${n(r.users)}</b>명</span><span>질문 <b>${n(r.questions)}</b></span></div></button>`).join('')}</div>` : '<div class="card"><p class="sub">아직 만들어진 리포트가 없어요. 위 버튼으로 오늘 리포트를 만들어 보세요.</p></div>'}`;
     $('#genReport').onclick = async () => { const b = $('#genReport'); b.disabled = true; b.textContent = '만드는 중…'; try { const { report } = await api('/v1/admin/reports/generate', { method: 'POST', body: '{}' }); go('report', { date: report.date }); } catch (e) { note(e.message, true); b.disabled = false; b.textContent = '오늘 리포트 지금 만들기'; } };
     view.querySelectorAll('[data-date]').forEach(b => b.onclick = () => go('report', { date: b.dataset.date }));
   },
@@ -203,7 +203,7 @@ const views = {
     const hours = Array.from({ length: 24 }, (_, i) => { const h = (t.hourly ?? []).find(x => Number(x.h) === i); return { i, n: h?.n ?? 0, e: h?.e ?? 0 }; }), hmax = Math.max(1, ...hours.map(h => h.n));
     view.innerHTML = `<div class="tool"><div class="acts"><button id="backReports">← 리포트 목록</button></div><h2>운영 리포트 · ${esc(r.date)} <span class="pill ${ST[1]}">${ST[0]}</span></h2></div>
     <p class="sub">${esc(r.summary)}<br>${r.trigger === 'auto' ? '자동' : '수동'} 생성 ${dt(r.generated_at)} · 집계 ${dt(r.period_start)} ~ ${dt(r.period_end)} · 백엔드 v${esc(r.version ?? '-')}</p>
-    <div class="card"><h3>경보 ${r.alerts.length}건</h3>${r.alerts.length ? `<ul class="rep-alerts">${r.alerts.map(a => `<li class="${a.level}"><span class="pill ${a.level === 'critical' ? 'bad' : 'warn'}">${a.level === 'critical' ? '위험' : '주의'}</span> <b>${esc(a.area)}</b> ${esc(a.message)}</li>`).join('')}</ul>` : '<p class="sub">경보 없음 — 모든 지표가 기준 안에 있습니다.</p>'}</div>
+    <div class="card"><h3>경보 ${r.alerts.length}건</h3>${r.alerts.length ? `<ul class="rep-alerts">${r.alerts.map(a => `<li class="${a.level}"><span class="pill ${a.level === 'critical' ? 'bad' : 'warn'}">${a.level === 'critical' ? '위험' : '주의'}</span> <b>${esc(a.area)}</b> ${esc(a.message)}</li>`).join('')}</ul>` : '<p class="sub">경보 없음 — 모든 지표가 기준 안에 있어요.</p>'}</div>
     <div class="card"><h3>가용성·트래픽</h3>${kv([['서버 재시작', `${n(m.availability.restarts)}회`], ['요청', `${n(t.requests)}건 (가장 많은 시간 ${t.peakHour ? esc(t.peakHour.h) + '시 ' + n(t.peakHour.n) + '건' : '-'})`], ['오류', `서버 오류(5xx) ${n(t.errors5xx)}건 (${pctTxt(t.errorRate5xx)}) · 요청 오류(4xx) ${n(t.errors4xx)}건 · 요청 제한(429) ${n(t.rateLimited429)}건`], ['응답 시간', `평균 ${t.avgMs ?? '-'}ms · 95% ${t.p95Ms ?? '-'}ms 이하`], ['클라이언트 오류 보고', `${n(m.errors.clientReports)}건`]])}
       <div class="rep-hours" aria-label="시간별 요청">${hours.map(h => `<i title="${h.i}시 ${h.n}건" style="height:${Math.max(2, h.n / hmax * 100)}%" class="${h.e ? 'err' : ''}"></i>`).join('')}</div><div class="rep-axis"><span>0시</span><span>6시</span><span>12시</span><span>18시</span><span>24시</span></div>
       ${t.topRoutes?.length ? `<div class="scroll"><table class="tbl"><tr><th>많이 쓴 경로</th><th class="num">요청</th><th class="num">평균</th><th class="num">최대</th><th class="num">5xx</th></tr>${t.topRoutes.map(x => `<tr><td>${esc(x.route)}</td><td class="num">${n(x.requests)}</td><td class="num">${x.avgMs}ms</td><td class="num">${x.maxMs}ms</td><td class="num">${n(x.errors5xx)}</td></tr>`).join('')}</table></div>` : ''}</div>
@@ -220,34 +220,34 @@ const views = {
   async user_usage(opt = {}) {
     const { user, days } = await api(`/v1/admin/users/${opt.user}/usage?days=30`);
     const max = Math.max(user.dailyTokens || 0, ...days.map(d => d.tokens), 1), sum = days.reduce((a, d) => a + d.tokens, 0);
-    view.innerHTML = `${backBar(`토큰 사용 기록 · ${esc(user.loginId)}`)}<p class="sub">최근 30일 · 합계 ${n(sum)} 토큰 · 하루 한도 ${n(user.dailyTokens)} · 사용이 없던 날은 빠집니다</p>
+    view.innerHTML = `${backBar(`토큰 사용 기록 · ${esc(user.loginId)}`)}<p class="sub">최근 30일 · 합계 ${n(sum)} 토큰 · 하루 한도 ${n(user.dailyTokens)} · 사용이 없던 날은 빠져요</p>
     ${days.length ? `<div class="scroll"><table class="tbl"><tr><th>날짜</th><th class="num">토큰(입력/출력)</th><th>한도 대비</th><th class="num">AI 호출</th><th class="num">질문</th><th class="num">로그인</th></tr>
-    ${days.map(d => `<tr><td>${esc(d.day)}</td><td class="num"><b>${n(d.tokens)}</b><br><span class="sub">${n(d.tokensIn)} / ${n(d.tokensOut)}</span></td><td><div class="ubar"><i style="width:${Math.min(100, d.tokens / max * 100).toFixed(1)}%"${user.dailyTokens && d.tokens > user.dailyTokens ? ' class="over"' : ''}></i></div><span class="sub">${user.dailyTokens ? Math.round(d.tokens / user.dailyTokens * 100) + '%' : '-'}</span></td><td class="num">${n(d.llmCalls)}</td><td class="num">${n(d.messages)}${d.blocked ? `<br><span class="sub">거절 ${d.blocked}</span>` : ''}</td><td class="num">${n(d.sessions)}</td></tr>`).join('')}</table></div>` : '<div class="card"><p class="sub">최근 30일 사용 기록이 없습니다.</p></div>'}`;
+    ${days.map(d => `<tr><td>${esc(d.day)}</td><td class="num"><b>${n(d.tokens)}</b><br><span class="sub">${n(d.tokensIn)} / ${n(d.tokensOut)}</span></td><td><div class="ubar"><i style="width:${Math.min(100, d.tokens / max * 100).toFixed(1)}%"${user.dailyTokens && d.tokens > user.dailyTokens ? ' class="over"' : ''}></i></div><span class="sub">${user.dailyTokens ? Math.round(d.tokens / user.dailyTokens * 100) + '%' : '-'}</span></td><td class="num">${n(d.llmCalls)}</td><td class="num">${n(d.messages)}${d.blocked ? `<br><span class="sub">거절 ${d.blocked}</span>` : ''}</td><td class="num">${n(d.sessions)}</td></tr>`).join('')}</table></div>` : '<div class="card"><p class="sub">최근 30일 사용 기록이 없어요.</p></div>'}`;
     bindBack();
   },
   async user_questions(opt = {}) {
     const { user, days } = await api(`/v1/admin/users/${opt.user}/questions?days=30`);
     view.innerHTML = `${backBar(`질문 기록 · ${esc(user.loginId)}`)}<p class="sub">최근 30일 · 날짜별 질문 ${n(days.reduce((a, d) => a + d.count, 0))}건 · 주소 번지는 저장할 때 가려짐</p>
-    ${days.length ? days.map((d, i) => `<details class="card qday"${i === 0 ? ' open' : ''}><summary><b>${esc(d.day)}</b> <span class="pill ok">질문 ${d.count}</span></summary><ul class="qlist">${d.items.map(m => `<li><span class="sub">${esc(new Date(m.at).toLocaleTimeString('ko-KR', { timeZone: 'Asia/Seoul', hour: '2-digit', minute: '2-digit' }))}${m.intent ? ' · ' + esc(m.intent) : ''}</span><div>${esc(m.content)}</div></li>`).join('')}</ul></details>`).join('') : '<div class="card"><p class="sub">최근 30일 질문이 없습니다.</p></div>'}
+    ${days.length ? days.map((d, i) => `<details class="card qday"${i === 0 ? ' open' : ''}><summary><b>${esc(d.day)}</b> <span class="pill ok">질문 ${d.count}</span></summary><ul class="qlist">${d.items.map(m => `<li><span class="sub">${esc(new Date(m.at).toLocaleTimeString('ko-KR', { timeZone: 'Asia/Seoul', hour: '2-digit', minute: '2-digit' }))}${m.intent ? ' · ' + esc(m.intent) : ''}</span><div>${esc(m.content)}</div></li>`).join('')}</ul></details>`).join('') : '<div class="card"><p class="sub">최근 30일 질문이 없어요.</p></div>'}
     <div class="acts" style="margin-top:8px"><button id="toChats">답변까지 전체 대화 보기</button></div>`;
     bindBack(); $('#toChats').onclick = () => go('chats', { user: opt.user, label: user.loginId });
   },
   async user_logins(opt = {}) {
     const { user, logins } = await api(`/v1/admin/users/${opt.user}/logins?days=30`);
     const ST = { granted: '<span class="pill ok">허용</span>', denied: '<span class="pill warn">거부</span>', unavailable: '<span class="pill">확인 불가</span>', none: '<span class="sub">요청 전·이전 버전</span>' };
-    view.innerHTML = `${backBar(`로그인 위치 기록 · ${esc(user.loginId)}`)}<p class="sub">최근 30일 로그인 · 위치는 사용자가 허용한 경우만 약 100m 단위로 저장하고 30일 뒤 지웁니다</p>
+    view.innerHTML = `${backBar(`로그인 위치 기록 · ${esc(user.loginId)}`)}<p class="sub">최근 30일 로그인 · 위치는 사용자가 허용한 경우만 약 100m 단위로 저장하고 30일 뒤 지워요</p>
     ${logins.length ? `<div class="scroll"><table class="tbl"><tr><th>로그인</th><th>기기</th><th>위치 동의</th><th>위경도</th><th>지도</th></tr>
     ${logins.map(l => `<tr><td>${dt(l.at)}${l.endedAt ? `<br><span class="sub">종료 ${dt(l.endedAt)}${l.endReason ? ' · ' + esc(l.endReason) : ''}</span>` : ''}</td><td>${esc(devPlat(l.device))}<br><span class="sub">${esc(devBrowser(l.device))}</span></td><td>${ST[l.locationStatus] ?? esc(l.locationStatus)}</td>
       <td>${l.location ? `${l.location.lat.toFixed(3)}, ${l.location.lon.toFixed(3)}${l.location.address ? ` (${esc(l.location.address)} 부근)` : ''}${l.location.accuracyM ? `<br><span class="sub">오차 약 ${n(l.location.accuracyM)}m</span>` : ''}` : '-'}</td>
-      <td>${l.location ? `<a href="https://map.kakao.com/link/map/${encodeURIComponent(user.loginId + ' 로그인')},${l.location.lat},${l.location.lon}" target="_blank" rel="noopener noreferrer">카카오맵</a>` : '-'}</td></tr>`).join('')}</table></div>` : '<div class="card"><p class="sub">최근 30일 로그인 기록이 없습니다.</p></div>'}`;
+      <td>${l.location ? `<a href="https://map.kakao.com/link/map/${encodeURIComponent(user.loginId + ' 로그인')},${l.location.lat},${l.location.lon}" target="_blank" rel="noopener noreferrer">카카오맵</a>` : '-'}</td></tr>`).join('')}</table></div>` : '<div class="card"><p class="sub">최근 30일 로그인 기록이 없어요.</p></div>'}`;
     bindBack();
   },
   async opinions(opt = {}) {
     const { opinions } = await api('/v1/admin/opinions' + (opt.user ? `?user=${opt.user}` : ''));
     const avg = opinions.filter(o => o.rating).map(o => o.rating);
-    view.innerHTML = `${opt.user ? backBar(`의견 · ${esc(opt.label ?? '')}`) : '<div class="tool"><h2>의견 보내기(최근 200)</h2></div>'}<p class="sub">사용자가 하단 '의견' 탭에서 보낸 의견입니다. 새 의견은 Slack 18_gofishing_feedback 채널로도 알려 드립니다.${avg.length ? ` 평균 만족도 ${(avg.reduce((a, b) => a + b, 0) / avg.length).toFixed(1)}점(${avg.length}건)` : ''}</p>
+    view.innerHTML = `${opt.user ? backBar(`의견 · ${esc(opt.label ?? '')}`) : '<div class="tool"><h2>의견 보내기(최근 200)</h2></div>'}<p class="sub">사용자가 하단 '의견' 탭에서 보낸 의견이에요. 새 의견은 Slack 18_gofishing_feedback 채널로도 알려 드려요.${avg.length ? ` 평균 만족도 ${(avg.reduce((a, b) => a + b, 0) / avg.length).toFixed(1)}점(${avg.length}건)` : ''}</p>
     ${opinions.length ? `<div class="scroll"><table class="tbl"><tr><th>시각</th><th>아이디</th><th>만족도</th><th>의견</th></tr>
-    ${opinions.map(o => `<tr><td>${dt(o.createdAt)}</td><td>${esc(o.loginId ?? '')}</td><td>${o.rating ? '★'.repeat(o.rating) + '☆'.repeat(5 - o.rating) : '<span class="sub">-</span>'}</td><td style="white-space:pre-wrap">${esc(o.text)}</td></tr>`).join('')}</table></div>` : '<div class="card"><p class="sub">아직 받은 의견이 없습니다.</p></div>'}`;
+    ${opinions.map(o => `<tr><td>${dt(o.createdAt)}</td><td>${esc(o.loginId ?? '')}</td><td>${o.rating ? '★'.repeat(o.rating) + '☆'.repeat(5 - o.rating) : '<span class="sub">-</span>'}</td><td style="white-space:pre-wrap">${esc(o.text)}</td></tr>`).join('')}</table></div>` : '<div class="card"><p class="sub">아직 받은 의견이 없어요.</p></div>'}`;
     bindBack();
   },
   async actions() {
@@ -259,7 +259,7 @@ const views = {
 // 기기 표시: 아이폰 · iOS 26.7.3 / Chrome 157 (User-Agent 추정, 구버전 서버 응답은 기존 필드로 표시)
 const devPlat = d => d ? [d.platform, d.model, d.os].filter(Boolean).join(' · ') : '';
 const devBrowser = d => d ? (d.label ?? d.browser ?? '') : '';
-const capBar = c => c ? `<div class="capbar">${[['오늘 신청', c.registers], ['베타 테스터', c.users], ['오늘 로그인', c.logins]].map(([l, v]) => `<div class="${v.used >= v.max ? 'full' : v.used >= v.max * 0.8 ? 'near' : ''}"><span>${l}</span><b>${n(v.used)} / ${n(v.max)}</b><i><em style="width:${Math.min(100, v.max ? v.used / v.max * 100 : 100).toFixed(1)}%"></em></i></div>`).join('')}</div><p class="sub">정원에 닿으면 새 신청·승인·로그인을 막습니다(관리자·내부 테스터 예외).</p>` : '';
+const capBar = c => c ? `<div class="capbar">${[['오늘 신청', c.registers], ['베타 테스터', c.users], ['오늘 로그인', c.logins]].map(([l, v]) => `<div class="${v.used >= v.max ? 'full' : v.used >= v.max * 0.8 ? 'near' : ''}"><span>${l}</span><b>${n(v.used)} / ${n(v.max)}</b><i><em style="width:${Math.min(100, v.max ? v.used / v.max * 100 : 100).toFixed(1)}%"></em></i></div>`).join('')}</div><p class="sub">정원에 닿으면 새 신청·승인·로그인을 막아요(관리자·내부 테스터 예외).</p>` : '';
 const backBar = title => `<div class="tool"><div class="acts"><button id="backUsers">← 사용자</button></div><h2>${title}</h2></div>`;
 function bindBack() { const b = $('#backUsers'); if (b) b.onclick = () => go('users'); }
 async function go(v, opt) {
@@ -281,15 +281,15 @@ new MutationObserver(() => labelTables()).observe(view, { childList: true, subtr
 (async () => {
   const h = await health();
   if (h.error) return gone(`서버 연결 실패: ${h.error}`);
-  if (state.authMode !== 'required') return gone('서버가 로그인 없이 동작 중입니다(AUTH_MODE=off). 관리자 기능은 로그인 모드에서만 씁니다.');
-  if (!state.auth?.token) return gone('이 탭에 로그인 정보가 없습니다.');
+  if (state.authMode !== 'required') return gone('서버가 로그인 없이 동작 중이에요(AUTH_MODE=off). 관리자 기능은 로그인 모드에서만 써요.');
+  if (!state.auth?.token) return gone('이 탭에 로그인 정보가 없어요.');
   try {
     const me = await api('/v1/auth/me');
-    if (me.role !== 'admin') return gone('관리자 계정이 아닙니다.');
+    if (me.role !== 'admin') return gone('관리자 계정이 아니에요.');
     $('#userPageLink').hidden = false;
     syncExpiry(me.remainingSec);
     $('#who').textContent = `${me.user.displayName}(${me.user.loginId}) · 세션 ${me.limits.sessionMinutes}분`;
-    startTimer($('#timer'), { onWarn: s => note(`약 ${s}초 뒤 자동 로그아웃됩니다`), onExpire: () => { logout('expired'); gone('이용 시간이 끝나 자동 로그아웃됐습니다.'); } });
+    startTimer($('#timer'), { onWarn: s => note(`약 ${s}초 뒤 자동 로그아웃돼요`), onExpire: () => { logout('expired'); gone('이용 시간이 끝나 자동 로그아웃됐어요.'); } });
     go('users');
   } catch (e) { if (e.status !== 401) gone(e.message); }
 })();
