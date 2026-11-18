@@ -7,7 +7,7 @@ const GATE = { PASS: '안전 양호', PASS_WITH_CAUTION: '조건부 주의', REV
 const badge = g => g ? `<span class="badge b-${esc(g)}">${esc(GATE[g] ?? g)}</span>` : '';
 
 // ---- 설정·인증(auth.js) ----
-import { state, setApi, api, health, login, logout, startTimer, syncExpiry, saveAuth, setOnAuthLost, setOnMustChange, loadAuthImage, remaining, sessionMinutes } from './auth.js?v=1.17.3';
+import { state, setApi, api, health, login, logout, startTimer, syncExpiry, saveAuth, setOnAuthLost, setOnMustChange, loadAuthImage, remaining, sessionMinutes } from './auth.js?v=1.17.4';
 let SID = localStorage.getItem('gofishing.session') || (crypto.randomUUID?.() ?? String(Date.now()) + Math.random().toString(16).slice(2));
 localStorage.setItem('gofishing.session', SID);
 const SAVED_ID_KEY = 'gofishing.savedLoginId'; // 아이디 저장(이메일만, 비밀번호는 저장하지 않음)
@@ -28,7 +28,7 @@ async function checkServer() {
 
 // ---- 탭 ----
 function showTab(name) {
-  hideOriginTip();
+  hideOriginTip(); hideTodayTip();
   document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.id === 'tab-' + name));
   document.querySelectorAll('.tabs button').forEach(b => b.classList.toggle('active', b.dataset.tab === name));
   if (name === 'points') loadPoints();
@@ -194,6 +194,7 @@ function showOriginTip(text) {
   clearTimeout(originTipTimer); originTipTimer = setTimeout(hideOriginTip, 15000);
 }
 // 말풍선 밖을 누르면 바로 닫는다(가리는 시간 최소화)
+document.addEventListener('pointerdown', e => { const d = $('#todayTip'); if (d && !d.hidden && !d.contains(e.target) && !(todayAudio && !todayAudio.paused)) hideTodayTip(); }, true);
 document.addEventListener('pointerdown', e => { const t = $('#originTip'); if (t && !t.hidden && !t.contains(e.target) && !e.target.closest?.('#originBar')) hideOriginTip(); }, true);
 function hideOriginTip() { $('#originTip').hidden = true; clearTimeout(originTipTimer); }
 /** 가끔씩 안내: 출발지가 없으면 로그인할 때마다 + 3분 뒤 한 번 더, 1~4곳이면 사흘에 한 번 */
@@ -301,7 +302,7 @@ async function send(text, extra = {}) {
   if (sending) { toast('앞 질문의 답변을 준비하고 있어요. 잠시만 기다려 주세요.'); return; }
   text = String(text || '').trim(); if (!text) return;
   showTab('chat');
-  hideOriginTip(); sending = true; const sendBtn = $('#composer button[type=submit]'); if (sendBtn) sendBtn.disabled = true;
+  hideOriginTip(); hideTodayTip(); sending = true; const sendBtn = $('#composer button[type=submit]'); if (sendBtn) sendBtn.disabled = true;
   qAnchor = null; const qEl = bubble('user', esc(text));
   const t = document.createElement('div'); t.className = 'typing'; t.textContent = '어디물어가 공공데이터를 조회하고 있어요…'; chat.appendChild(t); scroll();
   try {
