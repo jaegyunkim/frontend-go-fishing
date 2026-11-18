@@ -7,7 +7,7 @@ const GATE = { PASS: '안전 양호', PASS_WITH_CAUTION: '조건부 주의', REV
 const badge = g => g ? `<span class="badge b-${esc(g)}">${esc(GATE[g] ?? g)}</span>` : '';
 
 // ---- 설정·인증(auth.js) ----
-import { state, setApi, api, health, login, logout, startTimer, syncExpiry, saveAuth, setOnAuthLost, setOnMustChange, loadAuthImage, remaining, sessionMinutes } from './auth.js?v=1.17.2';
+import { state, setApi, api, health, login, logout, startTimer, syncExpiry, saveAuth, setOnAuthLost, setOnMustChange, loadAuthImage, remaining, sessionMinutes } from './auth.js?v=1.17.3';
 let SID = localStorage.getItem('gofishing.session') || (crypto.randomUUID?.() ?? String(Date.now()) + Math.random().toString(16).slice(2));
 localStorage.setItem('gofishing.session', SID);
 const SAVED_ID_KEY = 'gofishing.savedLoginId'; // 아이디 저장(이메일만, 비밀번호는 저장하지 않음)
@@ -28,6 +28,7 @@ async function checkServer() {
 
 // ---- 탭 ----
 function showTab(name) {
+  hideOriginTip();
   document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.id === 'tab-' + name));
   document.querySelectorAll('.tabs button').forEach(b => b.classList.toggle('active', b.dataset.tab === name));
   if (name === 'points') loadPoints();
@@ -111,7 +112,7 @@ function renderMessage(m) {
       const items = m.data.items.map(i => `<div class="item" data-msg="${i.rank}번 안내해줘">
         <div><span class="rank">${i.rank}</span><b>${esc(i.point.name)}</b> ${badge(i.safety.gate)}</div>
         <div class="sub">${esc(i.point.district)} · ${esc(i.point.type)}${i.travel ? ` · 🚗 ${i.travel.minutes}분 ${i.travel.km}km${i.travel.toll ? ' · 통행료 ' + won(i.travel.toll) : ''}` : ''}</div>
-        ${i.score.total != null ? `<div class="bar"><i style="width:${Math.min(100, i.score.total)}%"></i></div><div class="sub">추천점수 ${i.score.total} (${esc(i.score.weights)})</div>` : ''}
+        ${i.score.total != null ? `<div class="bar"><i style="width:${Math.min(100, i.score.total)}%"></i></div><div class="sub">추천점수 <b>${i.score.total}점</b>${i.score.weights ? ` · ${esc(String(i.score.weights).replace(/\(초기값\)/g, '').replace(/([가-힣])(\d)/g, '$1 $2').replace(/·/g, ' · '))}` : ''}</div>` : ''}
         <div class="reason">${esc(i.score.reason)}</div>
         ${i.safety.reasons.length ? `<ul class="warn-list">${i.safety.reasons.map(r => `<li>${esc(r.text)}</li>`).join('')}</ul>` : ''}</div>`).join('');
       const blocked = m.data.blocked?.length ? blockedList(m.data.blocked) : '';
@@ -192,6 +193,8 @@ function showOriginTip(text) {
   $('#originTipText').textContent = text; $('#originTip').hidden = false;
   clearTimeout(originTipTimer); originTipTimer = setTimeout(hideOriginTip, 15000);
 }
+// 말풍선 밖을 누르면 바로 닫는다(가리는 시간 최소화)
+document.addEventListener('pointerdown', e => { const t = $('#originTip'); if (t && !t.hidden && !t.contains(e.target) && !e.target.closest?.('#originBar')) hideOriginTip(); }, true);
 function hideOriginTip() { $('#originTip').hidden = true; clearTimeout(originTipTimer); }
 /** 가끔씩 안내: 출발지가 없으면 로그인할 때마다 + 3분 뒤 한 번 더, 1~4곳이면 사흘에 한 번 */
 function nudgeOrigins() {
@@ -298,7 +301,7 @@ async function send(text, extra = {}) {
   if (sending) { toast('앞 질문의 답변을 준비하고 있어요. 잠시만 기다려 주세요.'); return; }
   text = String(text || '').trim(); if (!text) return;
   showTab('chat');
-  sending = true; const sendBtn = $('#composer button[type=submit]'); if (sendBtn) sendBtn.disabled = true;
+  hideOriginTip(); sending = true; const sendBtn = $('#composer button[type=submit]'); if (sendBtn) sendBtn.disabled = true;
   qAnchor = null; const qEl = bubble('user', esc(text));
   const t = document.createElement('div'); t.className = 'typing'; t.textContent = '어디물어가 공공데이터를 조회하고 있어요…'; chat.appendChild(t); scroll();
   try {
@@ -353,7 +356,7 @@ function marineCard(b) {
   if (s.buoy) { const o = s.buoy; parts.push(`<div class="mc-block"><div class="mc-title">📡 지금 바다(부이 실측) <span class="sub">${esc(o.name)} ${o.distanceKm}km · ${esc(String(o.observedAt).slice(11, 16))} 관측</span></div><div class="mc-grid">
     <div><span>파고</span><b>${o.wave ?? '-'}m</b></div><div><span>파주기</span><b>${o.wavePeriod ?? '-'}초</b></div><div><span>풍속(순간)</span><b>${o.wind ?? '-'}(${o.gust ?? '-'})m/s</b></div>
     <div><span>수온</span><b>${o.waterTemp != null ? o.waterTemp.toFixed(1) : '-'}°C</b></div><div><span>기온</span><b>${o.airTemp ?? '-'}°C</b></div><div><span>유속</span><b>${o.current ?? '-'}cm/s</b></div></div></div>`); }
-  if (s.ship) parts.push(`<div class="mc-block"><div class="mc-title">⛵ 선박운항지수 <span class="sub">${esc(s.ship.name)} ${esc(s.ship.kind)}${s.ship.distanceKm != null ? ` ${s.ship.distanceKm}km` : ''} · ${esc(s.ship.lastDate ?? '')}까지 제공</span></div><div class="mc-ship">${s.ship.slots.map(x => `<div><span>${esc(x.slot)}</span><span class="badge b-${SHIP_CLS[x.grade] ?? 'REVIEW_REQUIRED'}">${esc(x.grade)}</span><small>파고 ${x.wave ?? '-'}m · 바람 ${x.wind ?? '-'}m/s</small></div>`).join('')}</div></div>`);
+  if (s.ship) parts.push(`<div class="mc-block"><div class="mc-title">⛵ 선박운항지수 <span class="sub">${esc(s.ship.name)} ${esc(s.ship.kind)}${s.ship.distanceKm != null ? ` ${s.ship.distanceKm}km` : ''} ${s.ship.lastDate ? ` · ${esc(String(s.ship.lastDate).slice(5).replace('-', '.'))}까지 제공` : ''}</span></div><div class="mc-ship">${s.ship.slots.map(x => `<div><span>${esc(x.slot)}</span><span class="badge b-${SHIP_CLS[x.grade] ?? 'REVIEW_REQUIRED'}">${esc(x.grade)}</span>${x.wave != null || x.wind != null ? `<small>${[x.wave != null ? `파고 ${x.wave}m` : '', x.wind != null ? `바람 ${x.wind}m/s` : ''].filter(Boolean).join(' · ')}</small>` : ''}</div>`).join('')}</div></div>`);
   if (s.forecastText) { const d = Number(String(b.date).slice(8)); const day = s.forecastText.days.find(x => x.label.includes(`${d}일`));
     parts.push(`<div class="mc-block"><div class="mc-title">📝 기상청 예보 통보문 <span class="sub">${esc(String(s.forecastText.issuedAt).replace(/^(\d{4})(\d\d)(\d\d)(\d\d)(\d\d)$/, '$2.$3 $4:$5'))} 발표</span></div>${s.forecastText.summary ? `<p class="mc-text"><b>종합</b> ${esc(s.forecastText.summary)}</p>` : ''}${day ? `<p class="mc-text"><b>${esc(day.label)}</b> ${esc(day.text)}</p>` : ''}</div>`); }
   return parts.length ? `<div class="card sec marine"><h4>■ 물때·해와 달·해상 상황</h4>${parts.join('')}</div>` : '';
@@ -384,7 +387,7 @@ function renderBriefing(b) {
   const srcs = b.sources.map(x => `<span class="st-${esc(x.status)}">● ${esc(x.provider)}(${esc(x.status)})</span>`).join('');
   $('#brief').innerHTML = `
     <div class="card"><h3>${esc(b.point.name)} ${badge(b.safety.gate)}</h3><div class="sub">${esc(b.point.region)} ${esc(b.point.district)} · ${esc(b.dateLabel)} · ${esc(s.tier?.badge ?? '')}</div>
-      ${b.safety.reasons.length ? `<ul class="list" style="margin-top:6px">${b.safety.reasons.map(r => `<li><span>${esc(r.text)}</span></li>`).join('')}</ul>` : ''}<div class="sub" style="margin-top:4px">${esc(b.safety.note)} (${esc(b.safety.policy)})</div></div>
+      ${b.safety.reasons.length ? `<ul class="list" style="margin-top:6px">${b.safety.reasons.map(r => `<li><span>${esc(r.text)}</span></li>`).join('')}</ul>` : ''}<div class="sub" style="margin-top:4px">${esc(b.safety.note)}</div></div>
     <div class="card sec"><h4>■ 바다 (${esc(b.dateLabel)})</h4><div class="metrics">${metrics}</div>
       <div class="sub" style="margin-top:6px">특보: ${esc(warn)}${s.warnings?.issuedAt ? ` (특보현황 발표 ${esc(String(s.warnings.issuedAt).replace(/^(\d{4})(\d\d)(\d\d)(\d\d)(\d\d)$/, '$1-$2-$3 $4:$5'))})` : ''}</div>
       ${s.observation ? `<div class="sub">실측: ${esc(s.observation.name)}(${s.observation.distanceKm}km) 파고 ${s.observation.wave ?? '-'}m · 풍속 ${s.observation.wind ?? '-'}m/s · ${esc(s.observation.observedAt)}</div>` : ''}
