@@ -1,7 +1,7 @@
-import { approvalMailto } from './approval-email.js?v=1.18.1';
+import { approvalMailto } from './approval-email.js?v=1.18.2';
 // 어디물어 관리자 화면: 계정·세션·사용량·대화 로그·로그인/작업 기록. 관리자 계정으로 로그인한 탭에서만 동작.
-import { state, api, health, startTimer, syncExpiry, setOnAuthLost, logout } from './auth.js?v=1.18.1';
-import { visitsHtml } from './admin-visits.js?v=1.18.1';
+import { state, api, health, startTimer, syncExpiry, setOnAuthLost, logout } from './auth.js?v=1.18.2';
+import { visitsHtml } from './admin-visits.js?v=1.18.2';
 const $ = s => document.querySelector(s);
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const dt = v => v ? new Date(v).toLocaleString('ko-KR', { timeZone: 'Asia/Seoul', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }) : '-';
@@ -202,7 +202,7 @@ const views = {
   },
   // 접속현황: 메인(로그인)·이용 신청 화면 방문자(하루 IP 1회) — 시간별·일간·요일별·주간별·월간·시즌별·연간(섹션 탭)
   async visits(opt = {}) {
-    const days = [14, 30, 90].includes(opt.days) ? opt.days : 30;
+    const days = [7, 14, 30, 90].includes(opt.days) ? opt.days : 30;
     const { visits } = await api(`/v1/admin/visits?days=${days}`);
     const draw = () => {
       view.innerHTML = visitsHtml(visits, days, view.clientWidth - 50, visitsUi);

@@ -119,7 +119,7 @@ body{word-break:keep-all;overflow-wrap:anywhere}
 .card.sk summary,.card>summary{cursor:pointer;list-style:none}.card.sk summary::-webkit-details-marker{display:none}
 .sk-tags{display:flex;flex-wrap:wrap;gap:4px;margin-top:6px}.card.sk h4{margin:14px 0 4px;font-size:13.5px;color:var(--accInk,#0e7490)}
 .sk-ul{margin:4px 0 6px;padding-left:18px;font-size:13px;line-height:1.6}.card.sk code,.tool code{font-size:11.5px;background:#eef6fa;padding:1px 5px;border-radius:5px}
-/* 접속현황 v1.18.1 (인라인 SVG 차트, 메인 #2a78d6 · 신청 #eb6834 — 색각 이상 구분 검증) */
+/* 접속현황 v1.18.2 (인라인 SVG 차트, 메인 #2a78d6 · 신청 #eb6834 — 색각 이상 구분 검증) */
 .acts button.on{background:var(--accSoft,#e3f6fb);border-color:var(--accLine,#9ad8e8);color:var(--accInk,#0e7490);font-weight:700}
 .vz-kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin:10px 0 12px}
 .vz-kpi{background:#fff;border:1px solid var(--line);border-radius:14px;padding:10px 12px;display:flex;flex-direction:column;gap:6px;min-width:0}
@@ -142,7 +142,7 @@ body{word-break:keep-all;overflow-wrap:anywhere}
 @media (max-width:900px){.vz-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media (max-width:720px){.vz-kv b{font-size:17px}.vz-ks{font-size:12px}.vz-read{font-size:13px}}
 @media (max-width:360px){.vz-kpis{grid-template-columns:1fr}}
-/* 접속현황 섹션 탭·보기 전환·요약·표 v1.18.1 */
+/* 접속현황 섹션 탭·보기 전환·요약·표 v1.18.2 */
 .vz-tabs{display:flex;flex-wrap:wrap;gap:6px;margin:4px 0 10px;padding:2px 0}
 .vz-tabs button{flex:1 0 auto;min-height:34px;padding:5px 12px;border-radius:999px;border:1px solid var(--line);background:#fff;color:var(--sub);font-size:13px;font-weight:600;cursor:pointer}
 .vz-tabs button.on{color:#fff;border-color:transparent;background:var(--grad,linear-gradient(90deg,#06b6d4,#2563eb))}

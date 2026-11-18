@@ -223,7 +223,7 @@ function yearlySec(v, ui, cw) {
 export function visitsHtml(v, days = 30, width = 360, ui = {}) {
   const k = v.kpi, cw = Math.round(Math.max(300, Math.min(900, width))), sec = SECTIONS.some(([s]) => s === ui.sec) ? ui.sec : 'daily', u = { ...ui, sec, modes: ui.modes ?? {} };
   const started = v.firstDay ? `${dot(v.firstDay)}부터 집계했어요` : '아직 집계된 방문이 없어요';
-  const head = `<div class="tool"><h2>접속현황</h2><div class="acts">${[14, 30, 90].map(d => `<button data-vdays="${d}" class="${d === days ? 'on' : ''}" aria-pressed="${d === days}">${d}일</button>`).join('')}<button id="vRefresh">새로 고침</button></div></div>
+  const head = `<div class="tool"><h2>접속현황</h2><div class="acts">${[7, 14, 30, 90].map(d => `<button data-vdays="${d}" class="${d === days ? 'on' : ''}" aria-pressed="${d === days}">${d}일</button>`).join('')}<button id="vRefresh">새로 고침</button></div></div>
     <p class="sub">메인(로그인) 화면과 이용 신청 화면을 연 방문자 수예요. 같은 IP는 하루에 페이지마다 1명으로 세요. ${esc(started)}. 기간 버튼은 시간별·일간에 적용돼요.</p>`;
   const cards = `<div class="vz-kpis">
     ${kpi('오늘', k.today.main, k.today.register, k.today.internal ? `관리자·내부 테스터 ${num(k.today.internal)}명은 빼고 셌어요` : '한국 시간 0시부터 지금까지예요')}
