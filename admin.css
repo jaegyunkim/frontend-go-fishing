@@ -119,3 +119,26 @@ body{word-break:keep-all;overflow-wrap:anywhere}
 .card.sk summary,.card>summary{cursor:pointer;list-style:none}.card.sk summary::-webkit-details-marker{display:none}
 .sk-tags{display:flex;flex-wrap:wrap;gap:4px;margin-top:6px}.card.sk h4{margin:14px 0 4px;font-size:13.5px;color:var(--accInk,#0e7490)}
 .sk-ul{margin:4px 0 6px;padding-left:18px;font-size:13px;line-height:1.6}.card.sk code,.tool code{font-size:11.5px;background:#eef6fa;padding:1px 5px;border-radius:5px}
+/* 접속현황 v1.18.0 (인라인 SVG 차트, 메인 #2a78d6 · 신청 #eb6834 — 색각 이상 구분 검증) */
+.acts button.on{background:var(--accSoft,#e3f6fb);border-color:var(--accLine,#9ad8e8);color:var(--accInk,#0e7490);font-weight:700}
+.vz-kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin:10px 0 12px}
+.vz-kpi{background:#fff;border:1px solid var(--line);border-radius:14px;padding:10px 12px;display:flex;flex-direction:column;gap:6px;min-width:0}
+.vz-kt{font-size:12px;color:var(--sub);font-weight:600}
+.vz-kv{display:flex;flex-wrap:wrap;gap:4px 12px;font-size:13px;color:var(--ink)}.vz-kv b{font-size:18px;font-variant-numeric:tabular-nums}.vz-kv .vz-big{font-size:22px}
+.vz-kv i,.vz-legend i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:5px;vertical-align:-1px}
+.vz-ks{font-size:11.5px;color:var(--sub);line-height:1.5}
+.vz-chg{font-weight:700;color:var(--ink);white-space:nowrap}.vz-chg.none{font-weight:400;color:var(--sub)}
+.vz-card h3{margin:0 0 6px}.vz-card h3 .sub{font-weight:400;font-size:12px}
+.vz-legend{display:flex;flex-wrap:wrap;gap:4px 14px;font-size:12px;color:var(--ink);margin:2px 0 4px}
+.vz-note{margin:2px 0 6px;font-size:12px}
+.vz-wrap{overflow:hidden}.vz-svg{display:block;max-width:100%;height:auto;touch-action:manipulation}
+.vz-grid{stroke:#e3edf2;stroke-width:1}.vz-base{stroke:#b9ccd6;stroke-width:1}
+.vz-ax{font-size:10.5px;fill:var(--sub,#4f6b7a);font-variant-numeric:tabular-nums}.vz-ax.dim{fill:#a9bcc6}
+.vz-end{font-size:11px;font-weight:700;fill:var(--ink,#0b2534)}
+.vz-hit{fill:transparent;cursor:pointer}.vz-hit:hover,.vz-hit.on{fill:rgba(14,116,144,.07)}
+.vz-read{margin:4px 0 0;font-size:12.5px;color:var(--ink);min-height:1.5em}
+.vz-more{margin-top:8px}.vz-more summary{cursor:pointer;font-size:12.5px;color:var(--accInk,#0e7490);font-weight:600;padding:4px 0}
+.vz-sep{color:var(--sub);margin:0 4px}
+@media (max-width:900px){.vz-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media (max-width:720px){.vz-kv b{font-size:17px}.vz-ks{font-size:12px}.vz-read{font-size:13px}}
+@media (max-width:360px){.vz-kpis{grid-template-columns:1fr}}

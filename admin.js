@@ -1,6 +1,7 @@
-import { approvalMailto } from './approval-email.js?v=1.17.5';
+import { approvalMailto } from './approval-email.js?v=1.18.0';
 // 어디물어 관리자 화면: 계정·세션·사용량·대화 로그·로그인/작업 기록. 관리자 계정으로 로그인한 탭에서만 동작.
-import { state, api, health, startTimer, syncExpiry, setOnAuthLost, logout } from './auth.js?v=1.17.5';
+import { state, api, health, startTimer, syncExpiry, setOnAuthLost, logout } from './auth.js?v=1.18.0';
+import { visitsHtml } from './admin-visits.js?v=1.18.0';
 const $ = s => document.querySelector(s);
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const dt = v => v ? new Date(v).toLocaleString('ko-KR', { timeZone: 'Asia/Seoul', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }) : '-';
@@ -199,6 +200,17 @@ const views = {
       <h4>4. 실행 조건</h4>${ul(s.conditions)}<p class="sub">실패 시 대체</p>${ul(s.fallbacks)}
       <h4>참고한 외부 MCP</h4>${ul(s.references)}</details>`).join('')}`;
   },
+  // 접속현황: 메인(로그인)·이용 신청 화면 방문자(하루 IP 1회) — 일간·월간·시즌·요일
+  async visits(opt = {}) {
+    const days = [14, 30, 90].includes(opt.days) ? opt.days : 30;
+    const { visits } = await api(`/v1/admin/visits?days=${days}`);
+    const draw = () => {
+      view.innerHTML = visitsHtml(visits, days, view.clientWidth - 50);
+      view.querySelectorAll('[data-vdays]').forEach(b => b.onclick = () => views.visits({ days: Number(b.dataset.vdays) }));
+      $('#vRefresh').onclick = async () => { const b = $('#vRefresh'); b.disabled = true; b.textContent = '불러오는 중…'; await views.visits({ days }); };
+    };
+    draw(); visitsRedraw = draw;
+  },
   async reports() {
     const { reports } = await api('/v1/admin/reports?limit=90');
     const ST = { ok: '<span class="pill ok">정상</span>', warn: '<span class="pill warn">주의</span>', critical: '<span class="pill bad">위험</span>' };
@@ -277,7 +289,7 @@ const capBar = c => c ? `<div class="capbar">${[['오늘 신청', c.registers], 
 const backBar = title => `<div class="tool"><div class="acts"><button id="backUsers">← 사용자</button></div><h2>${title}</h2></div>`;
 function bindBack() { const b = $('#backUsers'); if (b) b.onclick = () => go('users'); }
 async function go(v, opt) {
-  current = v; document.querySelectorAll('#atabs button').forEach(b => b.classList.toggle('active', b.dataset.v === v));
+  current = v; visitsRedraw = null; document.querySelectorAll('#atabs button').forEach(b => b.classList.toggle('active', b.dataset.v === v));
   try { await views[v](opt); } catch (e) { if (e.status !== 401) view.innerHTML = `<div class="card"><p class="sub">${esc(e.message)}</p></div>`; }
 }
 document.querySelectorAll('#atabs button').forEach(b => b.onclick = () => go(b.dataset.v));
@@ -291,6 +303,11 @@ function labelTables(root = view) {
   });
 }
 new MutationObserver(() => labelTables()).observe(view, { childList: true, subtree: true });
+// 접속현황 차트: 누르거나 올리면 아래 줄에 수치(휴대폰은 title 말풍선이 없어서), 화면 폭이 바뀌면 다시 그림
+let visitsRedraw = null, visitsW = 0;
+const showTip = e => { const t = e.target.closest?.('[data-tip]'); if (!t) return; const card = t.closest('.vz-card'); const out = card?.querySelector('.vz-read'); if (!out) return; out.textContent = t.dataset.tip; card.querySelectorAll('.vz-hit.on').forEach(x => x.classList.remove('on')); t.classList.add('on'); };
+view.addEventListener('click', showTip); view.addEventListener('pointerover', e => { if (e.pointerType === 'mouse') showTip(e); });
+addEventListener('resize', () => { clearTimeout(visitsW); visitsW = setTimeout(() => visitsRedraw?.(), 250); });
 
 (async () => {
   const h = await health();
