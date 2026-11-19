@@ -7,7 +7,7 @@ const GATE = { PASS: '안전 양호', PASS_WITH_CAUTION: '조건부 주의', REV
 const badge = g => g ? `<span class="badge b-${esc(g)}">${esc(GATE[g] ?? g)}</span>` : '';
 
 // ---- 설정·인증(auth.js) ----
-import { state, setApi, api, health, login, logout, startTimer, syncExpiry, saveAuth, setOnAuthLost, setOnMustChange, loadAuthImage, remaining, sessionMinutes } from './auth.js?v=1.18.2';
+import { state, setApi, api, health, login, logout, startTimer, syncExpiry, saveAuth, setOnAuthLost, setOnMustChange, loadAuthImage, remaining, sessionMinutes } from './auth.js?v=1.18.3';
 let SID = localStorage.getItem('gofishing.session') || (crypto.randomUUID?.() ?? String(Date.now()) + Math.random().toString(16).slice(2));
 localStorage.setItem('gofishing.session', SID);
 const SAVED_ID_KEY = 'gofishing.savedLoginId'; // 아이디 저장(이메일만, 비밀번호는 저장하지 않음)
@@ -473,6 +473,14 @@ $('#opinionForm').addEventListener('submit', async e => {
 });
 
 // ---- 입력칸 오른쪽 ⓧ: 값이 있을 때만 보이고, 누르면 지운 뒤 그 칸에 다시 포커스 ----
+// 비밀번호 보기/숨기기(지우기 버튼 왼쪽에 함께 둠). 로그인 화면을 다시 열면 항상 숨김으로 돌아간다
+function setPwVisible(on) {
+  const inp = $('#loginPw'), b = $('#loginPwEye'); if (!inp || !b) return;
+  inp.type = on ? 'text' : 'password';
+  b.setAttribute('aria-pressed', String(on)); b.setAttribute('aria-label', on ? '비밀번호 숨기기' : '비밀번호 보기'); b.classList.toggle('on', on);
+}
+$('#loginPwEye')?.addEventListener('mousedown', e => e.preventDefault()); // 포커스 유지(키보드가 닫히지 않게)
+$('#loginPwEye')?.addEventListener('click', () => { setPwVisible($('#loginPw').type === 'password'); $('#loginPw').focus(); });
 document.querySelectorAll('input[data-clearable]').forEach(inp => {
   const btn = inp.parentElement.querySelector('.clear-btn'); if (!btn) return;
   const sync = () => { btn.hidden = !inp.value; };
@@ -633,6 +641,7 @@ function renderUsage(u) {
   const chip = document.getElementById('usageChip'); if (chip && usageText) chip.textContent = usageText;
 }
 function showLogin(msg = '', ok = false) {
+  setPwVisible(false);
   hideTodayTip(); todayTipData = null;
   origins = []; clearTimeout(originNudgeTimer); hideOriginTip(); $('#originBar').hidden = true; if ($('#originDialog').open) $('#originDialog').close();
   clearAiLock();
@@ -721,6 +730,7 @@ $('#loginForm').addEventListener('submit', async e => {
   const btn = $('#loginBtn'); btn.disabled = true; $('#loginMsg').textContent = '';
   try {
     const pwTyped = $('#loginPw').value;
+    setPwVisible(false);
     const r = await login($('#loginId').value.trim(), pwTyped);
     if ($('#rememberId').checked) localStorage.setItem(SAVED_ID_KEY, $('#loginId').value.trim()); else localStorage.removeItem(SAVED_ID_KEY);
     $('#loginPw').value = ''; $('#loginPw').dispatchEvent(new Event('input'));

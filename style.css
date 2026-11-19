@@ -407,3 +407,9 @@ button.op-star.on{color:#f59e0b}
 button:disabled,.btn[aria-disabled="true"]{background:#d5dbe1 !important;background-image:none !important;border-color:#c3cad2 !important;color:#7b8794 !important;box-shadow:none !important;opacity:1 !important;cursor:not-allowed;pointer-events:none}
 /* 한국어 문장이 단어 중간에서 줄바꿈되지 않게(모든 화면) */
 body{word-break:keep-all;overflow-wrap:anywhere}
+/* 비밀번호 입력칸: [지우기 ⓧ][보기 👁] 함께 배치 */
+.clearable.has-eye input{padding-right:84px}
+.clearable.has-eye .clear-btn{right:44px}
+.eye-btn{position:absolute;right:6px;top:50%;transform:translateY(-50%);width:36px;height:36px;display:grid;place-items:center;border:0;background:transparent;border-radius:10px;cursor:pointer;color:#64748b}
+.eye-btn:hover{color:#0b2534;background:#eef5f8}.eye-btn:focus-visible{outline:2px solid #22d3ee;outline-offset:1px}
+.eye-btn .eye-off{display:none}.eye-btn.on .eye-on{display:none}.eye-btn.on .eye-off{display:block}.eye-btn.on{color:#0e8fb0}
