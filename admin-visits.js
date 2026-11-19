@@ -118,10 +118,11 @@ function card(sec, ui, title, basis, body) {
 
 // ---------- 섹션 ----------
 /** 기기·지역: 최근 N일(오늘 포함) 외부 방문자를 항목별로 묶어 막대·비율로(메인·신청 따로) */
+const LAST = k => k === '알 수 없음' ? 2 : k === '기타' ? 1 : 0; // '기타'·'알 수 없음'은 맨 뒤
 export function groupSegments(rows, field) {
   const m = new Map();
   for (const r of rows ?? []) { const k = r[field] || '알 수 없음'; const g = m.get(k) ?? { key: k, main: 0, register: 0 }; g[r.page] = (g[r.page] ?? 0) + (Number(r.visitors) || 0); m.set(k, g); }
-  return [...m.values()].map(g => ({ ...g, total: g.main + g.register })).sort((a, b) => (a.key === '알 수 없음') - (b.key === '알 수 없음') || b.total - a.total);
+  return [...m.values()].map(g => ({ ...g, total: g.main + g.register })).sort((a, b) => LAST(a.key) - LAST(b.key) || b.total - a.total);
 }
 function segList(title, list, tot) {
   if (!list.length) return '';
@@ -140,7 +141,7 @@ function devicesSec(v, ui) {
     ${segList('기기', groupSegments(sg.rows, 'platform'), tot)}
     ${segList('운영체제', groupSegments(sg.rows, 'os_family'), tot)}
     ${segList('브라우저', groupSegments(sg.rows, 'browser'), tot)}
-    ${noRegion ? '<div class="vz-seglist"><h4>지역</h4><p class="sub vz-note">IP 위치 데이터(GeoLite2)를 연결하면 시·도별로 보여 드려요. 지금은 저장할 준비만 되어 있어요.</p></div>' : segList('지역(시·도)', regions, tot)}`;
+    ${noRegion ? '<div class="vz-seglist"><h4>지역(시·도)</h4><p class="sub vz-note">지역은 2026.11.19 오후부터 기록해요. 그전 방문은 \'알 수 없음\'으로 보여요.</p></div>' : segList('지역(시·도)', regions, tot) + '<p class="sub vz-note">지역은 접속 IP로 추정한 시·도예요(휴대폰 데이터는 통신사 위치로 잡힐 수 있어요). IP Geolocation by <a href="https://db-ip.com" target="_blank" rel="noopener">DB-IP</a></p>'}`;
   return card('devices', ui, '기기·지역', `${esc(range(sg.from, sg.to))} · 외부 방문자 ${num(tot)}명`, body);
 }
 

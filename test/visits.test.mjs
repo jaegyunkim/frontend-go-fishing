@@ -131,5 +131,7 @@ test('기기·지역: 항목별 묶기(메인·신청 합산, 알 수 없음은 
   assert.deepEqual(groupSegments(rows, 'platform').map(g => [g.key, g.main, g.register, g.total]), [['아이폰', 3, 1, 4], ['안드로이드', 2, 0, 2], ['알 수 없음', 9, 0, 9]]);
   const v = full(); v.segments = { days: 7, from: '2026-11-13', to: '2026-11-19', rows: [{ page: 'main', platform: '아이폰', os_family: 'iOS', browser: 'Chrome', region: '알 수 없음', visitors: 2 }] };
   const h = vh(v, 7, 360, { sec: 'devices' });
-  assert.match(h, /외부 방문자 2명/); assert.match(h, /아이폰/); assert.match(h, /GeoLite2/);
+  assert.match(h, /외부 방문자 2명/); assert.match(h, /아이폰/); assert.match(h, /지역\(시·도\)/);
+  v.segments.rows.push({ page: 'register', platform: '안드로이드', os_family: 'Android', browser: '삼성 인터넷', region: '부산', visitors: 1 });
+  assert.match(vh(v, 7, 360, { sec: 'devices' }), /부산[\s\S]*DB-IP/);
 });
