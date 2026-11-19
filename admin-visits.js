@@ -15,7 +15,7 @@ const dayLabel = d => `${md(d)}(${WD[new Date(d + 'T00:00:00Z').getUTCDay()]})`;
 const range = (a, b) => a === b ? dayLabel(a) : `${dayLabel(a)}~${dayLabel(b)}`;
 const SERIES = [{ key: 'main', name: '메인(로그인)', color: '#2a78d6' }, { key: 'register', name: '이용 신청', color: '#eb6834' }];
 /** 섹션 목록(탭 순서) */
-export const SECTIONS = [['hourly', '시간별'], ['daily', '일간'], ['weekday', '요일별'], ['weekly', '주간별'], ['monthly', '월간'], ['seasons', '시즌별'], ['yearly', '연간'], ['devices', '기기·지역']];
+export const SECTIONS = [['hourly', '시간별'], ['daily', '일간'], ['weekday', '요일별'], ['weekly', '주간별'], ['monthly', '월간'], ['seasons', '시즌별'], ['yearly', '연간'], ['devices', '기기'], ['regions', '지역']];
 
 /** 증감 표시: ▲ 12.5% / ▼ 3% / 같아요 / 비교 불가 문구 */
 export function changeText(v, none = '비교할 데이터가 아직 없어요') {
@@ -130,19 +130,35 @@ function segList(title, list, tot) {
     <div class="vz-segbar" aria-hidden="true">${SERIES.map(x => `<i style="width:${tot ? (g[x.key] / tot * 100).toFixed(1) : 0}%;background:${x.color}"></i>`).join('')}</div>
     <div class="vz-segv sub">메인 ${num(g.main)} · 신청 ${num(g.register)}</div></div>`).join('')}</div>`;
 }
-function devicesSec(v, ui) {
-  const sg = v.segments;
-  if (!sg) return card('devices', ui, '기기·지역', '', '<p class="sub vz-note">서버가 아직 이 지표를 보내지 않아요. 백엔드를 v1.3.50 이상으로 올리면 보여요.</p>');
+function segBase(v) {
+  const sg = v.segments; if (!sg) return null;
   const tot = sg.rows.reduce((a, r) => a + (Number(r.visitors) || 0), 0);
-  const known = sg.rows.filter(r => r.platform !== '알 수 없음').reduce((a, r) => a + (Number(r.visitors) || 0), 0);
-  const regions = groupSegments(sg.rows, 'region'), noRegion = regions.every(g => g.key === '알 수 없음');
-  const body = !tot ? '<p class="sub vz-note">이 기간에는 방문자가 없어요.</p>' : `${legend()}
-    ${known < tot ? `<p class="sub vz-note">기기 기록은 2026.11.19부터 시작했어요. 그전 방문 ${num(tot - known)}명은 '알 수 없음'으로 보여요.</p>` : ''}
+  return { sg, tot, basis: `${esc(range(sg.from, sg.to))} · 외부 방문자 ${num(tot)}명` };
+}
+const segLegacy = '<p class="sub vz-note">서버가 아직 이 지표를 보내지 않아요. 백엔드를 v1.3.50 이상으로 올리면 보여요.</p>';
+const noVisits = '<p class="sub vz-note">이 기간에는 방문자가 없어요.</p>';
+/** 기기 탭: 기기·운영체제·브라우저 */
+function devicesSec(v, ui) {
+  const b = segBase(v); if (!b) return card('devices', ui, '기기별 방문자', '', segLegacy);
+  const { sg, tot } = b;
+  const unknown = sg.rows.filter(r => r.platform === '알 수 없음').reduce((a, r) => a + (Number(r.visitors) || 0), 0);
+  const body = !tot ? noVisits : `${legend()}
+    ${unknown ? `<p class="sub vz-note">기기 기록은 2026.11.19부터 시작했어요. 그전 방문 ${num(unknown)}명은 '알 수 없음'으로 보여요.</p>` : ''}
     ${segList('기기', groupSegments(sg.rows, 'platform'), tot)}
     ${segList('운영체제', groupSegments(sg.rows, 'os_family'), tot)}
-    ${segList('브라우저', groupSegments(sg.rows, 'browser'), tot)}
-    ${noRegion ? '<div class="vz-seglist"><h4>지역(시·도)</h4><p class="sub vz-note">지역은 2026.11.19 오후부터 기록해요. 그전 방문은 \'알 수 없음\'으로 보여요.</p></div>' : segList('지역(시·도)', regions, tot) + '<p class="sub vz-note">지역은 접속 IP로 추정한 시·도예요(휴대폰 데이터는 통신사 위치로 잡힐 수 있어요). IP Geolocation by <a href="https://db-ip.com" target="_blank" rel="noopener">DB-IP</a></p>'}`;
-  return card('devices', ui, '기기·지역', `${esc(range(sg.from, sg.to))} · 외부 방문자 ${num(tot)}명`, body);
+    ${segList('브라우저', groupSegments(sg.rows, 'browser'), tot)}`;
+  return card('devices', ui, '기기별 방문자', b.basis, body);
+}
+/** 지역 탭: 접속 IP 로 추정한 시·도(국내) / 해외 나라 */
+function regionsSec(v, ui) {
+  const b = segBase(v); if (!b) return card('regions', ui, '지역별 방문자', '', segLegacy);
+  const { sg, tot } = b;
+  const regions = groupSegments(sg.rows, 'region'), unknown = regions.find(g => g.key === '알 수 없음')?.total ?? 0;
+  const body = !tot ? noVisits : `${legend()}
+    ${unknown ? `<p class="sub vz-note">지역은 2026.11.19 오후부터 기록해요. 그전 방문 ${num(unknown)}명은 '알 수 없음'으로 보여요.</p>` : ''}
+    ${segList('지역(시·도)', regions, tot)}
+    <p class="sub vz-note">지역은 접속 IP로 추정한 시·도예요(휴대폰 데이터는 통신사 위치로 잡힐 수 있어요). IP Geolocation by <a href="https://db-ip.com" target="_blank" rel="noopener">DB-IP</a></p>`;
+  return card('regions', ui, '지역별 방문자', b.basis, body);
 }
 
 function hourlySec(v, ui, cw) {
@@ -260,7 +276,7 @@ export function visitsHtml(v, days = 30, width = 360, ui = {}) {
     <div class="vz-kpi"><span class="vz-kt">신청 화면 이동률(30일)</span><div class="vz-kv"><b class="vz-big">${pct(k.funnel30.rate)}</b></div><div class="vz-ks">메인 방문자 ${num(k.funnel30.main)}명 중 같은 날 신청 화면도 연 분 ${num(k.funnel30.both)}명 · 신청 화면으로 바로 온 분 ${num(k.funnel30.directRegister)}명</div></div>
   </div>`;
   const tabs = `<div class="vz-tabs" role="tablist" aria-label="접속현황 기간 단위">${SECTIONS.map(([s, name]) => `<button type="button" role="tab" id="vzt-${s}" data-vsec="${s}" aria-controls="vz-${s}" aria-selected="${s === sec}"${s === sec ? ' class="on"' : ''}>${name}</button>`).join('')}</div>`;
-  const body = [hourlySec(v, u, cw), dailySec(v, u, cw, days), weekdaySec(v, u, cw), weeklySec(v, u, cw), monthlySec(v, u, cw), seasonSec(v, u, cw), yearlySec(v, u, cw), devicesSec(v, u)].join('');
+  const body = [hourlySec(v, u, cw), dailySec(v, u, cw, days), weekdaySec(v, u, cw), weeklySec(v, u, cw), monthlySec(v, u, cw), seasonSec(v, u, cw), yearlySec(v, u, cw), devicesSec(v, u), regionsSec(v, u)].join('');
   const foot = `<details class="card vz-foot"><summary><h3>집계 기준</h3></summary><ul class="sk-ul">
     <li>방문자는 하루(한국 시간 0시~24시) 동안 같은 IP에서 같은 화면을 여러 번 열어도 1명으로 세요. 같은 와이파이·통신사 IP를 함께 쓰는 여러 분은 1명으로 셀 수 있어요.</li>
     <li>시간별은 그날 처음 연 시각에 1명으로 세요. 그래서 시간별을 모두 더하면 그날 방문자 수와 같아요.</li>

@@ -68,7 +68,7 @@ const full = () => ({ ...base, today: '2026-11-19',
 const spell = h => { for (const m of h.matchAll(/([가-힣])예요/g)) assert.equal((m[1].charCodeAt(0) - 0xac00) % 28, 0, m[0]); for (const m of h.matchAll(/([가-힣])이에요/g)) assert.notEqual((m[1].charCodeAt(0) - 0xac00) % 28, 0, m[0]); };
 const pane = (h, s) => h.match(new RegExp(`<section[^>]*data-vsec-pane="${s}"[^>]*>[\\s\\S]*?</section>`))[0];
 test('섹션 탭: 짧은 단위→긴 단위 순서, 고른 섹션만 보이고 나머지는 숨김', () => {
-  assert.deepEqual(SECTIONS.map(s => s[1]), ['시간별', '일간', '요일별', '주간별', '월간', '시즌별', '연간', '기기·지역']);
+  assert.deepEqual(SECTIONS.map(s => s[1]), ['시간별', '일간', '요일별', '주간별', '월간', '시즌별', '연간', '기기', '지역']);
   const h = visitsHtml(full(), 30, 360, { sec: 'weekly' });
   const order = [...h.matchAll(/data-vsec-pane="(\w+)"/g)].map(m => m[1]); assert.deepEqual(order, SECTIONS.map(s => s[0]));
   assert.match(h, /data-vsec="weekly" aria-controls="vz-weekly" aria-selected="true" class="on"/);
@@ -131,7 +131,8 @@ test('기기·지역: 항목별 묶기(메인·신청 합산, 알 수 없음은 
   assert.deepEqual(groupSegments(rows, 'platform').map(g => [g.key, g.main, g.register, g.total]), [['아이폰', 3, 1, 4], ['안드로이드', 2, 0, 2], ['알 수 없음', 9, 0, 9]]);
   const v = full(); v.segments = { days: 7, from: '2026-11-13', to: '2026-11-19', rows: [{ page: 'main', platform: '아이폰', os_family: 'iOS', browser: 'Chrome', region: '알 수 없음', visitors: 2 }] };
   const h = vh(v, 7, 360, { sec: 'devices' });
-  assert.match(h, /외부 방문자 2명/); assert.match(h, /아이폰/); assert.match(h, /지역\(시·도\)/);
+  assert.match(h, /외부 방문자 2명/); assert.match(h, /아이폰/);
+  assert.match(vh(v, 7, 360, { sec: 'regions' }), /지역\(시·도\)/);
   v.segments.rows.push({ page: 'register', platform: '안드로이드', os_family: 'Android', browser: '삼성 인터넷', region: '부산', visitors: 1 });
-  assert.match(vh(v, 7, 360, { sec: 'devices' }), /부산[\s\S]*DB-IP/);
+  assert.match(pane(vh(v, 7, 360, { sec: 'regions' }), 'regions'), /부산[\s\S]*DB-IP/);
 });
