@@ -1,7 +1,7 @@
-import { approvalMailto } from './approval-email.js?v=1.18.8';
+import { approvalMailto } from './approval-email.js?v=1.19.0';
 // 어디물어 관리자 화면: 계정·세션·사용량·대화 로그·로그인/작업 기록. 관리자 계정으로 로그인한 탭에서만 동작.
-import { state, api, health, startTimer, syncExpiry, setOnAuthLost, logout } from './auth.js?v=1.18.8';
-import { visitsHtml } from './admin-visits.js?v=1.18.8';
+import { state, api, health, startTimer, syncExpiry, setOnAuthLost, logout } from './auth.js?v=1.19.0';
+import { visitsHtml } from './admin-visits.js?v=1.19.0';
 const $ = s => document.querySelector(s);
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const dt = v => v ? new Date(v).toLocaleString('ko-KR', { timeZone: 'Asia/Seoul', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }) : '-';
@@ -18,6 +18,18 @@ const dialog = (html, onSubmit) => new Promise(resolve => {
   $('#dlg').onclose = async () => { if ($('#dlg').returnValue === 'ok' && onSubmit) resolve(await onSubmit(new FormData(f))); else resolve(null); };
   $('#dlg').showModal();
 });
+// 한도 입력값을 그대로 풀어 쓴 안내(예: 하루 로그인 2, 세션 20분 → 하루에 두 번, 한 번에 20분·하루 최대 40분)
+const COUNT_KO = ['', '한', '두', '세', '네', '다섯', '여섯', '일곱', '여덟', '아홉', '열'];
+const times = v => { const k = Math.trunc(Number(v)); return (COUNT_KO[k] ?? k.toLocaleString('ko-KR')) + ' 번'; };
+const num = v => Number(v || 0).toLocaleString('ko-KR');
+const minutesKo = v => { const m = Math.trunc(Number(v) || 0), h = Math.floor(m / 60), r = m % 60; return h ? `${h}시간${r ? ` ${r}분` : ''}` : `${m}분`; };
+function limitsText(role, L) {
+  const per = `로그인할 때마다 ${minutesKo(L.sessionMinutes)} 동안 이용할 수 있어요`;
+  const q = `질문은 세션당 ${num(L.sessionMessages)}개·하루 ${num(L.dailyMessages)}개, AI 토큰은 하루 ${num(L.dailyTokens)}개까지예요.`;
+  if (role === 'user') return `이 계정은 하루(24시간)에 ${times(L.dailySessions)} 로그인할 수 있고, ${per}(하루 최대 ${minutesKo(L.sessionMinutes * L.dailySessions)}). ${q}`;
+  if (role === 'tester') return `내부 테스터는 로그인 횟수 제한 없이 ${per}. ${q} (하루 로그인 ${num(L.dailySessions)}회 한도는 베타 테스터로 바꾸면 적용돼요.)`;
+  return `관리자는 로그인 횟수 제한 없이 ${per}. 질문·토큰 한도는 관리자에게는 적용되지 않고, 베타 테스터·내부 테스터로 바꾸면 적용돼요.`;
+}
 const showSecret = async (title, pw, approvalEmail = null) => {
  const pending=dialog('<h2>'+esc(title)+'</h2><p class="hint">임시 비밀번호는 이 창에서만 확인할 수 있어요. 신청자에게 안전하게 전달해 주세요. 첫 로그인에 비밀번호를 변경해야 해요.</p><p class="access-url"><span>모바일 접속 주소</span><a id="accessUrl" target="_blank" rel="noopener noreferrer"></a></p><input id="issuedSecret" type="password" readonly autocomplete="off"><div class="row secret-actions"><button id="revealSecret" type="button">비밀번호 보기</button>'+(approvalEmail?'<button id="sendApprovalEmail" type="button" class="ghost">메일 보내기</button></div><p id="approvalMailStatus" class="hint" role="status">기기의 기본 메일 앱에 받는 사람·제목·내용을 채워요. 메일 앱에서 확인 후 직접 보내 주세요. 메일 앱이 설정되어 있어야 해요.</p>':'</div>'));
  const accessUrl=window.GOFISHING_PUBLIC_URL||new URL('./',location.href).href; $('#accessUrl').href=accessUrl; $('#accessUrl').textContent=accessUrl; $('#issuedSecret').value=pw; $('#revealSecret').onclick=()=>{const x=$('#issuedSecret');x.type=x.type==='password'?'text':'password';$('#revealSecret').textContent=x.type==='password'?'비밀번호 보기':'비밀번호 숨기기';};
@@ -107,14 +119,14 @@ const views = {
     ${users.map(u => `<tr><td><b>${esc(u.loginId)}</b><br><span class="sub">${esc(u.displayName)}${u.memo ? ' · ' + esc(u.memo) : ''}</span><br><button class="mini-btn" data-detail="opinions" data-id="${u.id}" data-login="${esc(u.loginId)}"${u.opinionCount ? '' : ' disabled title="보낸 의견이 없어요"'}>의견 ${n(u.opinionCount)}</button></td>
       <td>${roleText(u.role)} <span class="sub">${u.role === 'user' ? '· 1기기' : '· 동시 접속 허용'}</span><br><span class="pill ${u.status === 'active' ? 'ok' : 'bad'}">${u.status === 'active' ? '사용' : '중지'}</span>${u.lockedUntil && new Date(u.lockedUntil) > new Date() ? ' <span class="pill warn">잠김</span>' : ''}${u.activeSessions ? ' <span class="pill ok">접속 중</span>' : ''}${u.mustChangePassword ? ' <span class="pill warn">비번 변경 대기</span>' : ''}</td>
       <td class="num">${n(u.today.messages)}/${n(u.limits.dailyMessages)}${u.today.blocked ? `<br><span class="sub">거절 ${u.today.blocked}</span>` : ''}<br><button class="mini-btn" data-detail="questions" data-id="${u.id}" data-login="${esc(u.loginId)}">질문</button></td><td class="num">${n(u.today.tokens)}/${n(u.limits.dailyTokens)}<br><button class="mini-btn" data-detail="usage" data-id="${u.id}" data-login="${esc(u.loginId)}">토큰</button></td>
-      <td class="num">${n(u.today.sessions)}<br><span class="sub">${u.role === "user" ? "24시간 1회" : "제한 없음"}</span></td><td>${u.limits.sessionMinutes}분 · 질문 ${u.limits.sessionMessages}</td><td>${esc(devPlat(u.device))}<br>${esc(devBrowser(u.device))}<br>${dt(u.lastLoginAt)}${u.nextLoginAt?`<br><span class="sub">재이용 ${dt(u.nextLoginAt)}</span>`:""}<br><button class="mini-btn" data-detail="logins" data-id="${u.id}" data-login="${esc(u.loginId)}">위치</button></td>
+      <td class="num">${n(u.today.sessions)}<br><span class="sub">${u.role === "user" ? `24시간 ${n(u.logins24h ?? 0)}/${n(u.limits.dailySessions)}회` : "제한 없음"}</span></td><td>${u.limits.sessionMinutes}분 · 질문 ${u.limits.sessionMessages}</td><td>${esc(devPlat(u.device))}<br>${esc(devBrowser(u.device))}<br>${dt(u.lastLoginAt)}${u.nextLoginAt?`<br><span class="sub">재이용 ${dt(u.nextLoginAt)}</span>`:""}<br><button class="mini-btn" data-detail="logins" data-id="${u.id}" data-login="${esc(u.loginId)}">위치</button></td>
       <td><div class="acts" data-id="${u.id}" data-login="${esc(u.loginId)}"><button data-a="limits">한도</button><button data-a="role">권한</button><button data-a="reset">비번 초기화</button>${u.lockedUntil ? '<button data-a="unlock">잠금 해제</button>' : ''}
         <button data-a="toggle" class="${u.status === 'active' ? 'danger' : ''}">${u.status === 'active' ? '중지' : '재개'}</button><button data-a="chats">대화</button></div></td></tr>`).join('')}</table></div>`;
     view.querySelectorAll('[data-detail]').forEach(b => b.onclick = () => go(b.dataset.detail === 'opinions' ? 'opinions' : 'user_' + b.dataset.detail, { user: b.dataset.id, label: b.dataset.login }));
     $('#add').onclick = async () => {
       const r = await dialog(`<h2>계정 발급</h2><label>아이디 (베타 테스터는 이메일, 관리자·내부 테스터는 영문 아이디도 가능)<input name="loginId" required maxlength="254"></label><label>이름<input name="displayName" required maxlength="40"></label>
         <label>역할<select name="role"><option value="user">일반 (한 기기만)</option><option value="tester">내부 테스터 (동시 접속 허용)</option><option value="admin">관리자 (동시 접속 허용)</option></select></label><label>메모<input name="memo" maxlength="100"></label>
-        <p class="hint">한도 기본값: 베타 테스터: 세션 10분 고정·24시간에 1회 로그인, 세션당 질문 10·하루 질문 10·토큰 1,000. 정원: 베타 테스터 100명·하루 신청 100건·하루 로그인 100명(관리자·내부 테스터 예외). 발급 후 '한도'에서 바꿀 수 있어요.</p>`,
+        <p class="hint">한도 기본값: 세션 10분·24시간에 1번 로그인(베타 테스터), 세션당 질문 10·하루 질문 10·토큰 1,000. 정원: 베타 테스터 100명·하루 신청 100건·하루 로그인 100명(관리자·내부 테스터 예외). 발급 후 '한도'에서 바꿀 수 있어요.</p>`,
         fd => api('/v1/admin/users', { method: 'POST', body: JSON.stringify(Object.fromEntries(fd)) }).catch(e => ({ error: e.message })));
       if (r?.error) return note(r.error, true);
       if (r?.user?.tempPassword) await showSecret(`${r.user.loginId} 계정을 만들었어요`, r.user.tempPassword);
@@ -126,11 +138,15 @@ const views = {
       try {
         if (b.dataset.a === 'limits') {
           const L = u.limits;
-          const r = await dialog(`<h2>${esc(login)} 한도</h2><div class="grid2">
-            <label>세션 시간(분)<input name="sessionMinutes" type="number" min="1" max="120" value="${L.sessionMinutes}" ${u.role === "admin" ? "" : "disabled"}></label><label>세션당 질문<input name="sessionMessages" type="number" min="1" value="${L.sessionMessages}"></label>
-            <label>하루 질문<input name="dailyMessages" type="number" min="1" value="${L.dailyMessages}"></label><label>하루 로그인<input name="dailySessions" type="number" min="1" value="${L.dailySessions}" disabled></label>
-            <label>하루 AI 토큰<input name="dailyTokens" type="number" min="0" value="${L.dailyTokens}"></label></div><p class="hint">질문·토큰 한도는 저장 즉시 적용돼요. 관리자 계정의 세션 시간은 이용 중인 세션에도 바로 반영돼요(로그인 시각 기준). 베타 테스터는 10분·24시간 1회 고정이에요.</p>`,
+          const pending = dialog(`<h2>${esc(login)} 한도</h2><div class="grid2">
+            <label>세션 시간(분)<input name="sessionMinutes" type="number" min="1" max="1440" step="1" required value="${L.sessionMinutes}"></label><label>세션당 질문<input name="sessionMessages" type="number" min="1" max="10000" step="1" required value="${L.sessionMessages}"></label>
+            <label>하루 질문<input name="dailyMessages" type="number" min="1" max="10000" step="1" required value="${L.dailyMessages}"></label><label>하루 로그인<input name="dailySessions" type="number" min="1" max="100" step="1" required value="${L.dailySessions}"></label>
+            <label>하루 AI 토큰<input name="dailyTokens" type="number" min="0" max="100000000" step="1" required value="${L.dailyTokens}"></label></div><p class="hint" id="limitsHint" aria-live="polite"></p>
+            <p class="hint">저장하면 바로 적용돼요. 세션 시간은 이용 중인 세션에도 로그인 시각 기준으로 바로 반영돼요.</p>`,
           fd => patch(Object.fromEntries([...fd].map(([k, v]) => [k, Number(v)]))));
+          const lf = $('#dlgForm'), showHint = () => { $('#limitsHint').textContent = limitsText(u.role, Object.fromEntries(new FormData(lf))); };
+          lf.oninput = showHint; showHint();
+          const r = await pending; lf.oninput = null;
           if (r) { note(`${login} 한도를 저장했어요 · 즉시 적용${r.adjustedSessions ? ` (이용 중인 세션 ${r.adjustedSessions}개 시간 변경)` : ''}`); if (String(id) === String(state.auth?.user?.id)) { const me = await api('/v1/auth/me'); syncExpiry(me.remainingSec); $('#who').textContent = `${me.user.displayName}(${me.user.loginId}) · 세션 ${me.limits.sessionMinutes}분`; } }
         } else if (b.dataset.a === 'role') {
           const r = await dialog(`<h2>${esc(login)} 권한</h2><label>역할<select name="role">${['user', 'tester', 'admin'].map(x => `<option value="${x}"${x === u.role ? ' selected' : ''}>${roleText(x)}</option>`).join('')}</select></label>

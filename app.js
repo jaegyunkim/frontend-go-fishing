@@ -7,7 +7,7 @@ const GATE = { PASS: '안전 양호', PASS_WITH_CAUTION: '조건부 주의', REV
 const badge = g => g ? `<span class="badge b-${esc(g)}">${esc(GATE[g] ?? g)}</span>` : '';
 
 // ---- 설정·인증(auth.js) ----
-import { state, setApi, api, health, login, logout, startTimer, syncExpiry, saveAuth, setOnAuthLost, setOnMustChange, loadAuthImage, remaining, sessionMinutes } from './auth.js?v=1.18.8';
+import { state, setApi, api, health, login, logout, startTimer, syncExpiry, saveAuth, setOnAuthLost, setOnMustChange, loadAuthImage, remaining, sessionMinutes, loginQuota, timesKo } from './auth.js?v=1.19.0';
 let SID = localStorage.getItem('gofishing.session') || (crypto.randomUUID?.() ?? String(Date.now()) + Math.random().toString(16).slice(2));
 localStorage.setItem('gofishing.session', SID);
 const SAVED_ID_KEY = 'gofishing.savedLoginId'; // 아이디 저장(이메일만, 비밀번호는 저장하지 않음)
@@ -438,9 +438,9 @@ $('#btnSettings').onclick = openSettings;
 $('#btnLogout').onclick = () => {
   const role = state.auth?.user?.role, d = $('#logoutDialog');
   if ($('#settings').open) $('#settings').close();
-  // 베타 테스터는 로그인한 시각부터 24시간 뒤에 다시 이용할 수 있어 미리 안내, 관리자·내부 테스터는 바로 다시 로그인 가능
+  // 베타 테스터는 24시간 동안 계정별 횟수만큼 로그인할 수 있어 남은 횟수를 미리 안내, 관리자·내부 테스터는 바로 다시 로그인 가능
   $('#logoutMsg').textContent = role === 'user'
-    ? '오늘도 어디물어를 이용해 주셔서 감사해요.\n로그아웃하면 24시간이 지난 뒤 다시 이용할 수 있어요.'
+    ? '오늘도 어디물어를 이용해 주셔서 감사해요.\n' + nextLoginText(loginQuota(), '로그아웃해도')
     : '이용해 주셔서 감사해요.\n필요하실 때 언제든 다시 로그인해 주세요.';
   d.returnValue = 'cancel';
   d.onclose = () => { if (d.returnValue === 'ok') endSession('로그아웃했어요.', true); else markActive?.(); };
@@ -649,6 +649,7 @@ function showLogin(msg = '', ok = false) {
   $('#settings').close(); $('#serverSettingsLink').hidden = true;
   $('#appView').hidden = true; $('#loginView').hidden = false;
   $('#sessionMinutesNote').textContent = state.sessionMinutes;
+  $('#dailySessionsNote').textContent = timesKo(state.dailySessions);
   const m = $('#loginMsg'); m.textContent = msg; m.className = 'login-msg' + (ok ? ' ok' : '');
   // 아이디 저장: 저장된 이메일이 있으면 채우고 비밀번호 칸으로 바로 이동
   const saved = localStorage.getItem(SAVED_ID_KEY);
@@ -664,10 +665,11 @@ function enterApp() {
     timer?.stop();
     timer = startTimer($('#timer'), {
       onWarn: s => toast(`약 ${s}초 뒤 자동 로그아웃돼요. 필요한 내용은 지금 확인해 주세요.`),
-      onExpire: () => { const min = sessionMinutes(); endSession(`${min}분 이용 시간이 끝나 로그아웃했어요.`, false, 'expired'); showSessionEnd(min); }
+      onExpire: () => { const min = sessionMinutes(), role = state.auth?.user?.role, lq = loginQuota(); endSession(`${min}분 이용 시간이 끝나 로그아웃했어요.`, false, 'expired'); showSessionEnd(min, role, lq); }
     });
     const u = state.auth.user;
-    bubble('bot', md(`**${u.displayName}**님, 반가워요. 이번 로그인은 **${sessionMinutes()}분** 동안 이용할 수 있어요.`));
+    const lq = loginQuota();
+    bubble('bot', md(`**${u.displayName}**님, 반가워요. 이번 로그인은 **${sessionMinutes()}분** 동안 이용할 수 있어요.${lq ? ` 24시간 동안 ${timesKo(lq.limit)} 로그인할 수 있고, 지금이 ${lq.used}번째예요.` : ''}`));
     refreshUsage();
     suggestWeekend();
     // 하루 한 번 추천 말풍선(대화 기록 → 없으면 출발지 주변). 출발지가 없으면 등록 독려 말풍선이 함께 뜬다
@@ -681,6 +683,7 @@ async function refreshUsage() {
   try {
     const me = await api('/v1/auth/me', { timeoutMs: 10000 });
     syncExpiry(me.remainingSec);
+    if (me.logins && state.auth) saveAuth({ ...state.auth, logins: me.logins });
     renderUsage({ session: { messages: me.session.messages, limit: me.limits.sessionMessages }, today: { messages: me.usage.today.messages, limit: me.limits.dailyMessages } });
     applyAiLock(me.ai);
   } catch { /* 401 은 자동 로그아웃 처리 */ }
@@ -692,9 +695,18 @@ function endSession(msg, ok = false, reason = 'logout') {
   chat.innerHTML = ''; $('#brief').innerHTML = '<p class="empty">포인트를 고르면 상세 브리핑이 여기에 표시돼요.</p>'; slots = {}; renderChips();
   showLogin(msg, ok); ending = false;
 }
-function showSessionEnd(min) {
+/** 베타 테스터 다음 로그인 안내(계정별 하루 로그인 횟수 기준) */
+function nextLoginText(lq, lead = '') {
+  if (!lq) return '로그인한 시각부터 24시간이 지나면 다시 이용할 수 있어요.';
+  if (lq.left > 0) return `${lead ? lead + ' ' : ''}24시간 안에 ${timesKo(lq.left)} 더 로그인할 수 있어요(하루 ${timesKo(lq.limit)}).`;
+  const at = lq.nextAt ? new Date(lq.nextAt).toLocaleString('ko-KR', { timeZone: 'Asia/Seoul', month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : '';
+  return `24시간 동안 로그인할 수 있는 ${timesKo(lq.limit)}을 모두 썼어요.${at ? `\n다음 로그인: ${at}` : '\n가장 이른 로그인 시각부터 24시간이 지나면 다시 이용할 수 있어요.'}`;
+}
+function showSessionEnd(min, role, lq) {
   // 이용 시간 만료 안내창: 로그아웃은 이미 끝났고, 확인을 누르면 로그인 화면에 그대로 머문다
-  showNotice('오늘 이용 시간이 끝났어요', `오늘 하루 이용 시간은 로그인 1회당 ${min}분이에요.\n이용해 주셔서 감사해요. 내일 다시 찾아 주세요.`);
+  if (role !== 'user') return showNotice('이용 시간이 끝났어요', `이 계정은 로그인 1회당 ${min}분 이용할 수 있어요.\n필요하시면 다시 로그인해 주세요.`);
+  const more = lq && lq.left > 0;
+  showNotice(more ? '이번 이용 시간이 끝났어요' : '오늘 이용 시간이 끝났어요', `로그인 1회당 ${min}분 이용할 수 있어요.\n${nextLoginText(lq)}\n이용해 주셔서 감사해요.${more ? '' : ' 내일 다시 찾아 주세요.'}`);
 }
 function showNotice(title, msg) {
   const d = $('#sessionEndDialog'); if (!d || d.open) return;

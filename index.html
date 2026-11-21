@@ -9,7 +9,7 @@
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" href="assets/icon.svg" type="image/svg+xml">
   <link rel="apple-touch-icon" href="assets/icon-192.png">
-  <link rel="stylesheet" href="style.css?v=1.18.8">
+  <link rel="stylesheet" href="style.css?v=1.19.0">
 </head>
 <body>
   <!-- 로그인 화면 -->
@@ -26,11 +26,11 @@
       </form>
       <p id="loginMsg" class="login-msg" role="alert"></p>
       <details class="login-notes-wrap"><summary>이용 안내</summary><ul class="login-notes">
-        <li>로그인 1회당 <b id="sessionMinutesNote">10</b>분 이용 후 자동 로그아웃돼요.</li>
+        <li>로그인 1회당 <b id="sessionMinutesNote">10</b>분 이용 후 자동 로그아웃돼요(계정마다 다를 수 있어요).</li>
         <li>질문 수와 AI 사용량에 하루 한도가 있어요.</li>
         <li>대화 내용은 서비스 개선과 운영을 위해 30일간 보관되며, 출발지는 시·군·구·동(읍·면) 단위로만 저장해요.</li>
         <li>로그인 직후 위치 사용을 허용하시면, 로그인 기록 확인을 위해 대략적인 위치(약 100m 단위)를 30일간 보관해요. 허용하지 않아도 그대로 이용할 수 있어요.</li>
-        <li>로그인한 시각부터 24시간이 지나면 다시 이용할 수 있어요. 로그아웃해도 다음 이용 시각은 바뀌지 않아요.</li>
+        <li>24시간 동안 <b id="dailySessionsNote">한 번</b> 로그인할 수 있어요(계정마다 다를 수 있어요). 횟수를 다 쓰면 가장 이른 로그인 시각부터 24시간 뒤 다시 이용할 수 있고, 로그아웃해도 횟수는 돌아오지 않아요.</li>
       </ul></details>
       <a class="signup-cta" href="register.html" aria-label="이용 신청하기">
         <span class="cta-title">🎣 어디서 잘 물릴지 궁금하세요?</span>
@@ -171,7 +171,7 @@
       <div class="row"><button type="submit">변경</button><button type="button" id="pwCancel" class="ghost">취소</button></div>
     </form>
   </dialog>
-  <script src="config.js?v=1.18.8"></script><script src="telemetry.js?v=1.18.8"></script>
-  <script src="app.js?v=1.18.8" type="module"></script><script src="visit.js?v=1.18.8" type="module"></script>
+  <script src="config.js?v=1.19.0"></script><script src="telemetry.js?v=1.19.0"></script>
+  <script src="app.js?v=1.19.0" type="module"></script><script src="visit.js?v=1.19.0" type="module"></script>
 </body>
 </html>

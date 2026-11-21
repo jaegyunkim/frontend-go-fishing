@@ -9,6 +9,7 @@ export const state = {
   api: localStorage.getItem('gofishing.api') || window.GOFISHING_API || (isLocal ? 'http://localhost:8787' : ''),
   authMode: null,                 // 'required' | 'off' | null(서버 미연결)
   sessionMinutes: 10,
+  dailySessions: 1,               // 베타 테스터 기본 하루(24시간) 로그인 횟수(서버 /healthz)
   auth: JSON.parse(sessionStorage.getItem(KEY) || 'null') // { token, expiresAtLocal, user }
 };
 // 외부 수집기가 없거나 고장 나도 인증/요청 동작은 그대로 유지한다.
@@ -25,6 +26,10 @@ export function saveAuth(a) { state.auth = a; if (a) sessionStorage.setItem(KEY,
 export function syncExpiry(remainingSec) { if (state.auth && Number.isFinite(remainingSec)) saveAuth({ ...state.auth, expiresAtLocal: Date.now() + remainingSec * 1000 }); }
 /** 이 계정의 세션 시간(분). 관리자가 계정별로 바꿀 수 있다. */
 export const sessionMinutes = () => state.auth?.minutes ?? state.auth?.user?.limits?.sessionMinutes ?? state.sessionMinutes;
+/** 베타 테스터의 24시간 로그인 현황 { limit, used, left, nextAt? } (관리자·내부 테스터는 null) */
+export const loginQuota = () => state.auth?.user?.role === 'user' ? state.auth?.logins ?? null : null;
+/** 횟수를 우리말로: 1 → 한 번, 2 → 두 번 … 11 이상은 숫자 */
+export const timesKo = v => { const k = Math.trunc(Number(v)); return ((['', '한', '두', '세', '네', '다섯', '여섯', '일곱', '여덟', '아홉', '열'])[k] ?? k.toLocaleString('ko-KR')) + ' 번'; };
 export const remaining = () => state.auth ? Math.max(0, Math.round((state.auth.expiresAtLocal - Date.now()) / 1000)) : 0;
 
 let onAuthLost = () => {};
@@ -65,7 +70,7 @@ export async function loadAuthImage(img, path) {
 }
 async function probe() {
   const h = await api('/healthz', { timeoutMs: 8000, noAuth: true });
-  state.authMode = h.auth?.mode ?? 'off'; state.sessionMinutes = h.auth?.sessionMinutes ?? 10;
+  state.authMode = h.auth?.mode ?? 'off'; state.sessionMinutes = h.auth?.sessionMinutes ?? 10; state.dailySessions = h.auth?.dailySessions ?? 1;
   return h;
 }
 /** 서버 상태 확인. 기본 주소(config.js)가 안 되면 예비 주소를 차례로 시도한다(기기에 직접 저장한 주소는 그대로 존중). */
@@ -80,7 +85,7 @@ export async function health() {
 }
 export async function login(loginId, password) {
   const r = await api('/v1/auth/login', { method: 'POST', body: JSON.stringify({ loginId, password, client: 'pages' }), noAuth: true });
-  saveAuth({ token: r.token, expiresAtLocal: Date.now() + r.session.minutes * 60000, minutes: r.session.minutes, user: r.user });
+  saveAuth({ token: r.token, expiresAtLocal: Date.now() + r.session.minutes * 60000, minutes: r.session.minutes, user: r.user, logins: r.logins ?? null });
   return r;
 }
 export async function logout(reason = 'logout') {
