@@ -7,7 +7,7 @@ const GATE = { PASS: '안전 양호', PASS_WITH_CAUTION: '조건부 주의', REV
 const badge = g => g ? `<span class="badge b-${esc(g)}">${esc(GATE[g] ?? g)}</span>` : '';
 
 // ---- 설정·인증(auth.js) ----
-import { state, setApi, api, health, login, logout, startTimer, syncExpiry, saveAuth, setOnAuthLost, setOnMustChange, loadAuthImage, remaining, sessionMinutes, loginQuota, timesKo } from './auth.js?v=1.19.0';
+import { state, setApi, api, health, login, logout, startTimer, syncExpiry, saveAuth, setOnAuthLost, setOnMustChange, loadAuthImage, remaining, sessionMinutes, loginQuota, timesKo } from './auth.js?v=1.20.0';
 let SID = localStorage.getItem('gofishing.session') || (crypto.randomUUID?.() ?? String(Date.now()) + Math.random().toString(16).slice(2));
 localStorage.setItem('gofishing.session', SID);
 const SAVED_ID_KEY = 'gofishing.savedLoginId'; // 아이디 저장(이메일만, 비밀번호는 저장하지 않음)
@@ -61,7 +61,7 @@ function renderChips() {
   if (slots.experience) c.push('🎓 ' + slots.experience);
   if (slots.companion === '가족동반') c.push('👨‍👩‍👧 가족');
   if (slots.fuel) c.push('⛽ ' + (L[slots.fuel] ?? slots.fuel) + (slots.efficiency ? ` ${slots.efficiency}` : ''));
-  $('#chips').innerHTML = (authed() && state.auth ? `<span class="chip" id="usageChip">${esc(usageText || '💬 질문 한도 확인 중')}</span>` : '') + (c.map(x => `<span class="chip${x.endsWith(' · 참고용') ? ' chip-warn' : ''}">${esc(x)}</span>`).join('') || '<span class="chip">출발지·날짜·지역을 말씀해 주세요</span>');
+  $('#chips').innerHTML = (authed() && state.auth ? `<span class="chip" id="usageChip">${esc(usageText || '💬 질문 한도 확인 중')}</span>${tokenChipHtml()}` : '') + (c.map(x => `<span class="chip${x.endsWith(' · 참고용') ? ' chip-warn' : ''}">${esc(x)}</span>`).join('') || '<span class="chip">출발지·날짜·지역을 말씀해 주세요</span>');
 }
 
 function renderMessage(m) {
@@ -155,6 +155,7 @@ function clearAiLock() {
   if (!aiLocked) return; aiLocked = false;
   const view = $('#appView'); view.classList.remove('ai-locked'); $('#aiLock').hidden = true;
   view.querySelectorAll('[aria-disabled="true"]').forEach(el => { el.disabled = false; el.removeAttribute('aria-disabled'); if (el.tagName === 'A') el.removeAttribute('tabindex'); });
+  applyTokenLock();
 }
 // 잠금 후 새로 그려지는 버튼(대화 응답의 선택 버튼 등)도 막는다
 new MutationObserver(() => { if (aiLocked) $('#appView').querySelectorAll('button:not([disabled]), input:not([disabled])').forEach(el => { if (!el.closest('#aiLock')) el.disabled = true; }); }).observe(document.getElementById('appView'), { childList: true, subtree: true });
@@ -299,6 +300,7 @@ $('#originForm').addEventListener('submit', async e => {
 let sending = false;
 async function send(text, extra = {}) {
   if (aiLocked) return;
+  if (tokenLocked) { toast(TOKEN_EMPTY_MSG); return; }   // 오늘 토큰을 다 쓰면 질문을 보내지 않는다
   if (sending) { toast('앞 질문의 답변을 준비하고 있어요. 잠시만 기다려 주세요.'); return; }
   text = String(text || '').trim(); if (!text) return;
   showTab('chat');
@@ -313,7 +315,9 @@ async function send(text, extra = {}) {
     if (r.usage) renderUsage(r.usage);
     if (r.ai) applyAiLock(r.ai);
     slots = r.slots || slots; renderChips();
+    const before = chat.children.length;
     qAnchor = qEl; r.messages.forEach(renderMessage);
+    tagTokens(before);
     requestAnimationFrame(() => pinQuestion(qEl));
   } catch (e) {
     t.remove();
@@ -323,10 +327,10 @@ async function send(text, extra = {}) {
     if (e.status === 403) { bubble('bot', md(e.message)); return; }
     bubble('bot', md(`서버에 연결하지 못했어요. 잠시 후 다시 시도해 주세요. (${e.message})`));
   } finally {
-    sending = false; const sb = $('#composer button[type=submit]'); if (sb && !aiLocked) sb.disabled = false;
+    sending = false; const sb = $('#composer button[type=submit]'); if (sb && !aiLocked && !tokenLocked) sb.disabled = false;
   }
 }
-$('#composer').addEventListener('submit', e => { e.preventDefault(); const v = $('#msg').value; $('#msg').value = ''; send(v); });
+$('#composer').addEventListener('submit', e => { e.preventDefault(); const v = $('#msg').value; $('#msg').value = ''; $('#msg').dispatchEvent(new Event('input')); send(v); });
 
 // ---- 브리핑 ----
 function list(items, fmt, cls = '') { return items?.length ? `<ul class="list ${cls}">${items.map(fmt).join('')}</ul>` : '<div class="sub">결과 없음</div>'; }
@@ -438,10 +442,8 @@ $('#btnSettings').onclick = openSettings;
 $('#btnLogout').onclick = () => {
   const role = state.auth?.user?.role, d = $('#logoutDialog');
   if ($('#settings').open) $('#settings').close();
-  // 베타 테스터는 24시간 동안 계정별 횟수만큼 로그인할 수 있어 남은 횟수를 미리 안내, 관리자·내부 테스터는 바로 다시 로그인 가능
-  $('#logoutMsg').textContent = role === 'user'
-    ? '오늘도 어디물어를 이용해 주셔서 감사해요.\n' + nextLoginText(loginQuota(), '로그아웃해도')
-    : '이용해 주셔서 감사해요.\n필요하실 때 언제든 다시 로그인해 주세요.';
+  // 이용 조건(로그인 횟수·이용 시간·자동 로그아웃·하루 AI 사용량)을 계정 한도 값으로 짧게 안내
+  $('#logoutMsg').textContent = logoutText(role);
   d.returnValue = 'cancel';
   d.onclose = () => { if (d.returnValue === 'ok') endSession('로그아웃했어요.', true); else markActive?.(); };
   d.showModal();
@@ -632,13 +634,70 @@ async function restore() {
 }
 
 // ---- 로그인·세션 ----
+// 사용량: 서버가 알려 준 값만 덮어쓴다(응답마다 일부만 올 수 있음)
+let usage = {};
+const fmt = v => Number(v || 0).toLocaleString('ko-KR');
+const hasTokens = () => usage.tokLim != null;
+const tokensLeft = () => Math.max(0, (usage.tokLim ?? 0) - (usage.tok ?? 0));
+const tokenText = () => `${fmt(tokensLeft())} / ${fmt(usage.tokLim)}`;
+const tokenEnforced = () => state.auth?.user?.role !== 'admin';   // 관리자는 서버에서도 토큰 한도를 적용하지 않음
+const tokenChipHtml = () => hasTokens() ? `<span class="chip${tokensLeft() <= usage.tokLim * 0.1 ? ' chip-warn' : ''}" id="tokenChip">🔋 남은 토큰 ${tokenText()}</span>` : '';
 function renderUsage(u) {
-  const parts = [];
-  if (u.session?.limit) parts.push(`이번 세션 질문 ${u.session.messages}/${u.session.limit}`);
-  if (u.today?.limit) parts.push(`오늘 ${u.today.messages}/${u.today.limit}`);
-  const el = $('#usageInfo'); if (el) el.textContent = parts.join(' · ');
-  if (parts.length) usageText = '💬 질문 ' + parts[0].replace('이번 세션 질문 ', '');
+  const s = u.session ?? {}, d = u.today ?? {};
+  if (s.messages != null) usage.sMsg = s.messages; if (s.limit) usage.sLim = s.limit;
+  if (d.messages != null) usage.dMsg = d.messages; if (d.limit) usage.dLim = d.limit;
+  if (d.tokens != null) usage.tok = d.tokens; if (d.tokenLimit != null) usage.tokLim = d.tokenLimit;
+  const lines = [];
+  if (usage.sLim) lines.push(`이번 로그인에서 한 질문: ${fmt(usage.sMsg)}개 (최대 ${fmt(usage.sLim)}개)`);
+  if (usage.dLim) lines.push(`오늘 한 질문: ${fmt(usage.dMsg)}개 (하루 최대 ${fmt(usage.dLim)}개)`);
+  if (hasTokens()) lines.push(`오늘 남은 AI 사용량: ${tokenText()} 토큰`, '※ 토큰은 AI가 질문을 읽고 답을 만드는 데 쓰는 양이에요. 질문이 길거나 답이 자세할수록 많이 줄어요.');
+  const el = $('#usageInfo'); if (el) { el.style.whiteSpace = 'pre-line'; el.textContent = lines.join('\n'); }
+  if (usage.sLim) usageText = `💬 질문 ${fmt(usage.sMsg)}/${fmt(usage.sLim)}`;
   const chip = document.getElementById('usageChip'); if (chip && usageText) chip.textContent = usageText;
+  const tc = document.getElementById('tokenChip');
+  if (tc) tc.outerHTML = tokenChipHtml(); else if (chip && hasTokens()) chip.insertAdjacentHTML('afterend', tokenChipHtml());
+  if (welcomeEl?.isConnected) welcomeEl.innerHTML = md(welcomeText());
+  applyTokenLock();
+}
+/** 응답 첫 말풍선 오른쪽 위에 남은 토큰을 작게 표시 */
+function tagTokens(fromIndex) {
+  if (!hasTokens()) return;
+  const first = [...chat.children].slice(fromIndex).find(el => el.classList.contains('msg') && el.classList.contains('bot'));
+  first?.insertAdjacentHTML('afterbegin', `<span class="token-tag">남은 토큰 ${tokenText()}</span>`);
+}
+// 오늘 토큰을 다 쓰면 입력창·보내기를 막는다(관리자 제외). 날짜가 바뀌거나 한도가 늘면 1분 안에 자동으로 풀린다.
+let tokenLocked = false;
+const TOKEN_EMPTY_MSG = '오늘 쓸 수 있는 AI 사용량을 모두 썼어요. 내일 다시 질문해 주세요.';
+const MSG_PLACEHOLDER = '예) 내일 부산 포인트 추천해줘';
+function applyTokenLock() {
+  tokenLocked = !!(state.auth && tokenEnforced() && hasTokens() && tokensLeft() <= 0);
+  const inp = $('#msg'), sb = $('#composer button[type=submit]');
+  if (tokenLocked && inp.value) { inp.value = ''; inp.dispatchEvent(new Event('input')); }
+  if (!aiLocked) { inp.disabled = tokenLocked; if (sb) sb.disabled = tokenLocked || sending; }
+  inp.placeholder = tokenLocked ? '오늘 AI 사용량을 모두 써서 질문할 수 없어요' : MSG_PLACEHOLDER;
+  $('#composer').classList.toggle('token-empty', tokenLocked);
+}
+// 로그인 환영 말풍선: 이용 시간·로그인 횟수·남은 토큰을 한 문단으로(값이 바뀌면 다시 그림)
+let welcomeEl = null;
+function welcomeText() {
+  const u = state.auth?.user; if (!u) return '';
+  const lq = loginQuota();
+  let t = `**${u.displayName}**님, 반가워요! 이번 로그인으로 **${sessionMinutes()}분** 동안 이용할 수 있어요.`;
+  if (lq) t += ` 24시간 동안 ${timesKo(lq.limit)} 로그인할 수 있는데, 지금이 ${lq.used}번째예요.`;
+  if (hasTokens()) t += ` 오늘 남은 AI 사용량은 **${tokenText()}** 토큰이에요.`;
+  return t;
+}
+/** 로그아웃 확인창 안내: 이용 조건을 간단히 */
+function logoutText(role) {
+  const L = state.auth?.user?.limits ?? {}, lq = loginQuota(), min = sessionMinutes();
+  const lines = [role === 'user' ? `• 하루(24시간)에 ${timesKo(L.dailySessions ?? lq?.limit ?? 1)}, 한 번에 ${min}분 동안 이용할 수 있어요.` : `• 로그인 횟수 제한 없이, 한 번에 ${min}분 동안 이용할 수 있어요.`];
+  if (role === 'user' && lq) {
+    const at = lq.nextAt ? new Date(lq.nextAt).toLocaleString('ko-KR', { timeZone: 'Asia/Seoul', month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : '';
+    lines.push(lq.left > 0 ? `• 앞으로 24시간 안에 ${timesKo(lq.left)} 더 로그인할 수 있어요.` : `• 오늘 로그인 횟수를 모두 썼어요.${at ? ` 다음 로그인: ${at}` : ''}`);
+  }
+  lines.push('• 5분 동안 아무 조작이 없으면 자동으로 로그아웃돼요.');
+  if (role !== 'admin' && L.dailyTokens != null) lines.push(`• AI 사용량은 하루 ${fmt(L.dailyTokens)} 토큰이에요${hasTokens() ? `(지금 ${fmt(tokensLeft())} 남음)` : ''}. 다 쓰면 그날은 질문할 수 없어요.`);
+  return `${role === 'user' ? '오늘도 ' : ''}이용해 주셔서 감사해요.\n${lines.join('\n')}`;
 }
 function showLogin(msg = '', ok = false) {
   setPwVisible(false);
@@ -668,8 +727,7 @@ function enterApp() {
       onExpire: () => { const min = sessionMinutes(), role = state.auth?.user?.role, lq = loginQuota(); endSession(`${min}분 이용 시간이 끝나 로그아웃했어요.`, false, 'expired'); showSessionEnd(min, role, lq); }
     });
     const u = state.auth.user;
-    const lq = loginQuota();
-    bubble('bot', md(`**${u.displayName}**님, 반가워요. 이번 로그인은 **${sessionMinutes()}분** 동안 이용할 수 있어요.${lq ? ` 24시간 동안 ${timesKo(lq.limit)} 로그인할 수 있고, 지금이 ${lq.used}번째예요.` : ''}`));
+    welcomeEl = bubble('bot', md(welcomeText()));
     refreshUsage();
     suggestWeekend();
     // 하루 한 번 추천 말풍선(대화 기록 → 없으면 출발지 주변). 출발지가 없으면 등록 독려 말풍선이 함께 뜬다
@@ -683,15 +741,19 @@ async function refreshUsage() {
   try {
     const me = await api('/v1/auth/me', { timeoutMs: 10000 });
     syncExpiry(me.remainingSec);
-    if (me.logins && state.auth) saveAuth({ ...state.auth, logins: me.logins });
-    renderUsage({ session: { messages: me.session.messages, limit: me.limits.sessionMessages }, today: { messages: me.usage.today.messages, limit: me.limits.dailyMessages } });
+    if (state.auth) {
+      // 관리자가 바꾼 한도(세션 시간·로그인 횟수·토큰 등)를 바로 화면에 반영
+      saveAuth({ ...state.auth, minutes: me.limits.sessionMinutes, user: { ...state.auth.user, limits: me.limits }, ...(me.logins ? { logins: me.logins } : {}) });
+      if ($('#status').textContent.startsWith('원활한 운영')) setStatus(sessionNotice(), 'ok');
+    }
+    renderUsage({ session: { messages: me.session.messages, limit: me.limits.sessionMessages }, today: { messages: me.usage.today.messages, limit: me.limits.dailyMessages, tokens: me.usage.today.tokens, tokenLimit: me.limits.dailyTokens } });
     applyAiLock(me.ai);
   } catch { /* 401 은 자동 로그아웃 처리 */ }
 }
 let ending = false;
 function endSession(msg, ok = false, reason = 'logout') {
   if (ending) return; ending = true;
-  logout(reason); timer?.stop(); timer = null; toast(''); usageText = '';
+  logout(reason); timer?.stop(); timer = null; toast(''); usageText = ''; usage = {}; welcomeEl = null; applyTokenLock();
   chat.innerHTML = ''; $('#brief').innerHTML = '<p class="empty">포인트를 고르면 상세 브리핑이 여기에 표시돼요.</p>'; slots = {}; renderChips();
   showLogin(msg, ok); ending = false;
 }
