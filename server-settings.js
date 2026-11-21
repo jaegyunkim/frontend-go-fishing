@@ -1,4 +1,4 @@
-import {state, api, saveAuth, setApi, logout, startTimer, syncExpiry, setOnAuthLost} from './auth.js?v=1.20.0';
+import {state, api, saveAuth, setApi, logout, startTimer, syncExpiry, setOnAuthLost} from './auth.js?v=1.21.0';
 const form = document.querySelector('#connection'), status = document.querySelector('#status');
 let verified = false;
 function deny(message) { verified = false; form.hidden = true; status.textContent = message; }

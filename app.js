@@ -7,7 +7,7 @@ const GATE = { PASS: '안전 양호', PASS_WITH_CAUTION: '조건부 주의', REV
 const badge = g => g ? `<span class="badge b-${esc(g)}">${esc(GATE[g] ?? g)}</span>` : '';
 
 // ---- 설정·인증(auth.js) ----
-import { state, setApi, api, health, login, logout, startTimer, syncExpiry, saveAuth, setOnAuthLost, setOnMustChange, loadAuthImage, remaining, sessionMinutes, loginQuota, timesKo } from './auth.js?v=1.20.0';
+import { state, setApi, api, health, login, logout, startTimer, syncExpiry, saveAuth, setOnAuthLost, setOnMustChange, loadAuthImage, remaining, sessionMinutes, loginQuota, timesKo } from './auth.js?v=1.21.0';
 let SID = localStorage.getItem('gofishing.session') || (crypto.randomUUID?.() ?? String(Date.now()) + Math.random().toString(16).slice(2));
 localStorage.setItem('gofishing.session', SID);
 const SAVED_ID_KEY = 'gofishing.savedLoginId'; // 아이디 저장(이메일만, 비밀번호는 저장하지 않음)
@@ -64,6 +64,10 @@ function renderChips() {
   $('#chips').innerHTML = (authed() && state.auth ? `<span class="chip" id="usageChip">${esc(usageText || '💬 질문 한도 확인 중')}</span>${tokenChipHtml()}` : '') + (c.map(x => `<span class="chip${x.endsWith(' · 참고용') ? ' chip-warn' : ''}">${esc(x)}</span>`).join('') || '<span class="chip">출발지·날짜·지역을 말씀해 주세요</span>');
 }
 
+// 처음 쓰는 사람을 위한 안내: 추천 버튼을 3번 누르기 전까지 '눌러서 물어보기' 문구를 보여 준다
+const ACT_KEY = 'gofishing.actionTaps';
+const actionHintNeeded = () => { try { return Number(localStorage.getItem(ACT_KEY) || 0) < 3; } catch { return true; } };
+const actionUsed = () => { try { localStorage.setItem(ACT_KEY, String(Number(localStorage.getItem(ACT_KEY) || 0) + 1)); } catch { /* 저장 못 해도 동작에는 영향 없음 */ } };
 function renderMessage(m) {
   switch (m.type) {
     case 'text': bubble('bot', md(m.text)); break;
@@ -88,8 +92,19 @@ function renderMessage(m) {
       break;
     }
     case 'actions': {
-      const d = node('', 'actions');
-      for (const b of m.buttons) { const el = document.createElement('button'); el.textContent = b.label; el.onclick = () => (b.message === '출발지는 ' && authed() && state.auth) ? openOriginDialog() : b.message.endsWith(' ') ? ($('#msg').value = b.message, $('#msg').focus()) : send(b.message, b.pointId ? { pointId: b.pointId, date: b.date } : {}); d.appendChild(el); }
+      // 추천 질문 버튼: 눌러서 바로 물어볼 수 있다는 걸 알 수 있게(안내 문구·아이콘·최신 묶음 강조)
+      chat.querySelectorAll('.actions.fresh').forEach(x => { x.classList.remove('fresh'); x.querySelector('.actions-hint')?.remove(); });
+      const d = node('', 'actions fresh');
+      d.setAttribute('role', 'group'); d.setAttribute('aria-label', '추천 질문');
+      if (actionHintNeeded()) d.insertAdjacentHTML('afterbegin', `<div class="actions-hint">👇 버튼을 누르면 바로 물어볼 수 있어요</div>`);
+      for (const b of m.buttons) {
+        const fillOnly = b.message.endsWith(' ') && !(b.message === '출발지는 ' && authed() && state.auth);
+        const el = document.createElement('button'); el.type = 'button'; el.className = 'act' + (fillOnly ? ' fill' : '');
+        el.innerHTML = `<span class="act-ico" aria-hidden="true">${fillOnly ? '✏️' : '💬'}</span><span class="act-label">${esc(b.label)}</span><span class="act-go" aria-hidden="true">${fillOnly ? '' : '›'}</span>`;
+        if (fillOnly) el.title = '입력창에 채워 드려요. 이어서 입력한 뒤 보내 주세요';
+        el.onclick = () => { if (tokenLocked) { toast(TOKEN_EMPTY_MSG); return; } actionUsed(); d.querySelectorAll('.act').forEach(x => x.classList.toggle('picked', x === el)); d.classList.add('used'); d.classList.remove('fresh'); d.querySelector('.actions-hint')?.remove(); return (b.message === '출발지는 ' && authed() && state.auth) ? openOriginDialog() : fillOnly ? ($('#msg').value = b.message, $('#msg').dispatchEvent(new Event('input')), $('#msg').focus()) : send(b.message, b.pointId ? { pointId: b.pointId, date: b.date } : {}); };
+        d.appendChild(el);
+      }
       break;
     }
     case 'points_table': {
