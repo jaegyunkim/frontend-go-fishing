@@ -7,7 +7,7 @@ const GATE = { PASS: '안전 양호', PASS_WITH_CAUTION: '조건부 주의', REV
 const badge = g => g ? `<span class="badge b-${esc(g)}">${esc(GATE[g] ?? g)}</span>` : '';
 
 // ---- 설정·인증(auth.js) ----
-import { state, setApi, api, health, login, logout, startTimer, syncExpiry, saveAuth, setOnAuthLost, setOnMustChange, loadAuthImage, remaining, sessionMinutes, loginQuota, timesKo } from './auth.js?v=1.21.0';
+import { state, setApi, api, health, login, logout, startTimer, syncExpiry, saveAuth, setOnAuthLost, setOnMustChange, loadAuthImage, remaining, sessionMinutes, loginQuota, timesKo } from './auth.js?v=1.22.0';
 let SID = localStorage.getItem('gofishing.session') || (crypto.randomUUID?.() ?? String(Date.now()) + Math.random().toString(16).slice(2));
 localStorage.setItem('gofishing.session', SID);
 const SAVED_ID_KEY = 'gofishing.savedLoginId'; // 아이디 저장(이메일만, 비밀번호는 저장하지 않음)
@@ -64,6 +64,23 @@ function renderChips() {
   $('#chips').innerHTML = (authed() && state.auth ? `<span class="chip" id="usageChip">${esc(usageText || '💬 질문 한도 확인 중')}</span>${tokenChipHtml()}` : '') + (c.map(x => `<span class="chip${x.endsWith(' · 참고용') ? ' chip-warn' : ''}">${esc(x)}</span>`).join('') || '<span class="chip">출발지·날짜·지역을 말씀해 주세요</span>');
 }
 
+// ---- 누를 수 있는 요소 공통 표시(대화·브리핑·포인트 화면 동일) ----
+/** 카드·행 아래쪽의 '눌러서 안내받기' 표시 */
+const tapCta = (text, ico = '💬') => `<span class="tap-cta"><span aria-hidden="true">${ico}</span>${text}<b aria-hidden="true">›</b></span>`;
+/** 목록 위 안내 한 줄 */
+const tapHint = text => `<div class="tap-hint">👇 ${text}</div>`;
+/** div 로 만든 카드·행을 키보드·화면낭독기에서도 버튼처럼 */
+function tappable(root, sel, label) {
+  root.querySelectorAll(sel).forEach(el => {
+    el.classList.add('tappable');
+    if (el.tagName !== 'BUTTON') { el.setAttribute('role', 'button'); el.tabIndex = 0; el.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); el.click(); } }); }
+    if (label) el.setAttribute('aria-label', label(el));
+  });
+}
+/** 추천 질문 버튼 모양(아이콘·이름·화살표) */
+const actBtn = (label, ico = '💬', go = '›') => `<span class="act-ico" aria-hidden="true">${ico}</span><span class="act-label">${esc(label)}</span><span class="act-go" aria-hidden="true">${go}</span>`;
+const BRIEF_EMPTY = `<p class="empty">포인트를 고르면 상세 브리핑이 여기에 표시돼요.</p><div class="actions brief-go">${tapHint('먼저 포인트를 골라 주세요')}<button type="button" class="act" data-go="points">${actBtn('포인트 고르러 가기', '📍')}</button></div>`;
+
 // 처음 쓰는 사람을 위한 안내: 추천 버튼을 3번 누르기 전까지 '눌러서 물어보기' 문구를 보여 준다
 const ACT_KEY = 'gofishing.actionTaps';
 const actionHintNeeded = () => { try { return Number(localStorage.getItem(ACT_KEY) || 0) < 3; } catch { return true; } };
@@ -88,7 +105,7 @@ function renderMessage(m) {
       const h = m.data;
       const el = node(`<h3>⏳ 예보 신뢰 범위 밖이에요</h3><div class="hz-text">${esc(h.text)}</div><div class="hz-ask">이렇게 다시 물어보세요</div><div class="actions hz-actions"></div>`, 'card horizon');
       const box = el.querySelector('.hz-actions');
-      for (const x of h.suggestions ?? []) { const b = document.createElement('button'); b.textContent = x.label; b.onclick = () => send(x.message); box.appendChild(b); }
+      for (const x of h.suggestions ?? []) { const b = document.createElement('button'); b.type = 'button'; b.className = 'act'; b.innerHTML = actBtn(x.label); b.onclick = () => send(x.message); box.appendChild(b); }
       break;
     }
     case 'actions': {
@@ -110,9 +127,10 @@ function renderMessage(m) {
     case 'points_table': {
       const rows = m.rows.map(r => `<div class="prow" data-msg="${r.no}번 안내해줘"><div class="t"><span>${r.no}. ${esc(r.name)}</span><span class="sub">${esc(r.district)}</span></div>
         <div class="d">${esc(r.species)}</div><div class="c">${esc(r.cautions)}</div>
-        <div class="d">허용: ${esc(r.restriction)} · 출처: ${esc((r.sources || []).join(', '))}</div></div>`).join('');
-      const el = node(`<h3>${esc(m.region)} 대표 포인트</h3><div class="ptable">${rows}</div>`);
+        <div class="d">허용: ${esc(r.restriction)} · 출처: ${esc((r.sources || []).join(', '))}</div>${tapCta('이 포인트 안내받기')}</div>`).join('');
+      const el = node(`<h3>${esc(m.region)} 대표 포인트</h3>${tapHint('포인트를 누르면 날씨·물때·가는 길을 안내해 드려요')}<div class="ptable">${rows}</div>`);
       el.querySelectorAll('.prow').forEach(p => p.onclick = () => send(p.dataset.msg));
+      tappable(el, '.prow', p => `${p.querySelector('.t span').textContent} 안내받기`);
       break;
     }
     case 'sea_summary': {
@@ -129,10 +147,11 @@ function renderMessage(m) {
         <div class="sub">${esc(i.point.district)} · ${esc(i.point.type)}${i.travel ? ` · 🚗 ${i.travel.minutes}분 ${i.travel.km}km${i.travel.toll ? ' · 통행료 ' + won(i.travel.toll) : ''}` : ''}</div>
         ${i.score.total != null ? `<div class="bar"><i style="width:${Math.min(100, i.score.total)}%"></i></div><div class="sub">추천점수 <b>${i.score.total}점</b>${i.score.weights ? ` · ${esc(String(i.score.weights).replace(/\(초기값\)/g, '').replace(/([가-힣])(\d)/g, '$1 $2').replace(/·/g, ' · '))}` : ''}</div>` : ''}
         <div class="reason">${esc(i.score.reason)}</div>
-        ${i.safety.reasons.length ? `<ul class="warn-list">${i.safety.reasons.map(r => `<li>${esc(r.text)}</li>`).join('')}</ul>` : ''}</div>`).join('');
+        ${i.safety.reasons.length ? `<ul class="warn-list">${i.safety.reasons.map(r => `<li>${esc(r.text)}</li>`).join('')}</ul>` : ''}${tapCta('자세히 안내받기')}</div>`).join('');
       const blocked = m.data.blocked?.length ? blockedList(m.data.blocked) : '';
       const el = node(`<h3>${esc(m.data.date)} 추천 TOP ${m.data.items.length}</h3><div class="sub">${esc(m.data.tier?.badge ?? '')}</div><div class="top3">${items}</div>${blocked}`);
       el.querySelectorAll('.item').forEach(p => p.onclick = () => send(p.dataset.msg));
+      tappable(el, '.top3 .item', p => `${p.querySelector('b')?.textContent ?? ''} 자세히 안내받기`);
       break;
     }
     case 'safety_block':
@@ -143,7 +162,7 @@ function renderMessage(m) {
       const b = m.data;
       const r = b.routes?.options?.[0];
       const el = node(`<h3>${esc(b.point.name)} ${badge(b.safety.gate)}</h3><div class="sub">${esc(b.dateLabel)} · ${esc(b.sea.index ? `지수 ${b.sea.index.grade}(${b.sea.index.name})` : '지수 미제공')}${r?.minutes ? ` · 🚗 ${r.minutes}분` : ''}</div>
-        <div class="actions" style="margin-top:8px"><button>🧭 상세 브리핑 보기</button></div>`);
+        <div class="actions" style="margin-top:10px"><button type="button" class="act act-primary">${actBtn('상세 브리핑 보기', '🧭')}</button></div>`);
       el.querySelector('button').onclick = () => showTab('brief');
       break;
     }
@@ -398,12 +417,12 @@ function renderBriefing(b) {
   const routes = b.routes ? `<table class="routes"><tr><th>경로</th><th>거리·시간</th><th>통행료</th><th>${esc(b.routes.fuel?.type ?? '연료')}비</th></tr>
       ${b.routes.options.map(o => o.km != null ? `<tr><td>${esc(o.name)}<div class="sub">${esc((o.via || []).slice(0, 5).join(' → '))}</div></td><td>${o.km}km<br>${o.minutes}분</td><td>${won(o.toll)}</td><td>${won(o.cost?.energy)}<div class="sub">왕복≈${won(o.cost?.roundTripEstimate)}</div></td></tr>` : `<tr><td>${esc(o.name)}</td><td colspan="3" class="sub">${esc(o.message ?? '조회 실패')}</td></tr>`).join('')}</table>
       <div class="sub">${esc(b.routes.note)}${b.routes.fuel?.price ? ` · ${esc(b.routes.fuel.type)} ${esc(b.routes.fuel.scope)} ${Math.round(b.routes.fuel.price).toLocaleString('ko-KR')}원/L(오피넷)` : ''}${b.routes.fuel?.note ? ' · ' + esc(b.routes.fuel.note) : ''} · 연비 ${esc(b.routes.fuel?.efficiency ?? '')}</div>
-      <div class="links"><a href="${esc(b.routes.links.naverWeb)}" target="_blank" rel="noopener">네이버지도 길찾기</a><a class="nmap-app" href="${esc(b.routes.links.naverApp)}" data-web="${esc(b.routes.links.naverWeb)}">네이버지도 앱</a></div>`
+      <div class="links"><a class="link-btn" href="${esc(b.routes.links.naverWeb)}" target="_blank" rel="noopener"><span aria-hidden="true">🗺️</span>네이버지도 길찾기<b aria-hidden="true">↗</b></a><a class="link-btn nmap-app" href="${esc(b.routes.links.naverApp)}" data-web="${esc(b.routes.links.naverWeb)}"><span aria-hidden="true">📱</span>네이버지도 앱으로 길안내<b aria-hidden="true">↗</b></a></div>`
     : '<div class="sub">출발지를 알려 주시면 고속도로·일반도로 경로와 통행료·유류비를 계산해요.</div>';
   const traffic = b.traffic ? (b.traffic.events.length ? list(b.traffic.events.slice(0, 5), e => `<li><span>${esc(e.type)}·${esc(e.detail)} · ${esc(e.road)} ${esc(e.start ?? '')}</span><span class="m">${esc(e.message)}</span></li>`, 'stack') : '<div class="sub">경로 주변 돌발상황 없음</div>') + `<div class="sub">${esc(b.traffic.note ?? '')}</div>` : '';
   const nearby = b.nearby.map(n => `<div class="nb-cat"><div class="nb-cat-head"><b>${esc(n.title)}</b>${n.radiusM ? `<span class="nb-cat-r">반경 ${n.radiusM / 1000}km${n.widened ? ' (확장 검색)' : ''}</span>` : ''}</div>
       ${n.status !== 'ok' ? `<div class="sub st-error">${esc(n.message ?? n.status)}</div>` : list(n.items.slice(0, 3), i => `<li><a href="${esc(i.url ?? '#')}" target="_blank" rel="noopener">${esc(i.name)}</a><span class="m">${i.price ? won(i.price) + ' · ' : ''}${i.distanceM != null ? (i.distanceM >= 1000 ? (i.distanceM / 1000).toFixed(1) + 'km' : i.distanceM + 'm') : ''}${i.phone ? ' · ' + esc(i.phone) : ''}</span></li>`)}</div>`).join('');
-  const er = b.emergency?.name ? `<b>${esc(b.emergency.name)}</b> · ${b.emergency.distanceKm}km${b.emergency.phone ? ` · <a href="tel:${esc(b.emergency.phone)}">${esc(b.emergency.phone)}</a>` : ''}<div class="sub">${esc(b.emergency.note)}</div>` : `<div class="sub">${esc(b.emergency?.message ?? '')}</div>`;
+  const er = b.emergency?.name ? `<b>${esc(b.emergency.name)}</b> · ${b.emergency.distanceKm}km${b.emergency.phone ? `<div class="links"><a class="link-btn tel" href="tel:${esc(b.emergency.phone)}"><span aria-hidden="true">📞</span>전화 걸기 ${esc(b.emergency.phone)}</a></div>` : ''}<div class="sub">${esc(b.emergency.note)}</div>` : `<div class="sub">${esc(b.emergency?.message ?? '')}</div>`;
   const srcs = b.sources.map(x => `<span class="st-${esc(x.status)}">● ${esc(x.provider)}(${esc(x.status)})</span>`).join('');
   $('#brief').innerHTML = `
     <div class="card"><h3>${esc(b.point.name)} ${badge(b.safety.gate)}</h3><div class="sub">${esc(b.point.region)} ${esc(b.point.district)} · ${esc(b.dateLabel)} · ${esc(s.tier?.badge ?? '')}</div>
@@ -433,10 +452,11 @@ async function loadPoints() {
   $('#points').innerHTML = '<p class="sub">불러오는 중…</p>';
   try {
     const r = await api('/v1/points?region=' + encodeURIComponent(region));
-    const row = (p, i) => `<div class="prow" data-msg="${esc(p.name)} 안내해줘"><div class="t"><span>${esc(p.name)}</span><span class="sub">${esc(p.type)}</span></div><div class="d">${esc(p.district)}</div><div class="c">${esc(p.headline_species ?? '')}</div></div>`;
-    $('#points').innerHTML = `<div class="card"><h3>${esc(region)} 검증 포인트 (${r.verified.length})</h3><div class="ptable">${r.verified.map(row).join('') || '<div class="sub">아직 없음</div>'}</div></div>
+    const row = (p, i) => `<div class="prow" data-msg="${esc(p.name)} 안내해줘"><div class="t"><span>${esc(p.name)}</span><span class="sub">${esc(p.type)}</span></div><div class="d">${esc(p.district)}</div><div class="c">${esc(p.headline_species ?? '')}</div>${tapCta('이 포인트 안내받기')}</div>`;
+    $('#points').innerHTML = `${tapHint('포인트를 누르면 대화 화면에서 날씨·물때·가는 길을 안내해 드려요')}<div class="card"><h3>${esc(region)} 검증 포인트 (${r.verified.length})</h3><div class="ptable">${r.verified.map(row).join('') || '<div class="sub">아직 없음</div>'}</div></div>
       <div class="card" style="margin-top:10px"><h3>국립해양조사원 지수 해역 (${r.official.length})</h3><div class="sub">해역 대표 좌표 · 낚시 자리는 현장 확인</div><div class="ptable">${r.official.map(row).join('')}</div></div>`;
     $('#points').querySelectorAll('.prow').forEach(p => p.onclick = () => send(p.dataset.msg));
+    tappable($('#points'), '.prow', p => `${p.querySelector('.t span').textContent} 안내받기`);
   } catch (e) { $('#points').innerHTML = `<p class="sub">${esc(e.message)}</p>`; }
 }
 
@@ -536,6 +556,8 @@ async function loadHistory() {
   } catch (e) { box.innerHTML = `<p class="empty">대화 기록을 불러오지 못했어요. ${esc(e.message || '')}</p>`; }
 }
 $('#btnHistory').onclick = () => showTab('history');
+// 빈 브리핑 화면의 '포인트 고르러 가기'
+$('#brief').addEventListener('click', e => { const b = e.target.closest('[data-go]'); if (b) showTab(b.dataset.go); });
 $('#btnHistory2').onclick = () => { $('#settings').close(); showTab('history'); };
 $('#historyBack').onclick = () => showTab('chat');
 
@@ -577,9 +599,10 @@ async function showNearby(force = false) {
     const items = r.items.map(i => {
       const line = [i.am ? `<span class="nb-slot">오전</span> ${esc(i.am)}` : '', i.pm ? `<span class="nb-slot">오후</span> ${esc(i.pm)}` : ''].filter(Boolean).join('<br>') || '<span class="sub">오늘 예보를 아직 받지 못했어요</span>';
       const click = i.gate !== 'HARD_BLOCK';
-      return `<${click ? 'button type="button"' : 'div'} class="item nb-item" ${click ? `data-nb="${esc(i.id)}"` : ''}><div class="nb-head"><span class="rank">${i.rank}</span><b>${esc(i.name)}</b><span class="nb-dist">${i.distanceKm}km</span><span class="badge b-${esc(i.gate)}">${esc(GATE_TEXT[i.gate] ?? i.verdict)}</span></div><div class="nb-wx">${line}</div></${click ? 'button' : 'div'}>`;
+      return `<${click ? 'button type="button"' : 'div'} class="item nb-item" ${click ? `data-nb="${esc(i.id)}"` : ''}><div class="nb-head"><span class="rank">${i.rank}</span><b>${esc(i.name)}</b><span class="nb-dist">${i.distanceKm}km</span><span class="badge b-${esc(i.gate)}">${esc(GATE_TEXT[i.gate] ?? i.verdict)}</span></div><div class="nb-wx">${line}</div>${click ? tapCta('이 포인트 안내받기') : ''}</${click ? 'button' : 'div'}>`;
     }).join('');
     const card = node(`<h3>📍 ${esc(r.origin.label)} 주변 오늘의 포인트</h3><p class="nb-intro">${esc(r.text).replace(/\n/g, '<br>')}</p>${items}${r.source ? `<p class="src">출처: ${esc(r.source)} · 반경 ${r.radiusKm}km · 출입·낚시 허용은 현장 안내판을 꼭 확인해 주세요</p>` : ''}`, 'card top3 nearby');
+    tappable(card, '[data-nb]');
     card.querySelectorAll('[data-nb]').forEach(b => b.onclick = () => { const a = r.actions.find(x => x.pointId === b.dataset.nb); if (a) send(a.message, { pointId: a.pointId, date: a.date }); });
     return true;
   } catch { wait.remove(); return false; }
@@ -769,7 +792,7 @@ let ending = false;
 function endSession(msg, ok = false, reason = 'logout') {
   if (ending) return; ending = true;
   logout(reason); timer?.stop(); timer = null; toast(''); usageText = ''; usage = {}; welcomeEl = null; applyTokenLock();
-  chat.innerHTML = ''; $('#brief').innerHTML = '<p class="empty">포인트를 고르면 상세 브리핑이 여기에 표시돼요.</p>'; slots = {}; renderChips();
+  chat.innerHTML = ''; $('#brief').innerHTML = BRIEF_EMPTY; slots = {}; renderChips();
   showLogin(msg, ok); ending = false;
 }
 /** 베타 테스터 다음 로그인 안내(계정별 하루 로그인 횟수 기준) */

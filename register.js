@@ -1,4 +1,4 @@
-import {api,timesKo} from './auth.js?v=1.21.0';
+import {api,timesKo} from './auth.js?v=1.22.0';
 // 이용 안내: 서버 기본 한도(세션 시간·하루 로그인 횟수)로 채운다. 실패하면 기본 문구 그대로
 api('/healthz',{noAuth:true,timeoutMs:8000}).then(h=>{const a=h?.auth;if(!a)return;if(a.sessionMinutes)document.querySelector('#regMinutes').textContent=a.sessionMinutes;if(a.dailySessions)document.querySelector('#regLogins').textContent=timesKo(a.dailySessions);}).catch(()=>{});
 const form=document.querySelector('#requestForm');

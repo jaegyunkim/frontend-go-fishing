@@ -9,7 +9,7 @@
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" href="assets/icon.svg" type="image/svg+xml">
   <link rel="apple-touch-icon" href="assets/icon-192.png">
-  <link rel="stylesheet" href="style.css?v=1.21.0">
+  <link rel="stylesheet" href="style.css?v=1.22.0">
 </head>
 <body>
   <!-- 로그인 화면 -->
@@ -75,7 +75,7 @@
       <section id="tab-chat" class="tab active" aria-label="대화">
         <div id="chat" class="chat" aria-live="polite"></div>
       </section>
-      <section id="tab-brief" class="tab" aria-label="브리핑"><div id="brief" class="brief"><p class="empty">포인트를 고르면 상세 브리핑이 여기에 표시돼요.</p></div></section>
+      <section id="tab-brief" class="tab" aria-label="브리핑"><div id="brief" class="brief"><p class="empty">포인트를 고르면 상세 브리핑이 여기에 표시돼요.</p><div class="actions brief-go"><div class="tap-hint">👇 먼저 포인트를 골라 주세요</div><button type="button" class="act" data-go="points"><span class="act-ico" aria-hidden="true">📍</span><span class="act-label">포인트 고르러 가기</span><span class="act-go" aria-hidden="true">›</span></button></div></div></section>
       <section id="tab-points" class="tab" aria-label="포인트"><div id="points" class="points"></div></section>
       <section id="tab-history" class="tab" aria-label="내 대화 기록">
         <div class="hist-head"><button type="button" id="historyBack" class="hist-back" aria-label="대화로 돌아가기">← 대화로</button><h2>내 대화 기록</h2></div>
@@ -171,7 +171,7 @@
       <div class="row"><button type="submit">변경</button><button type="button" id="pwCancel" class="ghost">취소</button></div>
     </form>
   </dialog>
-  <script src="config.js?v=1.21.0"></script><script src="telemetry.js?v=1.21.0"></script>
-  <script src="app.js?v=1.21.0" type="module"></script><script src="visit.js?v=1.21.0" type="module"></script>
+  <script src="config.js?v=1.22.0"></script><script src="telemetry.js?v=1.22.0"></script>
+  <script src="app.js?v=1.22.0" type="module"></script><script src="visit.js?v=1.22.0" type="module"></script>
 </body>
 </html>
