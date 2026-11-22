@@ -464,7 +464,7 @@ async function loadPoints() {
 async function openSettings() {
   $('#serverSettingsLink').hidden = true;
   if (state.auth?.token) {
-    try { const me = await api('/v1/auth/me'); $('#serverSettingsLink').hidden = !(me.role === 'admin' && me.user.loginId === 'lonbehold' && !me.mustChangePassword); } catch { return; }
+    try { const me = await api('/v1/auth/me'); $('#serverSettingsLink').hidden = !(me.role === 'admin' && !me.mustChangePassword); } catch { return; }
   }
   const a = state.auth;
   $('#accountBox').hidden = !(authed() && a);

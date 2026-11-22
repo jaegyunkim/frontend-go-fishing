@@ -4,13 +4,13 @@ let verified = false;
 function deny(message) { verified = false; form.hidden = true; status.textContent = message; }
 setOnAuthLost(() => { saveAuth(null); deny('로그인이 만료됐어요. 다시 로그인해 주세요.'); });
 async function verify() {
-  if (!state.auth?.token) throw new Error('관리자 lonbehold 계정으로 로그인한 뒤 접근해 주세요.');
+  if (!state.auth?.token) throw new Error('관리자 권한이 필요해요. 관리자 계정으로 로그인한 뒤 다시 열어 주세요.');
   const me = await api('/v1/auth/me');
-  if (me.role !== 'admin' || me.user?.loginId !== 'lonbehold' || me.mustChangePassword) throw new Error('관리자 lonbehold 계정만 접근할 수 있어요. 비밀번호 변경이 필요한 경우 먼저 완료해 주세요.');
+  if (me.role !== 'admin' || me.mustChangePassword) throw new Error('관리자 권한이 필요해요. 비밀번호 변경이 필요한 경우 먼저 완료해 주세요.');
   syncExpiry(me.remainingSec); return me;
 }
 try {
-  await verify(); verified = true; form.hidden = false; status.textContent = '관리자 lonbehold 인증 완료';
+  await verify(); verified = true; form.hidden = false; status.textContent = '관리자 인증 완료';
   document.querySelector('#address').value = state.api;
   startTimer(document.querySelector('#timer'), {onExpire: () => { logout('expired'); deny('세션이 만료됐어요. 다시 로그인해 주세요.'); }});
 } catch (e) { deny(e.message); }
