@@ -59,7 +59,7 @@ form.addEventListener('submit',async e=>{
  }catch(e){
   const known={REGISTRATION_PENDING:'이미 신청하셨어요',ALREADY_REGISTERED:'이미 가입된 이메일이에요',REGISTRATION_REVIEWED:'신청 상태를 확인해 주세요',REGISTRATION_RATE:'잠시 후 다시 신청해 주세요'};
   const title=known[e.code]||'신청이 접수되지 않았어요';
-  const text=known[e.code]?e.message:e.message+'\n입력하신 내용은 그대로 두었으니 잠시 후 다시 시도해 주세요.';
+  const text=known[e.code]?e.message:e.friendly?e.message+'\n입력하신 내용은 그대로 두었어요.':e.message+'\n입력하신 내용은 그대로 두었으니 잠시 후 다시 시도해 주세요.';
   feedback(text,true);
   // 어떤 결과든 안내창으로 알려 준다(작은 글씨만으로는 놓치기 쉬움)
   showMessage(title,text);

@@ -23,10 +23,11 @@ const authed = () => state.authMode === 'required';
 // 상단 안내: 로그인한 계정의 이용 시간(관리자가 계정별로 바꿀 수 있음), 로그인 전에는 서버 기본값
 const sessionNotice = () => `원활한 운영을 위해 로그인 후 ${state.auth ? sessionMinutes() : state.sessionMinutes}분이 지나면 자동 로그아웃돼요.`;
 function setStatus(text, cls = '') { const el = $('#status'); el.textContent = text; el.className = 'status ' + cls; }
+let lastHealthError = ''; // 연결 실패 시 사용자에게 보여 줄 친절한 문구(구분 가능한 경우)
 async function checkServer() {
   if (!state.api) { setStatus('백엔드 미연결 · ⚙︎ 설정에서 서버 주소를 입력하세요', 'bad'); return null; }
   const h = await health();
-  if (h.error) { setStatus(`서버 연결 실패 (${state.api}) · ${h.error}`, 'bad'); return null; }
+  if (h.error) { lastHealthError = h.friendly ? h.error : ''; setStatus(`서버 연결 실패 (${state.api}) · ${h.error}`, 'bad'); return null; }
   setStatus(authed() ? sessionNotice() : `서버 연결됨 v${h.version} · 로그인 없음(개발 모드)`, 'ok');
   return h;
 }
@@ -364,7 +365,7 @@ async function send(text, extra = {}) {
     if (e.code === 'AI_CREDIT_EXHAUSTED') { applyAiLock({ available: false, message: e.message }); return; }
     if (e.status === 429) { bubble('bot', md(`⏳ ${e.message}`)); if (e.usage) renderUsage({ today: { messages: e.usage.messages, tokens: e.usage.tokens } }); return; }
     if (e.status === 403) { bubble('bot', md(e.message)); return; }
-    bubble('bot', md(`서버에 연결하지 못했어요. 잠시 후 다시 시도해 주세요. (${e.message})`));
+    bubble('bot', md(e.friendly ? e.message : `서버에 연결하지 못했어요. 잠시 후 다시 시도해 주세요. (${e.message})`));
   } finally {
     sending = false; const sb = $('#composer button[type=submit]'); if (sb && !aiLocked && !tokenLocked) sb.disabled = false;
   }
@@ -904,7 +905,7 @@ async function boot() {
     return;
   }
   // 서버에 연결되지 않으면 로그인 화면에서 안내(로그인 필요 서비스이므로 대화 화면을 먼저 열지 않음)
-  if (!h) return showLogin(state.api ? '서버에 연결할 수 없어요. 관리자에게 운영 서버 상태 확인을 요청해 주세요.' : '서버 주소가 설정되지 않았어요. 관리자에게 연결된 접속 주소를 요청해 주세요.');
+  if (!h) return showLogin(state.api ? (lastHealthError || '서버에 연결할 수 없어요. 관리자에게 운영 서버 상태 확인을 요청해 주세요.') : '서버 주소가 설정되지 않았어요. 관리자에게 연결된 접속 주소를 요청해 주세요.');
   // AUTH_MODE=off(로컬 개발 서버)일 때만 로그인 없이 바로 대화
   timer?.stop(); $('#loginView').hidden = true; $('#appView').hidden = false; $('#btnLogout').hidden = true; // 로그인 없는 개발 모드
   chat.innerHTML = ''; welcome(); restore();

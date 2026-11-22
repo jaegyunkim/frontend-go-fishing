@@ -32,6 +32,18 @@ export const loginQuota = () => state.auth?.user?.role === 'user' ? state.auth?.
 export const timesKo = v => { const k = Math.trunc(Number(v)); return ((['', '한', '두', '세', '네', '다섯', '여섯', '일곱', '여덟', '아홉', '열'])[k] ?? k.toLocaleString('ko-KR')) + ' 번'; };
 export const remaining = () => state.auth ? Math.max(0, Math.round((state.auth.expiresAtLocal - Date.now()) / 1000)) : 0;
 
+// API 실패 안내 문구. 백엔드 오류 형식은 {"error": "...", "code": "..."}.
+// - 응답을 못 받음(오프라인·서버 꺼짐·시간 초과): 연결 문제임을 알리고 재시도 안내.
+// - 5xx + code(예: 503 DB_UNAVAILABLE): 코드별 안내, 모르는 코드는 일반 안내.
+// - code 가 없거나 4xx: 기존 동작 유지(서버가 준 error 문구 그대로).
+export const RETRY_TAIL = '잠시 후 다시 시도해 주세요. 계속되면 운영자에게 알려 주세요.';
+const ERROR_BY_CODE = { DB_UNAVAILABLE: `지금 서비스 저장소에 잠시 연결할 수 없어요. ${RETRY_TAIL}` };
+export function friendlyHttpError(status, code) {
+  if (!code || !(status >= 500)) return null;
+  return ERROR_BY_CODE[code] ?? `서버가 요청을 잠시 처리하지 못했어요. ${RETRY_TAIL}`;
+}
+export const friendlyNetworkError = timeout => timeout ? `서버 응답이 늦어지고 있어요. ${RETRY_TAIL}` : `서버에 연결하지 못했어요. 인터넷 연결을 확인하고 ${RETRY_TAIL}`;
+
 let onAuthLost = () => {};
 export function setOnAuthLost(fn) { onAuthLost = fn; }
 let onMustChange = () => {};
@@ -48,12 +60,14 @@ export async function api(path, opts = {}) {
   catch (e) {
     telemetry('api_network', e?.name === 'TimeoutError' ? 'API request timed out' : 'API network request failed', requestBase);
     const local = /\/\/(localhost|127\.0\.0\.1)/.test(state.api) && location.protocol === 'https:';
-    throw Object.assign(new Error(e.name === 'TimeoutError' ? (local ? '로컬 서버 응답 없음 — 브라우저의 “로컬 네트워크 접근 허용” 팝업을 확인하거나 HTTPS 공개 주소를 쓰세요' : '응답 시간 초과') : '네트워크 오류'), { status: 0 });
+    const timeout = e?.name === 'TimeoutError';
+    throw Object.assign(new Error(timeout && local ? '로컬 서버 응답 없음 — 브라우저의 “로컬 네트워크 접근 허용” 팝업을 확인하거나 HTTPS 공개 주소를 쓰세요' : friendlyNetworkError(timeout)), { status: 0, code: timeout ? 'TIMEOUT' : 'NETWORK', friendly: true });
   }
   if (r.status >= 500) telemetry('api_5xx', `HTTP ${r.status}`, requestBase);
   const j = await r.json().catch(() => { telemetry('api_json', 'API response JSON parsing failed', requestBase); return {}; });
   if (!r.ok) {
-    const e = Object.assign(new Error(j.error || `HTTP ${r.status}`), { status: r.status, code: j.code, usage: j.usage });
+    const nice = friendlyHttpError(r.status, j.code);
+    const e = Object.assign(new Error(nice || j.error || `HTTP ${r.status}`), { status: r.status, code: j.code, usage: j.usage, friendly: !!nice, serverError: j.error });
     if (r.status === 401 && state.auth && !opts.noAuth) onAuthLost(e.message, e.code);
     if (r.status === 403 && j.code === 'MUST_CHANGE_PASSWORD') onMustChange();
     throw e;
@@ -80,7 +94,7 @@ export async function health() {
     const backups = fromConfig ? (window.GOFISHING_API_FALLBACKS || []).filter(u => u && u !== state.api) : [];
     const primary = state.api;
     for (const u of backups) { state.api = u; try { return await probe(); } catch { /* 다음 예비 주소 */ } }
-    state.api = primary; syncTelemetryBase(); state.authMode = null; return { error: e.message };
+    state.api = primary; syncTelemetryBase(); state.authMode = null; return { error: e.message, friendly: !!e.friendly };
   }
 }
 export async function login(loginId, password) {
