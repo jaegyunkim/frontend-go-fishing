@@ -10,7 +10,8 @@ const view = $('#view');
 let current = 'users';
 
 function note(text, bad = false) { const m = $('#msg'); m.textContent = text; m.hidden = !text; m.style.color = bad ? 'var(--bad)' : ''; if (text) setTimeout(() => { if (m.textContent === text) m.hidden = true; }, 8000); }
-function gone(msg) { $('#userPageLink').hidden = true; view.innerHTML = `<div class="card"><h3>관리자 로그인이 필요해요</h3><p class="sub">${esc(msg)}</p><p><a class="link-btn" href="./">채팅 화면에서 관리자 계정으로 로그인 →</a></p></div>`; $('#timer').hidden = true; }
+// 미인증·접속 불가가 확정되면 상단 상태 문구(#who)도 "확인 중…"에서 그 상태로 바꾼다.
+function gone(msg, status = '로그인 필요 · 관리자 계정으로 로그인해 주세요') { $('#who').textContent = status; $('#userPageLink').hidden = true; view.innerHTML = `<div class="card"><h3>관리자 로그인이 필요해요</h3><p class="sub">${esc(msg)}</p><p><a class="link-btn" href="./">채팅 화면에서 관리자 계정으로 로그인 →</a></p></div>`; $('#timer').hidden = true; }
 setOnAuthLost(msg => { logout(); gone(msg); });
 
 const dialog = (html, onSubmit) => new Promise(resolve => {
@@ -345,16 +346,16 @@ addEventListener('resize', () => { clearTimeout(visitsW); visitsW = setTimeout((
 
 (async () => {
   const h = await health();
-  if (h.error) return gone(`서버 연결 실패: ${h.error}`);
-  if (state.authMode !== 'required') return gone('서버가 로그인 없이 동작 중이에요(AUTH_MODE=off). 관리자 기능은 로그인 모드에서만 써요.');
+  if (h.error) return gone(`서버 연결 실패: ${h.error}`, '서버 연결 안 됨 · 잠시 후 다시 시도해 주세요');
+  if (state.authMode !== 'required') return gone('서버가 로그인 없이 동작 중이에요(AUTH_MODE=off). 관리자 기능은 로그인 모드에서만 써요.', '관리자 기능 사용 불가 · 로그인 모드 아님');
   if (!state.auth?.token) return gone('이 탭에 로그인 정보가 없어요.');
   try {
     const me = await api('/v1/auth/me');
-    if (me.role !== 'admin') return gone('관리자 계정이 아니에요.');
+    if (me.role !== 'admin') return gone('관리자 계정이 아니에요.', '권한 없음 · 관리자 계정이 아니에요');
     $('#userPageLink').hidden = false;
     syncExpiry(me.remainingSec);
     $('#who').textContent = `${me.user.displayName}(${me.user.loginId}) · 세션 ${me.limits.sessionMinutes}분`;
     startTimer($('#timer'), { onWarn: s => note(`약 ${s}초 뒤 자동 로그아웃돼요`), onExpire: () => { logout('expired'); gone('이용 시간이 끝나 자동 로그아웃됐어요.'); } });
     go('users');
-  } catch (e) { if (e.status !== 401) gone(e.message); }
+  } catch (e) { if (e.status !== 401) gone(e.message, '확인 실패 · 잠시 후 다시 시도해 주세요'); }
 })();
