@@ -459,3 +459,9 @@ body{word-break:keep-all;overflow-wrap:anywhere}
 .brief .nb-cat a[target=_blank]::after{content:' ↗';font-size:11px;text-decoration:none;display:inline-block;margin-left:2px}
 .brief-go{margin-top:12px}
 @media (prefers-reduced-motion:reduce){.prow.tappable,.top3 .item.tappable,.nb-item.tappable{transition:none}}
+/* 터치 영역 44px 이상(모바일 점검 v1.23.0): 보이는 모양은 그대로 두고 누르는 범위만 넓힘 */
+.eye-btn{width:44px;height:44px;right:3px}
+.clearable.has-eye input{padding-right:92px}
+.clearable.has-eye .clear-btn{right:47px}
+.login-card label.remember-id{min-height:44px;margin:2px 2px -6px;padding:0 2px;box-sizing:border-box}
+.tap{display:inline-flex;align-items:center;justify-content:center;min-height:44px;min-width:44px;padding:0 6px;box-sizing:border-box}

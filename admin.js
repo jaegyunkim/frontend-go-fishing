@@ -11,7 +11,7 @@ let current = 'users';
 
 function note(text, bad = false) { const m = $('#msg'); m.textContent = text; m.hidden = !text; m.style.color = bad ? 'var(--bad)' : ''; if (text) setTimeout(() => { if (m.textContent === text) m.hidden = true; }, 8000); }
 // 미인증·접속 불가가 확정되면 상단 상태 문구(#who)도 "확인 중…"에서 그 상태로 바꾼다.
-function gone(msg, status = '로그인 필요 · 관리자 계정으로 로그인해 주세요') { $('#who').textContent = status; $('#userPageLink').hidden = true; view.innerHTML = `<div class="card"><h3>관리자 로그인이 필요해요</h3><p class="sub">${esc(msg)}</p><p><a class="link-btn" href="./">채팅 화면에서 관리자 계정으로 로그인 →</a></p></div>`; $('#timer').hidden = true; }
+function gone(msg, status = '로그인 필요 · 관리자 계정으로 로그인해 주세요') { $('#who').textContent = status; $('#userPageLink').hidden = true; view.innerHTML = `<div class="card"><h3>관리자 로그인이 필요해요</h3><p class="sub">${esc(msg)}</p><p><a class="link-btn tap" href="./">채팅 화면에서 관리자 계정으로 로그인 →</a></p></div>`; $('#timer').hidden = true; }
 setOnAuthLost(msg => { logout(); gone(msg); });
 
 const dialog = (html, onSubmit) => new Promise(resolve => {
