@@ -25,6 +25,7 @@
         <button type="submit" id="loginBtn">로그인</button>
       </form>
       <p id="loginMsg" class="login-msg" role="alert"></p>
+      <div id="loginSafety"></div>
       <details class="login-notes-wrap"><summary>이용 안내</summary><ul class="login-notes">
         <li>로그인 1회당 <b id="sessionMinutesNote">10</b>분 이용 후 자동 로그아웃돼요(계정마다 다를 수 있어요).</li>
         <li>질문 수와 AI 사용량에 하루 한도가 있어요.</li>
@@ -32,6 +33,7 @@
         <li>로그인 직후 위치 사용을 허용하시면, 로그인 기록 확인을 위해 대략적인 위치(약 100m 단위)를 30일간 보관해요. 허용하지 않아도 그대로 이용할 수 있어요.</li>
         <li>24시간 동안 <b id="dailySessionsNote">한 번</b> 로그인할 수 있어요(계정마다 다를 수 있어요). 횟수를 다 쓰면 가장 이른 로그인 시각부터 24시간 뒤 다시 이용할 수 있고, 로그아웃해도 횟수는 돌아오지 않아요.</li>
       </ul></details>
+      <details class="login-notes-wrap help-wrap"><summary>도움말 · 자주 묻는 질문</summary><div class="help-body" data-help></div></details>
       <a class="signup-cta" href="register.html" aria-label="이용 신청하기">
         <span class="cta-title">🎣 어디서 잘 물릴지 궁금하세요?</span>
         <span class="cta-desc">파고·바람·물때를 공공데이터로 확인하고, 포인트와 가는 길까지 한 번에 알려 드려요.</span>
@@ -158,6 +160,7 @@
         <div class="row acct-actions"><button type="button" id="btnHistory2" class="ghost">내 대화 기록 보기</button><button type="button" id="btnPw" class="ghost">비밀번호 변경</button></div>
       </div>
       <button type="button" id="resetSession" class="ghost small">새 대화 시작(세션 초기화)</button>
+      <details class="login-notes-wrap help-wrap settings-help"><summary>도움말 · 안전 안내</summary><div class="help-body"><div data-safety></div><div data-help></div></div></details>
     </form>
   </dialog>
   <dialog id="pwDialog">

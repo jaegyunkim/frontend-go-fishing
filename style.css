@@ -465,3 +465,19 @@ body{word-break:keep-all;overflow-wrap:anywhere}
 .clearable.has-eye .clear-btn{right:47px}
 .login-card label.remember-id{min-height:44px;margin:2px 2px -6px;padding:0 2px;box-sizing:border-box}
 .tap{display:inline-flex;align-items:center;justify-content:center;min-height:44px;min-width:44px;padding:0 6px;box-sizing:border-box}
+/* 안전 안내(로그인·추천·브리핑 공통) v1.23.0: 눈에 띄되 과하지 않게 */
+.safety-note{margin:12px 0 4px;padding:10px 12px;border-radius:12px;border:1px solid #f5c84c;background:#fffaeb;color:#5c4400;font-size:12.5px;line-height:1.55;text-align:left}
+.safety-note p{margin:0 0 4px}.safety-note p:last-child{margin-bottom:0}
+.safety-note b{color:#4a3600}
+.safety-note .sos{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin-top:6px}
+.safety-note .sos>span{font-weight:700;flex-basis:100%}
+.safety-note .sos a{display:inline-flex;align-items:center;gap:4px;min-height:44px;padding:0 12px;border-radius:999px;border:1px solid #fca5a5;background:#fff;color:#be123c;font-weight:600;text-decoration:none;box-sizing:border-box}
+.safety-note .sos a b{color:#be123c;font-size:14px}
+.card .safety-note{margin-top:12px}
+/* 도움말 · 자주 묻는 질문 */
+.help-body{padding:0 4px 12px;text-align:left;font-size:12.5px;line-height:1.6;color:var(--sub)}
+.help-tagline{margin:4px 0 10px;font-weight:700;color:var(--ink)}
+.faq{margin:0}.faq dt{margin-top:10px;font-weight:700;color:var(--ink)}.faq dd{margin:2px 0 0}
+.faq a{color:#be123c;font-weight:600}
+.help-contact{margin:12px 0 0;color:var(--sub)}
+.settings-help{margin-top:12px}

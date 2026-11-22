@@ -5,6 +5,11 @@ const md = s => esc(s).replace(/\*\*(.+?)\*\*/g, '<b>$1</b>');
 const won = n => n == null ? '-' : `${Math.round(n).toLocaleString('ko-KR')}원`;
 const GATE = { PASS: '안전 양호', PASS_WITH_CAUTION: '조건부 주의', REVIEW_REQUIRED: '현장 확인', HARD_BLOCK: '출조 자제' };
 const badge = g => g ? `<span class="badge b-${esc(g)}">${esc(GATE[g] ?? g)}</span>` : '';
+import { SAFETY_NOTE, helpHtml } from './guide.js?v=1.22.0';
+// 안전 안내·도움말을 로그인 화면과 설정 창에 채운다(문구는 guide.js 한 곳에서 관리).
+$('#loginSafety').innerHTML = SAFETY_NOTE;
+document.querySelectorAll('[data-safety]').forEach(el => { el.innerHTML = SAFETY_NOTE; });
+document.querySelectorAll('[data-help]').forEach(el => { el.innerHTML = helpHtml(); });
 
 // ---- 설정·인증(auth.js) ----
 import { state, setApi, api, health, login, logout, startTimer, syncExpiry, saveAuth, setOnAuthLost, setOnMustChange, loadAuthImage, remaining, sessionMinutes, loginQuota, timesKo } from './auth.js?v=1.22.0';
@@ -149,13 +154,13 @@ function renderMessage(m) {
         <div class="reason">${esc(i.score.reason)}</div>
         ${i.safety.reasons.length ? `<ul class="warn-list">${i.safety.reasons.map(r => `<li>${esc(r.text)}</li>`).join('')}</ul>` : ''}${tapCta('자세히 안내받기')}</div>`).join('');
       const blocked = m.data.blocked?.length ? blockedList(m.data.blocked) : '';
-      const el = node(`<h3>${esc(m.data.date)} 추천 TOP ${m.data.items.length}</h3><div class="sub">${esc(m.data.tier?.badge ?? '')}</div><div class="top3">${items}</div>${blocked}`);
+      const el = node(`<h3>${esc(m.data.date)} 추천 TOP ${m.data.items.length}</h3><div class="sub">${esc(m.data.tier?.badge ?? '')}</div><div class="top3">${items}</div>${blocked}${SAFETY_NOTE}`);
       el.querySelectorAll('.item').forEach(p => p.onclick = () => send(p.dataset.msg));
       tappable(el, '.top3 .item', p => `${p.querySelector('b')?.textContent ?? ''} 자세히 안내받기`);
       break;
     }
     case 'safety_block':
-      node(`<h3>🚨 출조 자제 권고 ${m.data.point ? '· ' + esc(m.data.point) : ''}</h3><div class="sub">${esc(m.data.date)}</div><ul class="list">${m.data.reasons.map(r => `<li>${esc(r)}</li>`).join('')}</ul>`, 'card block');
+      node(`<h3>🚨 출조 자제 권고 ${m.data.point ? '· ' + esc(m.data.point) : ''}</h3><div class="sub">${esc(m.data.date)}</div><ul class="list">${m.data.reasons.map(r => `<li>${esc(r)}</li>`).join('')}</ul>${SAFETY_NOTE}`, 'card block');
       break;
     case 'briefing': {
       lastBriefing = m.data; renderBriefing(m.data);
@@ -442,7 +447,8 @@ function renderBriefing(b) {
     <div class="card sec"><h4>■ 주변 정보</h4>${nearby}</div>
     <div class="card sec"><h4>■ 가장 가까운 응급실</h4>${er}</div>
     <div class="card sec"><h4>■ 안전 체크</h4><ul class="list check">${b.checklist.map(c => `<li>${esc(c)}</li>`).join('')}</ul></div>
-    <div class="card src"><b>출처·수집 상태</b><br>${srcs}<div class="disc">${esc(b.disclaimer)}</div></div>`;
+    <div class="card src"><b>출처·수집 상태</b><br>${srcs}<div class="disc">${esc(b.disclaimer)}</div></div>
+    ${SAFETY_NOTE}`;
   $('#brief').querySelectorAll('img[data-auth-src]').forEach(img => loadAuthImage(img, img.dataset.authSrc));
 }
 
