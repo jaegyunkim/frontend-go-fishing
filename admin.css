@@ -36,7 +36,7 @@
   .top{gap:8px;padding-left:12px;padding-right:12px}
   .brand img{width:26px;height:26px}.brand h1{font-size:15px}#who{font-size:11px}
   .top-right{flex-shrink:0;gap:6px}.top-right .link-btn{font-size:12.5px;padding:8px 10px;border:1px solid var(--line);border-radius:10px;background:var(--panel2);color:var(--text);text-decoration:none}
-  .atabs{position:sticky;top:0;z-index:5;background:var(--bg);padding:8px 10px;scrollbar-width:none;-webkit-overflow-scrolling:touch}.atabs::-webkit-scrollbar{display:none}
+  .atabs{background:var(--bg);padding:8px 10px;scrollbar-width:none;-webkit-overflow-scrolling:touch}.atabs::-webkit-scrollbar{display:none}
   .atabs button{min-height:44px;padding:8px 14px;font-size:13.5px}
   .top-right .link-btn{display:inline-flex;align-items:center;min-height:44px;box-sizing:border-box}
   .aview{padding:10px 10px calc(16px + env(safe-area-inset-bottom))}
@@ -183,3 +183,11 @@ body{word-break:keep-all;overflow-wrap:anywhere}
 .vz-tabs button[data-vsec="seasons"],.vz-tabs button[data-vsec="yearly"],.vz-tabs button[data-vsec="devices"],.vz-tabs button[data-vsec="regions"]{grid-column:span 5 !important}
 .vz-tabs button{font-size:13px}
 @media (max-width:400px){.vz-tabs button{font-size:12.5px;letter-spacing:0}}
+/* 관리자 메뉴 가로 스크롤 표시 v1.23.0: 넘치는 쪽 가장자리에 페이드 + 화살표 */
+.atabs-wrap{position:relative;background:var(--bg)}
+.atabs-arrow{position:absolute;top:1px;bottom:1px;z-index:2;width:44px;display:flex;align-items:center;border:0;padding:0 8px;font-size:24px;line-height:1;font-weight:700;color:var(--accInk,#0e7490);cursor:pointer;opacity:0;pointer-events:none;transition:opacity .2s}
+.atabs-arrow.prev{left:0;justify-content:flex-start;background:linear-gradient(90deg,var(--bg) 45%,rgba(247,252,254,0))}
+.atabs-arrow.next{right:0;justify-content:flex-end;background:linear-gradient(270deg,var(--bg) 45%,rgba(247,252,254,0))}
+.atabs-wrap.can-prev .atabs-arrow.prev,.atabs-wrap.can-next .atabs-arrow.next{opacity:1;pointer-events:auto}
+@media (prefers-reduced-motion:reduce){.atabs-arrow{transition:none}}
+@media (max-width:720px){.atabs-wrap{position:sticky;top:0;z-index:5}}

@@ -16,10 +16,14 @@
       <div class="brand"><img src="assets/icon.svg" alt="" width="30" height="30"><div><h1>어디물어 관리자</h1><p id="who">확인 중…</p></div></div>
       <div class="top-right"><span id="timer" class="timer" hidden>10:00</span><a id="userPageLink" class="link-btn" href="./" hidden>일반 페이지로</a></div>
     </header>
-    <nav class="atabs" id="atabs">
+    <div class="atabs-wrap" id="atabsWrap">
+    <button type="button" class="atabs-arrow prev" tabindex="-1" aria-hidden="true">‹</button>
+    <nav class="atabs" id="atabs" aria-label="관리자 메뉴">
       <button data-v="requests">신청 승인</button><button data-v="model">AI 연결</button><button data-v="users" class="active">사용자</button><button data-v="sessions">세션</button><button data-v="usage">사용량</button><button data-v="visits">접속현황</button>
       <button data-v="chats">대화 로그</button><button data-v="logins">로그인 기록</button><button data-v="reports">리포트</button><button data-v="skills">스킬</button><button data-v="opinions">의견 보내기</button><button data-v="actions">작업 기록</button>
     </nav>
+    <button type="button" class="atabs-arrow next" tabindex="-1" aria-hidden="true">›</button>
+    </div>
     <div id="msg" class="toast" hidden></div>
     <main id="view" class="aview"><p class="sub">불러오는 중…</p></main>
   </div>

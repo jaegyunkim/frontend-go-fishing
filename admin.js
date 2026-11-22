@@ -306,10 +306,21 @@ const capBar = c => c ? `<div class="capbar">${[['오늘 신청', c.registers], 
 const backBar = title => `<div class="tool"><div class="acts"><button id="backUsers">← 사용자</button></div><h2>${title}</h2></div>`;
 function bindBack() { const b = $('#backUsers'); if (b) b.onclick = () => go('users'); }
 async function go(v, opt) {
-  current = v; visitsRedraw = null; document.querySelectorAll('#atabs button').forEach(b => b.classList.toggle('active', b.dataset.v === v));
+  current = v; visitsRedraw = null; document.querySelectorAll('#atabs button').forEach(b => b.classList.toggle('active', b.dataset.v === v)); document.querySelector('#atabs button.active')?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
   try { await views[v](opt); } catch (e) { if (e.status !== 401) view.innerHTML = `<div class="card"><p class="sub">${esc(e.message)}</p></div>`; }
 }
 document.querySelectorAll('#atabs button').forEach(b => b.onclick = () => go(b.dataset.v));
+// 메뉴가 화면보다 넓으면 가장자리 페이드와 화살표로 "옆에 더 있어요"를 알린다(좁은 화면에서 뒤쪽 메뉴가 잘려 보이는 문제).
+const tabsNav = $('#atabs'), tabsWrap = $('#atabsWrap');
+function tabsEdges() {
+  const max = tabsNav.scrollWidth - tabsNav.clientWidth;
+  tabsWrap.classList.toggle('can-prev', tabsNav.scrollLeft > 4);
+  tabsWrap.classList.toggle('can-next', tabsNav.scrollLeft < max - 4);
+}
+tabsNav.addEventListener('scroll', tabsEdges, { passive: true });
+addEventListener('resize', tabsEdges);
+tabsWrap.querySelectorAll('.atabs-arrow').forEach(b => b.onclick = () => tabsNav.scrollBy({ left: (b.classList.contains('next') ? 1 : -1) * tabsNav.clientWidth * 0.7, behavior: 'smooth' }));
+tabsEdges();
 // 모바일 카드형 표: 각 칸에 머리글을 data-label 로 붙여, 좁은 화면에서 '머리글: 값' 카드로 보이게 한다(CSS).
 function labelTables(root = view) {
   root.querySelectorAll('table.tbl').forEach(t => {
