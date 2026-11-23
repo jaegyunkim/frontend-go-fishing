@@ -371,7 +371,7 @@ button.op-star.on{color:#f59e0b}
 /* 비활성 버튼: 회색, 누를 수 없음 (주소 찾기·추가) */
 #originAddBtn:disabled,#postcodeOpen:disabled{background:#d5dbe1 !important;border-color:#c3cad2 !important;color:#7b8794 !important;box-shadow:none !important;opacity:1 !important;cursor:not-allowed;pointer-events:none}
 #originAddBtn:not(:disabled){background:#0e8fb0;border-color:#0e8fb0;color:#fff}
-.beta-note{font-size:12px;line-height:1.55;color:var(--sub);background:#f3f8fb;border:1px solid var(--line);border-radius:10px;padding:8px 10px;margin:4px 0 8px}.beta-note b{color:var(--ink)}
+
 /* 오른쪽 끝 버튼 말풍선: 화면 밖으로 나가지 않게 오른쪽 정렬 */
 .has-tip.tip-end::after{left:auto;right:0;transform:translateY(-4px)}.has-tip.tip-end:hover::after,.has-tip.tip-end:focus-visible::after{transform:translateY(0)}
 /* 설정: 내 대화 기록 보기 · 비밀번호 변경 나란히(같은 너비) */
