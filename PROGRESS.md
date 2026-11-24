@@ -2,7 +2,12 @@
 
 에이전트 순환: Claude → Codex → Antigravity → Cursor → Claude
 
-## 이번 작업: 임시 비밀번호 메일 다시 보내기 (브랜치 `jaegyunkim/pw-resend-fe`, v1.25.0 / 서비스 워커 v97)
+## 이번 작업: 신청 승인 탭 "임시 비밀번호 생성" (브랜치 `jaegyunkim/approve-pw-btn`, v1.26.0 / 서비스 워커 v98)
+
+- 승인 완료 카드에만 버튼(승인 대기·거절·정지·계정 미확인은 숨김). 계정 id는 `/v1/admin/users`(읽기)에서 로그인 아이디로 매칭. 확인 창 → 재발급 API 재사용 → 최초 승인과 같은 `showSecret` 팝업·`approvalMailto`. 백엔드 변경 없음
+- 시험: `node --test` 54개 통과(신규 `test/approve-regen.test.mjs`). 헤드리스 Chrome 목업(320/375/430px): 버튼 표시 조건·확인 창·취소 시 호출 없음·팝업·mailto 형식(승인과 동일)·429 문구·가로 넘침 없음·버튼 44px. DOM·저장소·앱 로그에 비밀번호 없음(Chrome 자체 mailto 정보 로그만). 운영 서버 요청 없음
+
+## 이전 작업: 임시 비밀번호 메일 다시 보내기 (브랜치 `jaegyunkim/pw-resend-fe`, v1.25.0 / 서비스 워커 v97)
 
 - 관리자 사용자 목록: 사용 중 계정마다 "임시 비밀번호 메일 다시 보내기"(확인 창 → `POST /v1/admin/users/:id/resend-temp-password` → 가려진 주소 표시). 코드별 오류 문구, 호출 중 비활성, 44px 이상
 - 시험: `node --test` 49개 통과(신규 `test/resend-temp.test.mjs`). 헤드리스 Chrome 목업(320/375/430px): 버튼 표시·확인 창·성공/실패 문구·중복 클릭 방지·가로 넘침 없음·로그 노출 없음 확인. 실제 메일·운영 서버 요청 없음
