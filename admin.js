@@ -1,7 +1,8 @@
-import { approvalMailto } from './approval-email.js?v=1.24.0';
+import { approvalMailto } from './approval-email.js?v=1.25.0';
 // 어디물어 관리자 화면: 계정·세션·사용량·대화 로그·로그인/작업 기록. 관리자 계정으로 로그인한 탭에서만 동작.
-import { state, api, health, startTimer, syncExpiry, setOnAuthLost, logout } from './auth.js?v=1.24.0';
-import { visitsHtml } from './admin-visits.js?v=1.24.0';
+import { state, api, health, startTimer, syncExpiry, setOnAuthLost, logout } from './auth.js?v=1.25.0';
+import { visitsHtml } from './admin-visits.js?v=1.25.0';
+import { RESEND_LABEL, resendPath, resendName, canResend, resendConfirmText, resendSuccessText, resendErrorText } from './resend-temp.js?v=1.25.0';
 const $ = s => document.querySelector(s);
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const dt = v => v ? new Date(v).toLocaleString('ko-KR', { timeZone: 'Asia/Seoul', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }) : '-';
@@ -121,7 +122,7 @@ const views = {
       <td>${roleText(u.role)} <span class="sub">${u.role === 'user' ? '· 1기기' : '· 동시 접속 허용'}</span><br><span class="pill ${u.status === 'active' ? 'ok' : 'bad'}">${u.status === 'active' ? '사용' : '중지'}</span>${u.lockedUntil && new Date(u.lockedUntil) > new Date() ? ' <span class="pill warn">잠김</span>' : ''}${u.activeSessions ? ' <span class="pill ok">접속 중</span>' : ''}${u.mustChangePassword ? ' <span class="pill warn">비번 변경 대기</span>' : ''}</td>
       <td class="num">${n(u.today.messages)}/${n(u.limits.dailyMessages)}${u.today.blocked ? `<br><span class="sub">거절 ${u.today.blocked}</span>` : ''}<br><button class="mini-btn" data-detail="questions" data-id="${u.id}" data-login="${esc(u.loginId)}">질문</button></td><td class="num">${n(u.today.tokens)}/${n(u.limits.dailyTokens)}<br><button class="mini-btn" data-detail="usage" data-id="${u.id}" data-login="${esc(u.loginId)}">토큰</button></td>
       <td class="num">${n(u.today.sessions)}<br><span class="sub">${u.role === "user" ? `24시간 ${n(u.logins24h ?? 0)}/${n(u.limits.dailySessions)}회` : "제한 없음"}</span></td><td>${u.limits.sessionMinutes}분 · 질문 ${u.limits.sessionMessages}</td><td>${esc(devPlat(u.device))}<br>${esc(devBrowser(u.device))}<br>${dt(u.lastLoginAt)}${u.nextLoginAt?`<br><span class="sub">재이용 ${dt(u.nextLoginAt)}</span>`:""}<br><button class="mini-btn" data-detail="logins" data-id="${u.id}" data-login="${esc(u.loginId)}">위치</button></td>
-      <td><div class="acts" data-id="${u.id}" data-login="${esc(u.loginId)}"><button data-a="limits">한도</button><button data-a="role">권한</button><button data-a="reset">비번 초기화</button>${u.lockedUntil ? '<button data-a="unlock">잠금 해제</button>' : ''}
+      <td><div class="acts" data-id="${u.id}" data-login="${esc(u.loginId)}"><button data-a="limits">한도</button><button data-a="role">권한</button><button data-a="reset">비번 초기화</button>${canResend(u) ? `<button data-a="resend" class="resend-btn">${RESEND_LABEL}</button>` : ''}${u.lockedUntil ? '<button data-a="unlock">잠금 해제</button>' : ''}
         <button data-a="toggle" class="${u.status === 'active' ? 'danger' : ''}">${u.status === 'active' ? '중지' : '재개'}</button><button data-a="chats">대화</button></div></td></tr>`).join('')}</table></div>`;
     view.querySelectorAll('[data-detail]').forEach(b => b.onclick = () => go(b.dataset.detail === 'opinions' ? 'opinions' : 'user_' + b.dataset.detail, { user: b.dataset.id, label: b.dataset.login }));
     $('#add').onclick = async () => {
@@ -158,6 +159,15 @@ const views = {
         } else if (b.dataset.a === 'reset') {
           if (!confirm(`${login} 비밀번호를 초기화할까요? 접속 중인 세션도 종료돼요.`)) return;
           const r = await patch({ resetPassword: true, unlock: true }); await showSecret(`${login} 비밀번호를 초기화했어요`, r.tempPassword);
+        } else if (b.dataset.a === 'resend') {
+          if (b.disabled || !u || !canResend(u)) return;
+          const name = resendName(u);
+          if (!confirm(resendConfirmText(name))) return;
+          b.disabled = true;
+          try { const r = await api(resendPath(id), { method: 'POST' }); note(resendSuccessText(name, r.maskedEmail)); }
+          catch (e) { note(resendErrorText(e), true); }
+          finally { b.disabled = false; }
+          return;
         } else if (b.dataset.a === 'unlock') { await patch({ unlock: true }); note('잠금을 풀었어요'); }
         else if (b.dataset.a === 'toggle') {
           const off = u.status === 'active';

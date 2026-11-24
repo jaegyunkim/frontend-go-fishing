@@ -67,7 +67,7 @@ export async function api(path, opts = {}) {
   const j = await r.json().catch(() => { telemetry('api_json', 'API response JSON parsing failed', requestBase); return {}; });
   if (!r.ok) {
     const nice = friendlyHttpError(r.status, j.code);
-    const e = Object.assign(new Error(nice || j.error || `HTTP ${r.status}`), { status: r.status, code: j.code, usage: j.usage, friendly: !!nice, serverError: j.error });
+    const e = Object.assign(new Error(nice || j.error || `HTTP ${r.status}`), { status: r.status, code: j.code, usage: j.usage, friendly: !!nice, serverError: j.error, retryAfter: Number(r.headers?.get?.('Retry-After')) || undefined });
     if (r.status === 401 && state.auth && !opts.noAuth) onAuthLost(e.message, e.code);
     if (r.status === 403 && j.code === 'MUST_CHANGE_PASSWORD') onMustChange();
     throw e;

@@ -191,3 +191,6 @@ body{word-break:keep-all;overflow-wrap:anywhere}
 .atabs-wrap.can-prev .atabs-arrow.prev,.atabs-wrap.can-next .atabs-arrow.next{opacity:1;pointer-events:auto}
 @media (prefers-reduced-motion:reduce){.atabs-arrow{transition:none}}
 @media (max-width:720px){.atabs-wrap{position:sticky;top:0;z-index:5}}
+/* 임시 비밀번호 메일 다시 보내기: 터치 영역 44px 이상, 좁은 화면에서 줄바꿈 */
+.acts button.resend-btn{min-height:44px;white-space:normal;max-width:100%;text-align:center;line-height:1.3}
+.acts button.resend-btn:disabled{opacity:.5;cursor:wait}
