@@ -23,7 +23,7 @@ test('표시 이름이 없으면 아이디, 경로는 id 인코딩', () => {
 test('활성 계정에만 버튼 표시', () => {
   assert.equal(m.canResend({ status: 'active' }), true);
   for (const s of ['disabled', 'pending', 'rejected', undefined]) assert.equal(m.canResend({ status: s }), false);
-  assert.match(admin, /canResend\(u\) \? `<button data-a="resend"/);
+  assert.ok(!/data-a="resend"/.test(admin), '사용자 탭 카드에는 다시 보내기 버튼이 없다');
 });
 test('오류 코드별 문구', () => {
   assert.equal(m.resendErrorText({ code: 'NOT_ACTIVE' }), '승인된 계정에만 보낼 수 있어요');
@@ -33,10 +33,11 @@ test('오류 코드별 문구', () => {
   assert.match(m.resendErrorText({ code: 'RATE_LIMITED', retryAfter: 42 }), /하루 5번까지\) · 42초 뒤/);
   for (const e of [{ code: 'NETWORK' }, { status: 500 }, new Error('x'), null]) assert.equal(m.resendErrorText(e), '보내지 못했어요. 잠시 뒤에 다시 시도해 주세요.');
 });
-test('admin.js: 확인 취소 시 호출 안 함·호출 중 비활성·maskedEmail 그대로 표시', () => {
-  assert.match(admin, /if \(!confirm\(resendConfirmText\(name\)\)\) return;\s*b\.disabled = true;/);
-  assert.match(admin, /resendMailOpenedText\(name, masked\)/);
-  assert.match(admin, /finally \{ b\.disabled = false; \}/);
+test('사용자 탭: 다시 보내기 버튼·핸들러 없음, 신청 승인 탭 「임시 비밀번호 생성」은 유지', () => {
+  assert.ok(!/RESEND_LABEL|resend-btn" data-a|b\.dataset\.a === 'resend'|openResendMail|resendMailOpenedText/.test(admin));
+  assert.match(admin, /data-a="limits">한도<\/button><button data-a="role">권한<\/button><button data-a="reset">비번 초기화<\/button>/);
+  assert.match(admin, /data-a="toggle"[^]*data-a="chats">대화/);
+  assert.match(admin, /canGenerateOnRequest\(r,userForRequest\(users,r\)\)\?'<div class="acts"><button type="button" class="resend-btn" data-regen=/);
 });
 test('auth.js api: Retry-After 를 오류에 담는다', async () => {
   const store = new Map(), st = { getItem: k => store.get(k) ?? null, setItem: (k, v) => store.set(k, v), removeItem: k => store.delete(k) };
@@ -55,8 +56,4 @@ test('임시 비밀번호는 mailto 링크 생성에만 쓰고 화면·저장소
   assert.equal(url.searchParams.get('subject'), '바다낚시 출조 AI 에이전트, 가입이 승인되었어요!');
   assert.ok(url.searchParams.get('body').includes('임시 비밀번호: tmp-Pw&?#한글'));
   assert.throws(() => m.openResendMail(am.approvalMailto, 'bad', 'x', h => navs.push(h)));
-  const blk = admin.slice(admin.indexOf("b.dataset.a === 'resend'"), admin.indexOf("b.dataset.a === 'unlock'"));
-  assert.ok(!/console|localStorage|sessionStorage|telemetry|innerHTML|setAttribute|textContent/.test(blk));
-  assert.match(blk, /tempPassword/); assert.match(blk, /r\.tempPassword = null/);
-  assert.ok(!/note\([^)]*tempPassword/.test(blk));
 });

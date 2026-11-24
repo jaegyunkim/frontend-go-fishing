@@ -205,3 +205,6 @@ Canva 후보 3종(A 수평선 핀 · B 파도 라인 · C 새벽 수평선, 디�
 - 확인 창(기존 재발급 문구) → `POST /v1/admin/users/:id/resend-temp-password` 재사용 → 성공 응답의 `tempPassword`로 최초 승인과 같은 팝업(`showSecret`, 제목·주소·메일 보내기 버튼·mailto 문구 동일). 오류 문구는 `resend-temp.js` 재사용. 비밀번호는 팝업·mailto 링크 생성에만 쓰고 닫으면 버림
 - 시험: `test/approve-regen.test.mjs`
 
+### 사용자 탭 다시 보내기 버튼 제거 (v1.27.0)
+
+- 관리자 「사용자」 탭 카드의 「임시 비밀번호 메일 다시 보내기」 버튼을 화면에서 제거(오너 지시). 같은 기능은 「신청 승인」 탭 승인 완료 카드의 「임시 비밀번호 생성」 버튼이 대신함. 공용 코드(`resend-temp.js`)와 신청 승인 탭 동작은 변경 없음.
