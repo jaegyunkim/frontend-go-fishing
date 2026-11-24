@@ -135,8 +135,8 @@ Canva 후보 3종(A 수평선 핀 · B 파도 라인 · C 새벽 수평선, 디�
 
 ### 임시 비밀번호 메일 다시 보내기 (v1.25.0)
 
-- 관리자 사용자 목록: 승인된(사용 중) 계정마다 "임시 비밀번호 메일 다시 보내기" 버튼(중지 계정은 숨김). 확인 창 → `POST /v1/admin/users/:id/resend-temp-password`(백엔드 계약) → 성공 시 응답의 가려진 주소(`maskedEmail`)만 표시
-- 오류 코드별 문구: NOT_ACTIVE·RATE_LIMITED(Retry-After 초 안내)·MAIL_FAILED·NOT_FOUND·그 밖. 호출 중 버튼 비활성, 터치 영역 44px 이상. 비밀번호·메일 원문은 화면·콘솔에 남기지 않음
+- 관리자 사용자 목록: 승인된(사용 중) 계정마다 "임시 비밀번호 메일 다시 보내기" 버튼(중지 계정은 숨김). 확인 창 → `POST /v1/admin/users/:id/resend-temp-password`(백엔드 계약) → 성공 시 응답의 `tempPassword`로 승인 메일과 같은 mailto 메일 창을 열고(서버는 메일을 보내지 않음, 메일 앱에서 보내기를 눌러야 전달), 화면 알림에는 가려진 주소(`maskedEmail`)만 표시
+- 오류 코드별 문구: NOT_ACTIVE·RATE_LIMITED(Retry-After 초 안내)·NOT_FOUND·그 밖. 호출 중 버튼 비활성, 터치 영역 44px 이상. 비밀번호·메일 원문은 화면·콘솔에 남기지 않음
 - 문구·판단은 `resend-temp.js`, 시험은 `test/resend-temp.test.mjs`. 백엔드 배포 후에 이 화면을 배포해야 함
 
 ### 이용 신청 화면 안내 정리 (v1.24.0)

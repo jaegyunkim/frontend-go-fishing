@@ -5,7 +5,8 @@
 ## 이번 작업: 임시 비밀번호 메일 다시 보내기 (브랜치 `jaegyunkim/pw-resend-fe`, v1.25.0 / 서비스 워커 v97)
 
 - 관리자 사용자 목록: 사용 중 계정마다 "임시 비밀번호 메일 다시 보내기"(확인 창 → `POST /v1/admin/users/:id/resend-temp-password` → 가려진 주소 표시). 코드별 오류 문구, 호출 중 비활성, 44px 이상
-- 시험: `node --test` 48개 통과(신규 `test/resend-temp.test.mjs`). 헤드리스 Chrome 목업(320/375/430px): 버튼 표시·확인 창·성공/실패 문구·중복 클릭 방지·가로 넘침 없음·로그 노출 없음 확인. 실제 메일·운영 서버 요청 없음
+- 시험: `node --test` 49개 통과(신규 `test/resend-temp.test.mjs`). 헤드리스 Chrome 목업(320/375/430px): 버튼 표시·확인 창·성공/실패 문구·중복 클릭 방지·가로 넘침 없음·로그 노출 없음 확인. 실제 메일·운영 서버 요청 없음
+- **계약 변경(오너 확정: 서버 메일 없음)**: 성공 응답의 `tempPassword`로 기존 `approval-email.js` mailto(승인 메일과 같은 문구·형식)를 열어 메일 작성 창을 띄움. 받는 사람은 목록의 loginId, 화면 알림엔 `maskedEmail`만. 임시 비밀번호는 링크 생성 순간에만 쓰고 바로 비움(DOM·저장소·콘솔·telemetry 미사용). MAIL_FAILED 제거. 목업 시험에서 DOM·localStorage·sessionStorage·앱 로그에 비밀번호 없음(Chrome이 mailto 실행 시 자체 남기는 정보 로그만 있음, 승인 흐름과 동일)
 - 남은 일: 푸시·배포는 "배포 시작" 지시 후(백엔드 먼저). 백엔드는 429 응답에 `Access-Control-Expose-Headers: Retry-After`를 보내야 화면이 초 안내를 표시함
 
 ## 이전 작업: 모바일 점검 지적 보완 + 안내 문구 반영 (브랜치 `jaegyunkim/fe-upgrade`)

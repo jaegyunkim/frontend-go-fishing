@@ -2,7 +2,7 @@ import { approvalMailto } from './approval-email.js?v=1.25.0';
 // 어디물어 관리자 화면: 계정·세션·사용량·대화 로그·로그인/작업 기록. 관리자 계정으로 로그인한 탭에서만 동작.
 import { state, api, health, startTimer, syncExpiry, setOnAuthLost, logout } from './auth.js?v=1.25.0';
 import { visitsHtml } from './admin-visits.js?v=1.25.0';
-import { RESEND_LABEL, resendPath, resendName, canResend, resendConfirmText, resendSuccessText, resendErrorText } from './resend-temp.js?v=1.25.0';
+import { RESEND_LABEL, resendPath, resendName, canResend, resendConfirmText, resendMailOpenedText, resendMailFailText, resendErrorText, openResendMail } from './resend-temp.js?v=1.25.0';
 const $ = s => document.querySelector(s);
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const dt = v => v ? new Date(v).toLocaleString('ko-KR', { timeZone: 'Asia/Seoul', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }) : '-';
@@ -164,7 +164,13 @@ const views = {
           const name = resendName(u);
           if (!confirm(resendConfirmText(name))) return;
           b.disabled = true;
-          try { const r = await api(resendPath(id), { method: 'POST' }); note(resendSuccessText(name, r.maskedEmail)); }
+          try {
+            const r = await api(resendPath(id), { method: 'POST' });
+            const masked = r.maskedEmail;
+            try { openResendMail(approvalMailto, u.loginId, r.tempPassword, href => { window.location.href = href; }); note(resendMailOpenedText(name, masked)); }
+            catch { note(resendMailFailText, true); }
+            r.tempPassword = null;
+          }
           catch (e) { note(resendErrorText(e), true); }
           finally { b.disabled = false; }
           return;

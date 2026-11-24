@@ -11,7 +11,9 @@ const authSrc = fs.readFileSync(new URL('../auth.js', import.meta.url), 'utf8').
 test('고정 문구', () => {
   assert.equal(m.RESEND_LABEL, '임시 비밀번호 메일 다시 보내기');
   assert.equal(m.resendConfirmText('민수'), '민수님에게 새 임시 비밀번호를 메일로 보낼까요? 기존 비밀번호는 더 이상 쓸 수 없어요.');
-  assert.equal(m.resendSuccessText('민수', 'de***@gmail.com'), '민수님(de***@gmail.com)에게 새 임시 비밀번호를 보냈어요.');
+  assert.equal(m.resendSuccessText('민수'), '민수님에게 보낼 메일 창을 열었어요. 메일 앱에서 보내기를 눌러야 전달돼요.');
+  assert.equal(m.resendMailOpenedText('민수', 'de***@gmail.com'), '민수님에게 보낼 메일 창을 열었어요. 메일 앱에서 보내기를 눌러야 전달돼요. (받는 사람 de***@gmail.com)');
+  assert.match(m.resendMailFailText, /기본 메일 앱 설정/);
 });
 test('표시 이름이 없으면 아이디, 경로는 id 인코딩', () => {
   assert.equal(m.resendName({ displayName: '민수', loginId: 'a@b.c' }), '민수');
@@ -26,14 +28,14 @@ test('활성 계정에만 버튼 표시', () => {
 test('오류 코드별 문구', () => {
   assert.equal(m.resendErrorText({ code: 'NOT_ACTIVE' }), '승인된 계정에만 보낼 수 있어요');
   assert.equal(m.resendErrorText({ code: 'NOT_FOUND' }), '계정을 찾을 수 없어요');
-  assert.equal(m.resendErrorText({ code: 'MAIL_FAILED' }), '메일을 보내지 못했어요. 기존 비밀번호는 그대로 쓸 수 있어요. 잠시 뒤 다시 시도해 주세요');
+  assert.ok(!src.includes('MAIL_FAILED'));
   assert.equal(m.resendErrorText({ code: 'RATE_LIMITED' }), '잠시 뒤에 다시 시도해 주세요(같은 계정에는 1분에 1번, 하루 5번까지)');
   assert.match(m.resendErrorText({ code: 'RATE_LIMITED', retryAfter: 42 }), /하루 5번까지\) · 42초 뒤/);
   for (const e of [{ code: 'NETWORK' }, { status: 500 }, new Error('x'), null]) assert.equal(m.resendErrorText(e), '보내지 못했어요. 잠시 뒤에 다시 시도해 주세요.');
 });
 test('admin.js: 확인 취소 시 호출 안 함·호출 중 비활성·maskedEmail 그대로 표시', () => {
   assert.match(admin, /if \(!confirm\(resendConfirmText\(name\)\)\) return;\s*b\.disabled = true;/);
-  assert.match(admin, /resendSuccessText\(name, r\.maskedEmail\)/);
+  assert.match(admin, /resendMailOpenedText\(name, masked\)/);
   assert.match(admin, /finally \{ b\.disabled = false; \}/);
 });
 test('auth.js api: Retry-After 를 오류에 담는다', async () => {
@@ -42,4 +44,19 @@ test('auth.js api: Retry-After 를 오류에 담는다', async () => {
   const ctx = vm.createContext({ window: { GOFISHING_API: 'https://api.test' }, location: { search: '', hostname: 'f.test', protocol: 'https:' }, localStorage: st, sessionStorage: st, URLSearchParams, Object, Error, Promise, AbortSignal, Date, Number, fetch: fetchImpl });
   vm.runInContext(authSrc, ctx);
   await assert.rejects(vm.runInContext('api("/v1/x",{method:"POST"})', ctx), e => e.status === 429 && e.code === 'RATE_LIMITED' && e.retryAfter === 30);
+});
+test('임시 비밀번호는 mailto 링크 생성에만 쓰고 화면·저장소·로그에 남기지 않는다', async () => {
+  const am = await import('data:text/javascript;base64,' + Buffer.from(fs.readFileSync(new URL('../approval-email.js', import.meta.url), 'utf8')).toString('base64'));
+  const navs = [];
+  m.openResendMail(am.approvalMailto, 'user@example.test', 'tmp-Pw&?#한글', h => navs.push(h));
+  assert.equal(navs.length, 1);
+  const url = new URL(navs[0]);
+  assert.equal(decodeURIComponent(url.pathname), 'user@example.test');
+  assert.equal(url.searchParams.get('subject'), '바다낚시 출조 AI 에이전트, 가입이 승인되었어요!');
+  assert.ok(url.searchParams.get('body').includes('임시 비밀번호: tmp-Pw&?#한글'));
+  assert.throws(() => m.openResendMail(am.approvalMailto, 'bad', 'x', h => navs.push(h)));
+  const blk = admin.slice(admin.indexOf("b.dataset.a === 'resend'"), admin.indexOf("b.dataset.a === 'unlock'"));
+  assert.ok(!/console|localStorage|sessionStorage|telemetry|innerHTML|setAttribute|textContent/.test(blk));
+  assert.match(blk, /tempPassword/); assert.match(blk, /r\.tempPassword = null/);
+  assert.ok(!/note\([^)]*tempPassword/.test(blk));
 });
