@@ -2,6 +2,13 @@
 
 에이전트 순환: Claude → Codex → Antigravity → Cursor → Claude
 
+## 이번 작업: 검색 로봇의 오류 보고·방문 기록 제외 (브랜치 `jaegyunkim/bot-error-filter`, v1.32.0 / 서비스 워커 v104)
+
+- 배경: Googlebot·Google-InspectionTool·Yeti가 화면을 그리다 리소스를 덜 불러오면 `/v1/client-errors`로 보고해 Slack 알림이 옴(실제 사용자 문제 아님, 라이브 리소스 전부 200)
+- `telemetry.js`에 `isCrawler(userAgent)` 한 곳(`window.GOFISHING_TELEMETRY.isCrawler/isCurrentCrawler`). 로봇이면 `report()`가 전송만 건너뜀(화면·콘솔 동작 그대로). Lighthouse·HeadlessChrome은 로봇으로 보지 않음
+- `visit.js`도 같은 판별로 로봇 방문은 `/v1/visits`를 보내지 않음(이전에는 걸러내지 않았음)
+- 시험: `node --test` 80개(신규 `test/crawler.test.mjs`), 헤드리스 Chrome 목업에서 Googlebot UA는 요청 0건·iPhone UA는 보고 전송 확인
+
 ## 이번 작업: 사이트 SEO·GEO 보강 (브랜치 `jaegyunkim/seo-geo`, v1.31.0 / 서비스 워커 v103)
 
 - 오너 지시(첨부 결론 문서 반영): 푸시·배포 없이 로컬 커밋까지. 상세는 `SEO-GEO.md`

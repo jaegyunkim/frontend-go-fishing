@@ -48,8 +48,16 @@
     const frames = value.slice(0, 12000).match(/(?:telemetry|auth|app|admin|register|server-settings)\.js(?:\?[^\s):]*)?:\d+:\d+/g) || [];
     return frames.map(frame => frame.replace(/\?[^:]*?(?=:\d+:\d+$)/, '')).join('\n').slice(0, 2000);
   }
+  // 검색·AI·미리보기 로봇 판별. 로봇은 화면을 덜 불러와 생기는 오류를 보내므로 보고·방문 기록에서 제외한다.
+  // Lighthouse·HeadlessChrome은 개발 시험에 쓰이므로 로봇으로 보지 않는다. 일반 'bot' 단어는 단어 경계로만 맞춘다.
+  const CRAWLER_RE = /Googlebot|Google-InspectionTool|GoogleOther|AdsBot-Google|Mediapartners-Google|Storebot-Google|Yeti\/|NaverBot|bingbot|Daumoa|Daum\/|DuckDuckBot|Baiduspider|YandexBot|PerplexityBot|GPTBot|ClaudeBot|anthropic-ai|Applebot|facebookexternalhit|Slackbot|Twitterbot|[a-z]bot\/|crawler|spider|(?:^|[^a-z0-9])bot(?:[^a-z0-9]|$)/i;
+  function isCrawler(userAgent) {
+    try { return typeof userAgent === 'string' && CRAWLER_RE.test(userAgent); } catch { return false; }
+  }
+  function currentUserAgent() { try { return typeof navigator === 'object' && navigator ? navigator.userAgent : ''; } catch { return ''; } }
   function report(kind, message, stack = '', actualBase) {
     try {
+      if (isCrawler(currentUserAgent())) return; // 로봇이면 전송만 건너뛴다(화면·콘솔 동작은 그대로).
       // 늦게 실패한 이전 요청이 현재 fallback 주소를 되돌리지 않도록 요청별 목적지를 분리한다.
       const targetBase = actualBase === undefined ? apiBase : base(actualBase);
       if (!targetBase || total >= MAX_PER_PAGE) return;
@@ -74,7 +82,7 @@
     } catch { /* 보고는 본 기능을 절대 방해하지 않는다. */ }
   }
   function setApiBase(value) { try { apiBase = base(value); } catch { apiBase = ''; } }
-  window.GOFISHING_TELEMETRY = Object.freeze({ report, setApiBase });
+  window.GOFISHING_TELEMETRY = Object.freeze({ report, setApiBase, isCrawler, isCurrentCrawler: () => isCrawler(currentUserAgent()) });
   window.addEventListener('error', event => {
     try {
       report('error', event.message || 'Script/resource load failed', event.error?.stack || '');

@@ -482,13 +482,13 @@ body{word-break:keep-all;overflow-wrap:anywhere}
 .help-contact{margin:12px 0 0;color:var(--sub)}
 .settings-help{margin-top:12px}
 
-/* ==== SEO·GEO: 로그인 화면 정적 소개 문장·소개 링크 (v1.31.0) ==== */
+/* ==== SEO·GEO: 로그인 화면 정적 소개 문장·소개 링크 (v1.32.0) ==== */
 .login-card .sub{margin-bottom:8px}
 .login-intro{margin:0 0 16px;font-size:13px;line-height:1.6;color:var(--sub);word-break:keep-all;overflow-wrap:anywhere}
 .noscript-note{margin:0 0 12px;padding:10px 12px;border-radius:12px;background:var(--panelSoft);border:1px solid var(--line);font-size:12.5px;line-height:1.5;color:var(--ink)}
 .login-card a.about-link,.login-card a.about-link:visited{display:flex;align-items:center;justify-content:center;min-height:44px;margin-top:8px;font-size:13px;color:var(--accInk);text-decoration:underline;text-underline-offset:3px}
 
-/* ==== SEO·GEO: 서비스 소개 페이지 about.html (v1.31.0) ==== */
+/* ==== SEO·GEO: 서비스 소개 페이지 about.html (v1.32.0) ==== */
 .about-view{min-height:100dvh;padding:24px 16px;background:var(--bgfill)}
 .about-card{max-width:640px;margin:0 auto;padding:28px 22px;border:1px solid var(--line);border-radius:24px;background:#fff;color:var(--ink);box-shadow:0 6px 24px rgba(15,60,90,.08);text-align:left;line-height:1.7;word-break:keep-all;overflow-wrap:anywhere}
 .about-head{display:flex;align-items:center;gap:12px;margin-bottom:12px}
