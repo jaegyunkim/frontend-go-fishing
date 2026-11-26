@@ -26,6 +26,7 @@
   <link rel="icon" href="assets/icon-192.png" type="image/png" sizes="192x192">
   <link rel="apple-touch-icon" href="assets/icon-192.png">
   <link rel="stylesheet" href="style.css?v=1.31.0">
+  <noscript><style>#appView{display:none!important}#loginView[hidden]{display:flex!important}</style></noscript>
 </head>
 <body>
   <!-- 로그인 화면 -->
@@ -33,7 +34,9 @@
     <div class="login-card">
       <div class="login-hero"><img src="assets/login-hero.svg" alt="" width="360" height="110"></div>
       <h1>어디물어</h1>
-      <p class="sub">바다낚시 출조 AI 에이전트 · 베타 테스트</p>
+      <p class="sub">바다낚시 출조 AI 에이전트(베타)</p>
+      <p class="login-intro">어디물어는 출발지와 날짜를 말하면 바람·파도·물때 등 공공 자료를 바탕으로 출조 후보를 살펴 주는 대화형 바다낚시 서비스예요(베타 테스트).</p>
+      <noscript><p class="noscript-note">로그인과 대화에는 자바스크립트가 필요해요. 서비스 소개는 아래 링크에서 읽을 수 있어요.</p></noscript>
       <form id="loginForm" autocomplete="on">
         <div class="field"><label for="loginId" class="sr-only">이메일</label><span class="clearable"><input id="loginId" data-clearable name="username" inputmode="email" placeholder="이메일 주소" autocomplete="username" autocapitalize="none" spellcheck="false" required maxlength="254"><button type="button" class="clear-btn" aria-label="입력한 이메일 지우기" hidden><svg viewBox="0 0 20 20" width="18" height="18" aria-hidden="true"><circle cx="10" cy="10" r="9"/><path d="M7 7l6 6M13 7l-6 6"/></svg></button></span></div>
         <label class="remember-id"><input type="checkbox" id="rememberId"> 아이디 저장</label>
@@ -54,6 +57,7 @@
         <span class="cta-desc">파고·바람·물때를 공공데이터로 확인하고, 포인트와 가는 길까지 한 번에 알려 드려요.</span>
         <span class="cta-btn">이용 신청하기 <span aria-hidden="true">→</span></span>
       </a>
+      <a class="about-link" href="about.html">어디물어 소개</a>
     </div>
   </section>
 
@@ -61,7 +65,7 @@
     <header class="top">
       <div class="brand">
         <img src="assets/icon.svg" alt="" width="34" height="34">
-        <div><h1>어디물어</h1><p>바다낚시 출조 AI</p></div>
+        <div><div class="app-name">어디물어</div><p>바다낚시 출조 AI</p></div>
       </div>
       <div class="top-right">
         <span id="timer" class="timer" hidden title="남은 이용 시간">10:00</span>

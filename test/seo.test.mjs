@@ -52,3 +52,15 @@ test('관리자·서버 연결 설정 페이지는 noindex,nofollow', () => {
     assert.ok(!/rel="canonical"/.test(h), `${f}에는 canonical을 두지 않음`);
   }
 });
+
+test('로그인 화면: 정적 HTML에 h1 하나와 정의 문장, 스크립트 없이도 로그인 화면이 보이게 함', () => {
+  const h = read('index.html');
+  assert.equal((h.match(/<h1[ >]/g) || []).length, 1, 'h1은 하나(앱 화면 상단 이름은 h1 아님)');
+  const login = h.slice(h.indexOf('id="loginView"'), h.indexOf('id="appView"'));
+  assert.match(login, /<h1>어디물어<\/h1>/);
+  assert.match(login, /<p class="login-intro">어디물어는 출발지와 날짜를 말하면 바람·파도·물때 등 공공 자료를 바탕으로 출조 후보를 살펴 주는 대화형 바다낚시 서비스예요\(베타 테스트\)\.<\/p>/);
+  assert.ok(!/(display:none|sr-only|visually-hidden)/.test(login.split('<p class="login-intro">')[1].split('</p>')[0]), '숨김 텍스트 금지');
+  assert.match(h, /<noscript><style>#appView\{display:none!important\}#loginView\[hidden\]\{display:flex!important\}<\/style><\/noscript>/);
+  assert.match(login, /<a class="about-link" href="about\.html">어디물어 소개<\/a>/);
+  assert.ok(!login.includes('loginSafety'), '노란 안내 상자는 되살리지 않음');
+});
