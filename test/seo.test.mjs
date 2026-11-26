@@ -84,7 +84,7 @@ test('about.html: h1 하나, h1→h2→h3 계층(건너뛰기 없음), 이미지
   assert.match(h, /추천은 조과·안전·출입을 보장하지 않아요/);
   assert.match(h, /href="\.\/"/);
   assert.ok(!/<img[^>]+alt="[^"]+"/.test(h), '의미 있는 글자는 이미지 말고 본문으로');
-  assert.ok(!/<script/.test(h));
+  assert.ok(!/<script(?![^>]*ld\+json)/.test(h), '구조화 데이터 외 스크립트 없음');
 });
 
 test('about.html 자주 묻는 질문은 앱 도움말(guide.js FAQ)과 같은 내용', () => {
@@ -96,4 +96,31 @@ test('about.html 자주 묻는 질문은 앱 도움말(guide.js FAQ)과 같은 �
 test('about.html은 확인되지 않은 내용(요금·연락처·수치)을 쓰지 않음', () => {
   const body = read('about.html').split('<body>')[1];
   assert.ok(!/요금|무료|유료|@|\d{2,3}-\d{3,4}-\d{4}|정식 출시|삭제 방법/.test(body));
+});
+
+const ldOf = f => [...read(f).matchAll(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/g)].map(m => JSON.parse(m[1]));
+
+test('JSON-LD: 로그인 화면 WebSite·WebApplication은 유효한 JSON이고 확인된 사실만 담음', () => {
+  const [d] = ldOf('index.html');
+  assert.equal(d['@context'], 'https://schema.org');
+  const types = d['@graph'].map(n => n['@type']);
+  assert.deepEqual(types, ['WebSite', 'WebApplication']);
+  const app = d['@graph'][1], html = read('index.html');
+  assert.equal(app.url, BASE);
+  assert.equal(app.inLanguage, 'ko');
+  assert.equal(app.description, meta(html, /<meta name="description" content="([^"]*)"/));
+  for (const bad of ['offers', 'aggregateRating', 'telephone', 'email', 'publisher', 'author', 'address', 'sameAs']) assert.ok(!JSON.stringify(d).includes(`"${bad}"`), bad);
+});
+
+test('JSON-LD: about.html FAQPage는 화면에 보이는 FAQ와 질문·답변이 정확히 같음', () => {
+  const [d] = ldOf('about.html');
+  assert.equal(d['@type'], 'FAQPage');
+  const shown = aboutFaq();
+  assert.equal(d.mainEntity.length, shown.length);
+  d.mainEntity.forEach((q, i) => {
+    assert.equal(q['@type'], 'Question');
+    assert.equal(q.name, shown[i][0]);
+    assert.equal(q.acceptedAnswer['@type'], 'Answer');
+    assert.equal(q.acceptedAnswer.text, shown[i][1]);
+  });
 });
