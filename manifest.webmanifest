@@ -1,5 +1,5 @@
 {
-  "name": "어디물어 · 바다낚시 출조 AI",
+  "name": "어디물어 — 바다낚시 출조 AI 에이전트(베타)",
   "short_name": "어디물어",
   "start_url": "./",
   "scope": "./",
@@ -7,7 +7,7 @@
   "background_color": "#f7fcfe",
   "theme_color": "#ddf4fb",
   "lang": "ko",
-  "description": "출발지와 날짜를 말하면, 바다 상태부터 낚시 후보까지 함께 살펴보는 어디물어.",
+  "description": "출발지와 날짜를 말하면 바람·파도·물때 등 공공 자료를 바탕으로 출조 후보를 살펴 주는 대화형 바다낚시 서비스예요(베타 테스트).",
   "icons": [
     { "src": "assets/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" },
     { "src": "assets/icon-192.png", "sizes": "192x192", "type": "image/png" },

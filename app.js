@@ -5,14 +5,14 @@ const md = s => esc(s).replace(/\*\*(.+?)\*\*/g, '<b>$1</b>');
 const won = n => n == null ? '-' : `${Math.round(n).toLocaleString('ko-KR')}원`;
 const GATE = { PASS: '안전 양호', PASS_WITH_CAUTION: '조건부 주의', REVIEW_REQUIRED: '현장 확인', HARD_BLOCK: '출조 자제' };
 const badge = g => g ? `<span class="badge b-${esc(g)}">${esc(GATE[g] ?? g)}</span>` : '';
-import { sortNewest } from './sort-newest.js?v=1.30.0';
-import { SAFETY_NOTE, helpHtml } from './guide.js?v=1.30.0';
+import { sortNewest } from './sort-newest.js?v=1.31.0';
+import { SAFETY_NOTE, helpHtml } from './guide.js?v=1.31.0';
 // 안전 안내·도움말을 로그인 화면과 설정 창에 채운다(문구는 guide.js 한 곳에서 관리).
 document.querySelectorAll('[data-safety]').forEach(el => { el.innerHTML = SAFETY_NOTE; });
 document.querySelectorAll('[data-help]').forEach(el => { el.innerHTML = helpHtml(); });
 
 // ---- 설정·인증(auth.js) ----
-import { state, setApi, api, health, login, logout, startTimer, syncExpiry, saveAuth, setOnAuthLost, setOnMustChange, loadAuthImage, remaining, sessionMinutes, loginQuota, timesKo } from './auth.js?v=1.30.0';
+import { state, setApi, api, health, login, logout, startTimer, syncExpiry, saveAuth, setOnAuthLost, setOnMustChange, loadAuthImage, remaining, sessionMinutes, loginQuota, timesKo } from './auth.js?v=1.31.0';
 let SID = localStorage.getItem('gofishing.session') || (crypto.randomUUID?.() ?? String(Date.now()) + Math.random().toString(16).slice(2));
 localStorage.setItem('gofishing.session', SID);
 const SAVED_ID_KEY = 'gofishing.savedLoginId'; // 아이디 저장(이메일만, 비밀번호는 저장하지 않음)
