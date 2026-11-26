@@ -5,13 +5,14 @@ const md = s => esc(s).replace(/\*\*(.+?)\*\*/g, '<b>$1</b>');
 const won = n => n == null ? '-' : `${Math.round(n).toLocaleString('ko-KR')}원`;
 const GATE = { PASS: '안전 양호', PASS_WITH_CAUTION: '조건부 주의', REVIEW_REQUIRED: '현장 확인', HARD_BLOCK: '출조 자제' };
 const badge = g => g ? `<span class="badge b-${esc(g)}">${esc(GATE[g] ?? g)}</span>` : '';
-import { SAFETY_NOTE, helpHtml } from './guide.js?v=1.29.0';
+import { sortNewest } from './sort-newest.js?v=1.30.0';
+import { SAFETY_NOTE, helpHtml } from './guide.js?v=1.30.0';
 // 안전 안내·도움말을 로그인 화면과 설정 창에 채운다(문구는 guide.js 한 곳에서 관리).
 document.querySelectorAll('[data-safety]').forEach(el => { el.innerHTML = SAFETY_NOTE; });
 document.querySelectorAll('[data-help]').forEach(el => { el.innerHTML = helpHtml(); });
 
 // ---- 설정·인증(auth.js) ----
-import { state, setApi, api, health, login, logout, startTimer, syncExpiry, saveAuth, setOnAuthLost, setOnMustChange, loadAuthImage, remaining, sessionMinutes, loginQuota, timesKo } from './auth.js?v=1.29.0';
+import { state, setApi, api, health, login, logout, startTimer, syncExpiry, saveAuth, setOnAuthLost, setOnMustChange, loadAuthImage, remaining, sessionMinutes, loginQuota, timesKo } from './auth.js?v=1.30.0';
 let SID = localStorage.getItem('gofishing.session') || (crypto.randomUUID?.() ?? String(Date.now()) + Math.random().toString(16).slice(2));
 localStorage.setItem('gofishing.session', SID);
 const SAVED_ID_KEY = 'gofishing.savedLoginId'; // 아이디 저장(이메일만, 비밀번호는 저장하지 않음)
@@ -554,7 +555,7 @@ async function loadHistory() {
   try {
     const { sessions } = await api('/v1/me/history', { timeoutMs: 15000 });
     if (!sessions.length) { box.innerHTML = '<p class="empty">아직 저장된 대화가 없어요. 대화 탭에서 궁금한 바다를 물어보세요!</p>'; return; }
-    box.innerHTML = sessions.map((s, i) => { const t = kst(s.startedAt), q = s.messages.filter(m => m.role === 'user').length;
+    box.innerHTML = sortNewest(sessions, s => s.startedAt, s => s.id ?? s.sessionId).map((s, i) => { const t = kst(s.startedAt), q = s.messages.filter(m => m.role === 'user').length;
       return `<details class="hist-sess"${i === 0 ? ' open' : ''}><summary><span><b>${esc(t.date)}</b> ${esc(t.time)} 로그인</span><span class="hist-n">질문 ${q}개</span></summary><div class="hist-msgs">${s.messages.map(m => m.role === 'user'
         ? `<div class="msg user">${esc(m.content)}</div><div class="hist-re"><span>${esc(kst(m.at).time)}</span><button type="button" data-ask="${esc(m.content)}">다시 묻기</button></div>`
         : `<div class="msg bot">${md(m.content)}</div>`).join('')}</div></details>`; }).join('') + '<p class="hist-hint">대화는 서비스 개선과 운영을 위해 30일간 보관된 뒤 자동으로 지워져요.</p>';
