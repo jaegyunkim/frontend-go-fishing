@@ -1,8 +1,8 @@
-import { approvalMailto } from './approval-email.js?v=1.28.0';
+import { approvalMailto } from './approval-email.js?v=1.29.0';
 // 어디물어 관리자 화면: 계정·세션·사용량·대화 로그·로그인/작업 기록. 관리자 계정으로 로그인한 탭에서만 동작.
-import { state, api, health, startTimer, syncExpiry, setOnAuthLost, logout } from './auth.js?v=1.28.0';
-import { visitsHtml } from './admin-visits.js?v=1.28.0';
-import { resendPath, resendName, canResend, resendConfirmText, resendErrorText, GENERATE_LABEL, userForRequest, canGenerateOnRequest } from './resend-temp.js?v=1.28.0';
+import { state, api, health, startTimer, syncExpiry, setOnAuthLost, logout } from './auth.js?v=1.29.0';
+import { visitsHtml } from './admin-visits.js?v=1.29.0';
+import { resendPath, resendName, canResend, resendConfirmText, resendErrorText, GENERATE_LABEL, userForRequest, canGenerateOnRequest } from './resend-temp.js?v=1.29.0';
 const $ = s => document.querySelector(s);
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const dt = v => v ? new Date(v).toLocaleString('ko-KR', { timeZone: 'Asia/Seoul', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }) : '-';
@@ -102,7 +102,7 @@ const roleText = r => ROLE_LABEL[r] ?? r;
 const views = {
  async requests(){
  const [{requests,capacity},users]=await Promise.all([api('/v1/admin/registrations'),api('/v1/admin/users').then(o=>o.users).catch(()=>[])]);
- view.innerHTML='<div class="tool"><h2>이용 신청 · 승인</h2></div>'+capBar(capacity)+'<p class="sub">승인 즉시 랜덤 임시 비밀번호가 발급돼요. 승인 완료 창의 메일 보내기로 신청자에게 안내해 주세요. 메일 앱에서 직접 발송해야 해요.</p><div class="requestCards">'+requests.map(r=>'<article class="card"><h3>'+esc(r.login_id)+' · '+esc(r.display_name)+'</h3><p class="sub">'+dt(r.created_at)+' · '+esc({pending:'승인 대기',approved:'승인 완료',rejected:'거절'}[r.status])+'</p>'+(r.reapply_count?'<p><span class="pill warn">재신청 '+n(r.reapply_count)+'회</span> <span class="sub">'+(r.last_rejected_at?dt(r.last_rejected_at)+'에 거절했던 신청':'이전에 거절했던 신청')+'</span></p>':'')+(canGenerateOnRequest(r,userForRequest(users,r))?'<div class="acts"><button type="button" class="resend-btn" data-regen="'+esc(userForRequest(users,r).id)+'">'+GENERATE_LABEL+'</button></div>':'')+(r.status==='pending'?'<div class="acts"><button data-review="approve" data-id="'+r.id+'">승인·비밀번호 발급</button><button data-review="reject" data-id="'+r.id+'">거절</button></div>':'')+'</article>').join('')+'</div>';
+ view.innerHTML='<div class="tool"><h2>이용 신청 · 승인</h2></div>'+capBar(capacity)+'<p class="sub">승인 즉시 랜덤 임시 비밀번호가 발급돼요. 승인 완료 창의 메일 보내기로 신청자에게 안내해 주세요. 메일 앱에서 직접 발송해야 해요.</p><div class="requestCards">'+requests.map(r=>'<article class="card"><h3>'+esc(r.login_id)+' · '+esc(r.display_name)+'</h3><p class="sub">'+dt(r.created_at)+' · '+esc({pending:'승인 대기',approved:'승인 완료',rejected:'거절'}[r.status])+'</p>'+(r.reapply_count?'<p><span class="pill warn">재신청 '+n(r.reapply_count)+'회</span> <span class="sub">'+(r.last_rejected_at?dt(r.last_rejected_at)+'에 거절했던 신청':'이전에 거절했던 신청')+'</span></p>':'')+(canGenerateOnRequest(r,userForRequest(users,r))?'<div class="acts"><button type="button" class="resend-btn" data-regen="'+esc(userForRequest(users,r).id)+'">'+GENERATE_LABEL+'</button></div>':'')+(r.status==='pending'?'<div class="acts"><button class="approve-btn" data-review="approve" data-id="'+r.id+'">승인·비밀번호 발급</button><button data-review="reject" data-id="'+r.id+'">거절</button></div>':'')+'</article>').join('')+'</div>';
  if(!requests.length)view.innerHTML+='<p>접수된 신청이 없어요.</p>';
  view.querySelectorAll('[data-regen]').forEach(b=>b.onclick=async()=>{
   if(b.disabled)return;const id=b.dataset.regen;const u=users.find(x=>String(x.id)===id);if(!u||!canResend(u))return;

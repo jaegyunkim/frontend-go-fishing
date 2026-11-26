@@ -194,3 +194,8 @@ body{word-break:keep-all;overflow-wrap:anywhere}
 /* 임시 비밀번호 메일 다시 보내기: 터치 영역 44px 이상, 좁은 화면에서 줄바꿈 */
 .acts button.resend-btn{min-height:44px;white-space:normal;max-width:100%;text-align:center;line-height:1.3}
 .acts button.resend-btn:disabled{opacity:.5;cursor:wait}
+/* v1.29.0 승인 대기 카드 「승인·비밀번호 발급」 버튼만 주황(로그인 「이용 신청하기」와 같은 #ff6b3d, 어두운 글씨 대비 6.24:1) */
+.acts button.approve-btn{background:#ff6b3d;border-color:#e65a2e;color:#2b1200;font-weight:800}
+.acts button.approve-btn:active{background:#e65a2e;border-color:#c2410c;color:#2b1200}
+.acts button.approve-btn:focus-visible{outline:3px solid #2b1200;outline-offset:2px}
+.acts button.approve-btn:disabled{cursor:wait}

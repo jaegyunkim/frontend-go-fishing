@@ -2,7 +2,12 @@
 
 에이전트 순환: Claude → Codex → Antigravity → Cursor → Claude
 
-## 이번 작업: 로그인 화면 노란 안전 안내 상자 제거 (브랜치 `jaegyunkim/remove-login-safety`, v1.28.0 / 서비스 워커 v100)
+## 이번 작업: 승인 버튼 주황색 (브랜치 `jaegyunkim/orange-approve-btn`, v1.29.0 / 서비스 워커 v101)
+
+- 오너 지시: 승인 대기 카드 「승인·비밀번호 발급」 버튼만 주황 `#ff6b3d`(앱 주황 재사용) + 글씨 `#2b1200`(대비 6.24:1, 흰 글씨는 2.9라 부족). `.approve-btn` 신규 클래스로 분리, 백엔드 변경 없음
+- 시험: `node --test` 56개(신규 `test/approve-color.test.mjs`)
+
+## 이전 작업: 로그인 화면 노란 안전 안내 상자 제거 (브랜치 `jaegyunkim/remove-login-safety`, v1.28.0 / 서비스 워커 v100)
 
 - 오너 지시: 로그인 버튼 아래 상자(보장 없음 문구·응급 신고 122/119)만 제거. `index.html`의 `#loginSafety`와 `app.js` 주입 줄 삭제. 공용 `SAFETY_NOTE`·`.safety-note` 스타일은 다른 화면이 써서 유지. 백엔드 변경 없음
 - 다른 화면에 남은 안전 안내(보고용, 미변경): `app.js` 추천 결과(158)·출조 자제(164)·상세 브리핑(452), 설정 창 `index.html:178` 도움말, `guide.js:31` FAQ 응급 신고 문단
