@@ -32,3 +32,23 @@ test('서비스 명칭 통일: 로그인 화면 title과 manifest 이름이 같�
   assert.equal(meta(read('index.html'), /<title>([^<]*)<\/title>/), SERVICE);
   assert.equal(JSON.parse(read('manifest.webmanifest')).name, SERVICE);
 });
+
+const BASE = 'https://jaegyunkim.github.io/frontend-go-fishing/';
+test('공개 페이지는 canonical(절대 주소)을 갖고 og:url과 같으며 noindex가 없다', () => {
+  for (const f of PUBLIC) {
+    const h = read(f);
+    const c = meta(h, /<link rel="canonical" href="([^"]*)"/);
+    assert.ok(c && c.startsWith(BASE), `${f} canonical`);
+    assert.equal(c, meta(h, /property="og:url" content="([^"]*)"/), `${f} og:url`);
+    assert.ok(!/name="robots"[^>]*noindex/.test(h), `${f} noindex 금지`);
+  }
+  assert.equal(meta(read('index.html'), /rel="canonical" href="([^"]*)"/), BASE, '로그인 화면 대표 주소는 /(index.html 아님)');
+});
+
+test('관리자·서버 연결 설정 페이지는 noindex,nofollow', () => {
+  for (const f of ['admin.html', 'server-settings.html']) {
+    const h = read(f);
+    assert.equal(meta(h, /<meta name="robots" content="([^"]*)"/), 'noindex,nofollow', f);
+    assert.ok(!/rel="canonical"/.test(h), `${f}에는 canonical을 두지 않음`);
+  }
+});
