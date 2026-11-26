@@ -2,15 +2,21 @@
 
 에이전트 순환: Claude → Codex → Antigravity → Cursor → Claude
 
-## 이번 작업: 모든 목록 최신순 정렬 (브랜치 `jaegyunkim/sort-newest`, v1.30.0 / 서비스 워커 v102)
+## 이번 작업: 사이트 SEO·GEO 보강 (브랜치 `jaegyunkim/seo-geo`, v1.31.0 / 서비스 워커 v103)
+
+- 오너 지시(첨부 결론 문서 반영): 푸시·배포 없이 로컬 커밋까지. 상세는 `SEO-GEO.md`
+- 공개 페이지 고유 title(40자)·description(80자), 서비스 명칭 통일, canonical, 관리자·서버 설정 `noindex,nofollow`
+- 로그인 화면 정적 h1·정의 문장(스크립트 없이도 보임, noscript 스타일), 소개 페이지 `about.html`(FAQ는 `guide.js`와 동일), JSON-LD(WebSite·WebApplication·FAQPage), `sitemap.xml`·`robots.txt`(프로젝트 사이트 한계는 SEO-GEO.md)
+- 03 소개 문서 파일은 이 환경에서 찾지 못해 `guide.js`(해당 초안 기반)만 근거로 사용. 문의처·요금·삭제 방법·정식 출시 계획은 쓰지 않음("준비 중")
+- 시험: `node --test` 75개(신규 `test/seo.test.mjs`), 자바스크립트 끈 헤드리스 Chrome 320/375/430px 확인
+
+## 이전 작업: 모든 목록 최신순 정렬 (브랜치 `jaegyunkim/sort-newest`, v1.30.0 / 서비스 워커 v102)
 
 - 오너 지시: 관리자·일반 화면의 시간 기록형 목록을 내림차순(최신순)으로. 「사용자」 탭은 관리자 → 내부 테스터 → 베타 테스터(그 밖 역할은 맨 뒤) 순으로 묶고 묶음 안은 최신순
 - 공용 유틸 `sort-newest.js`(`sortNewest`, `sortUsers`): 시각은 Date로 비교, 없거나 같으면 id 내림차순, 그래도 같으면 원래 순서. 백엔드 변경 없음
 - 정렬한 목록: 신청 승인, 사용자(역할 우선), 세션, 사용량, 로그인 기록, 리포트, 사용자별 토큰·질문(날짜·시각)·로그인 위치, 의견, 작업 기록, 내 대화 기록(세션 단위)
 - 유지한 목록: 대화 로그(말풍선·limit 300 서버 범위), 접속현황(이미 최신순 또는 시간순 차트), 스킬, 서버 연결 주소 목록 등
 - 시험: `node --test` 62개(신규 `test/sort-newest.test.mjs`), 헤드리스 목업 320/375/430px 확인(가로 넘침 없음)
-
-### 이전 작업
 
 ## 이전 작업: 승인 버튼 주황색 (브랜치 `jaegyunkim/orange-approve-btn`, v1.29.0 / 서비스 워커 v101)
 
