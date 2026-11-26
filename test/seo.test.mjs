@@ -124,3 +124,28 @@ test('JSON-LD: about.html FAQPage는 화면에 보이는 FAQ와 질문·답변�
     assert.equal(q.acceptedAnswer.text, shown[i][1]);
   });
 });
+
+test('sitemap.xml: 공개·색인 대상 페이지만 절대 URL로, 실제 파일을 가리킴(noindex 페이지 제외)', () => {
+  const xml = read('sitemap.xml');
+  const locs = [...xml.matchAll(/<loc>([^<]*)<\/loc>/g)].map(m => m[1]);
+  assert.equal(new Set(locs).size, locs.length);
+  for (const u of locs) {
+    assert.ok(u.startsWith(BASE), u);
+    const f = u.slice(BASE.length) || 'index.html';
+    assert.ok(existsSync(new URL('../' + f, import.meta.url)), `${u} 파일 없음`);
+    assert.ok(!/noindex/.test(read(f)), `${u} noindex 페이지는 사이트맵 제외`);
+    assert.equal(meta(read(f), /rel="canonical" href="([^"]*)"/), u, `${u} canonical 일치`);
+  }
+  assert.equal(locs.length, PUBLIC.length, '공개 페이지가 모두 포함');
+});
+
+test('robots.txt: sitemap 위치를 알리고 AI 크롤러를 막는 규칙이 없음', () => {
+  const r = read('robots.txt');
+  assert.match(r, /^Sitemap: https:\/\/jaegyunkim\.github\.io\/frontend-go-fishing\/sitemap\.xml$/m);
+  assert.ok(!/^Disallow:\s*\S/m.test(r));
+  assert.ok(!/^User-agent:\s*(GPTBot|Google-Extended|PerplexityBot|ClaudeBot|CCBot)/mi.test(r));
+});
+
+test('서비스 워커 캐시 목록에 sitemap·robots 없음', () => {
+  assert.ok(!/sitemap|robots/.test(read('sw.js')));
+});

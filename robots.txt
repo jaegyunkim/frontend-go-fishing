@@ -1,0 +1,8 @@
+# 모든 검색·AI 크롤러(GPTBot, Google-Extended, PerplexityBot 등)를 막지 않는다.
+# 주의: 이 파일은 GitHub 프로젝트 사이트(/frontend-go-fishing/) 아래라 크롤러가 읽지 않는다.
+# 크롤러는 도메인 루트(https://jaegyunkim.github.io/robots.txt)만 읽으므로,
+# 루트에 두려면 jaegyunkim.github.io 사용자 사이트 저장소가 필요하다(없으면 기본값=허용).
+User-agent: *
+Allow: /
+
+Sitemap: https://jaegyunkim.github.io/frontend-go-fishing/sitemap.xml
