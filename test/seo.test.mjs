@@ -64,3 +64,36 @@ test('로그인 화면: 정적 HTML에 h1 하나와 정의 문장, 스크립트 
   assert.match(login, /<a class="about-link" href="about\.html">어디물어 소개<\/a>/);
   assert.ok(!login.includes('loginSafety'), '노란 안내 상자는 되살리지 않음');
 });
+
+import { FAQ } from '../guide.js';
+const plain = s => s.replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').trim();
+export const aboutFaq = () => {
+  const h = read('about.html');
+  const blk = h.slice(h.indexOf('class="about-faq"'), h.indexOf('</section>', h.indexOf('class="about-faq"')));
+  return [...blk.matchAll(/<h3>([^<]*)<\/h3>\s*<p>([\s\S]*?)<\/p>/g)].map(m => [plain(m[1]), plain(m[2])]);
+};
+
+test('about.html: h1 하나, h1→h2→h3 계층(건너뛰기 없음), 이미지 속 글자 없음, 로그인 화면 링크', () => {
+  const h = read('about.html');
+  const hs = [...h.matchAll(/<h([1-6])[ >]/g)].map(m => +m[1]);
+  assert.equal(hs.filter(n => n === 1).length, 1);
+  assert.equal(hs[0], 1);
+  hs.forEach((n, i) => { if (i) assert.ok(n <= hs[i - 1] + 1, `제목 단계 건너뜀: h${hs[i - 1]}→h${n}`); });
+  assert.ok(hs.includes(2) && hs.includes(3));
+  assert.match(h, /어디물어는 출발지와 날짜를 말하면 바람·파도·물때 등 공공 자료를 바탕으로 출조 후보를 살펴 주는 대화형 바다낚시 서비스예요\(베타 테스트\)/);
+  assert.match(h, /추천은 조과·안전·출입을 보장하지 않아요/);
+  assert.match(h, /href="\.\/"/);
+  assert.ok(!/<img[^>]+alt="[^"]+"/.test(h), '의미 있는 글자는 이미지 말고 본문으로');
+  assert.ok(!/<script/.test(h));
+});
+
+test('about.html 자주 묻는 질문은 앱 도움말(guide.js FAQ)과 같은 내용', () => {
+  const faq = aboutFaq();
+  assert.equal(faq.length, FAQ.length);
+  FAQ.forEach(([q, a], i) => { assert.equal(faq[i][0], plain(q)); assert.equal(faq[i][1], plain(a)); });
+});
+
+test('about.html은 확인되지 않은 내용(요금·연락처·수치)을 쓰지 않음', () => {
+  const body = read('about.html').split('<body>')[1];
+  assert.ok(!/요금|무료|유료|@|\d{2,3}-\d{3,4}-\d{4}|정식 출시|삭제 방법/.test(body));
+});

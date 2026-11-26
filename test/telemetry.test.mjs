@@ -117,6 +117,7 @@ test('모든 HTML은 config 뒤 module 앞 classic telemetry 포함', () => {
   for (const file of fs.readdirSync(root).filter(f => f.endsWith('.html'))) {
     const html = fs.readFileSync(new URL(file, root), 'utf8');
     const scripts = [...html.matchAll(/<script\b[^>]*>/g)].map(m => m[0]);
+    if (!scripts.length) continue; // 스크립트 없는 정적 소개 페이지(about.html)는 제외
     const config = scripts.findIndex(s => s.includes('config.js'));
     const telemetry = scripts.findIndex(s => s.includes('telemetry.js'));
     const module = scripts.findIndex(s => s.includes('type="module"'));
